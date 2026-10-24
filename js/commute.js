@@ -108,6 +108,9 @@ export function parsePlan(json) {
       delayMin: first ? Math.max(0, minutes(new Date(first.startTime) - new Date(first.scheduledStartTime))) : 0,
       cancelled: it.legs.some((l) => l.cancelled === true || l.from?.cancelled === true),
       legs: it.legs.map(legLabel),
+      // for alerts: when the first vehicle was due (stable even when it runs late), and the stops used
+      scheduled: first ? new Date(first.scheduledStartTime) : new Date(it.startTime),
+      stops: transit.flatMap((l) => [l.from?.name, l.to?.name]).filter(Boolean),
     };
   });
 }

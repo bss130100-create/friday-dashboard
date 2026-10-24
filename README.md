@@ -18,6 +18,7 @@ Panels are grouped in five tabs: **Time** (AI briefing, chronometer, sun & moon)
 | Topic of the week | `data/topic.json` in this repo | 1 h | This week's topic, a fact of the day (rotates daily from the `start` date) and a watch list. Ticks are saved in this browser only. A new topic = Claude edits `data/topic.json` and pushes. |
 | Commute · public transport | [Transitous](https://transitous.org) (free community journey planner, data from SNCB, STIB, De Lijn, TEC…) | 5 min | Four routes: Home → Work 1, Home → Work 2, Work 1 → Home, Work 2 → Home. Door to door with trains, buses, trams, metro and walking, live delays and cancellations, and "leave in N min". **Addresses are typed once under *setup* and saved in MIAP's private database (D1, behind the login), so every device you log in from has them. They are never in this public repo.** The Worker also checks the Access login token itself before reading or saving them. Transitous receives them to plan the trips. |
 | Where I am · way home | your phone's GPS + Transitous | 2 min | Your precise position (GPS on a phone, Wi-Fi on a laptop) with its accuracy, the nearest street address, the distance to home, and the next trips home with "leave in N min". Needs the home address from Commute setup. |
+| Phone alerts | the Worker's cron + Transitous, iRail, USGS → Web Push | 5 min / 1 h | Pushes to your phone, once per event. Weekdays 06:00–09:30 (routes to work) and 15:30–19:30 (routes home), Brussels time: a trip leaving in the next hour is cancelled, runs 5+ min late, or a live SNCB disruption names one of its stations. Any time (hourly): an M5+ earthquake within 500 km of home in the last 2 h. See *Phone alerts* below. |
 | Atmosphere | [Open-Meteo](https://open-meteo.com) | 10 min | Current weather at your location. |
 | Air quality · Pollen | Open-Meteo air quality (Copernicus CAMS model) | 30 min | European AQI (0-20 good … >100 extremely poor), particles, ozone, NO₂, and pollen. Pollen is only modelled for Europe. Pollen bands (<10 low, <50 moderate, else high, grains/m³) are a rough glance scale, not medical advice. |
 | Sun · Moon | Open-Meteo + local maths | 1 h (countdown every min) | Sunrise/sunset/daylight from Open-Meteo. The moon phase is computed: the moon repeats its phases every 29.53 days, so days since a known new moon give the phase. |
@@ -86,6 +87,16 @@ The **Archive · trends** panel reads history the Worker saves into a free Cloud
 Tables are created on the first run, and the first run also loads 120 days of GNSS history from `data/gnss-backfill.json`.
 The database binding (`DB`) and the hourly cron (`0 * * * *`) are in `wrangler.jsonc`.
 
+### Phone alerts (Web Push)
+Nothing to set up on Cloudflare. The Worker makes its own push key pair (VAPID) on first use and keeps it in D1
+(`settings` table, key `vapid`); devices are in `push_subs`, sent alerts in `alerts_sent` (kept 3 days, so nothing is pushed twice).
+Messages are encrypted for the device (RFC 8291) with the built-in WebCrypto; see `relay/push.js`.
+The rules are in `relay/alerts.js`. A second cron (`*/5 * * * *`) runs the commute check; outside the windows it stops before
+any request. Cost per weekday: ~100 Transitous + ~50 iRail requests, all well inside free limits.
+
+**On iPhone (iOS 16.4+):** MIAP must be opened from its Home Screen icon (Safari tabs can't receive pushes) →
+Commute tab → **Enable alerts** → Allow → **Send test**. Turn off: Settings → Notifications → MIAP.
+
 ### GPS jamming data
 `.github/workflows/gpsjam.yml` runs `scripts/gpsjam.py` every day at 07:17 UTC (or by hand: Actions → gpsjam → Run workflow).
 It downloads the newest day from gpsjam.org, keeps hexagons with ≥3 aircraft and ≥2% bad fixes, converts them to lat/lon,
@@ -106,8 +117,11 @@ js/history.js         trends panel (reads /history); js/charts.js tiny SVG chart
 js/countries-data.js  country centre points for the maps; js/labels-data.js country names
 js/<panel>.js         one file per data source: clock, satellites, weather, airquality, astro,
                       news, gpsjam, attacks, quakes, outages, topic, commute (+ geo, location helpers)
-relay/worker.js       the Cloudflare Worker: helpers (news, attacks) + memory
-wrangler.jsonc        how Cloudflare deploys it (site files, database, hourly job); .assetsignore = files not served
+relay/worker.js       the Cloudflare Worker: helpers (news, attacks), memory, settings, roads, briefing, push endpoints + cron
+relay/alerts.js       when to push (commute windows, delays, cancellations, rail disruptions, earthquakes)
+relay/push.js         Web Push sender (VAPID + encryption, no library)
+sw.js                 service worker: shows the alerts on the phone; js/alerts.js = the Enable alerts panel
+wrangler.jsonc        how Cloudflare deploys it (site files, database, AI, hourly + 5-minute jobs); .assetsignore = files not served
 scripts/gpsjam.py     daily GPSJam converter (+ test_gpsjam.py)
 data/gpsjam.json      output of the daily job
 data/topic.json       topic of the week (facts + videos)

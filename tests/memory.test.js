@@ -17,7 +17,7 @@ function fakeD1() {
     exec: () => (isQuery(sql) ? { results: db.prepare(sql).all(...params).map((r) => ({ ...r })) } : db.prepare(sql).run(...params)),
     run: async () => stmt(sql, params).exec(),
     all: async () => stmt(sql, params).exec(),
-    first: async () => ({ ...db.prepare(sql).get(...params) }),
+    first: async () => { const row = db.prepare(sql).get(...params); return row ? { ...row } : null; }, // D1: null when no row
   });
   return { prepare: (sql) => stmt(sql), batch: async (list) => list.map((s) => s.exec()) };
 }
