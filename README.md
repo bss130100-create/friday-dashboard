@@ -1,2 +1,62 @@
 # friday-dashboard
-information dashboard
+
+A green-on-black, terminal-style live dashboard. Plain HTML + CSS + JavaScript:
+no framework, no build step. GitHub Pages serves the files as they are.
+
+**Live:** https://bss130100-create.github.io/friday-dashboard/
+
+## Panels and how they work
+
+| Panel | Source (free, no API key) | Refresh | What happens |
+|---|---|---|---|
+| `[ TIME ]` | your device clock | 1 s | Shows local, UTC and **GPS time**. GPS time started 1980-01-06 and never adds leap seconds, so today it runs **18 s ahead of UTC**. Also shows the GPS week number and its old 10-bit form (it rolled over to 0 in 1999 and 2019, which broke old receivers). |
+| `[ SAT-TRACK ]` | [CelesTrak](https://celestrak.org) TLEs | orbits: 2 h, positions: 2 s | Downloads each satellite's orbit as a *TLE* (two lines of numbers), then the SGP4 model (`vendor/satellite.es.js`) predicts where the ISS and every GPS satellite is *right now*. The sky plot shows the GPS satellites above you: centre = straight up, outer ring = horizon, top = north. |
+| `[ WX ]` | [Open-Meteo](https://open-meteo.com) | 10 min | Sends your rounded coordinates, gets current conditions + sunrise/sunset. |
+| `[ NEWSFEED ]` | [GDELT](https://www.gdeltproject.org) | 10 min | Type a city/region/country and press Enter. GDELT scans news sites worldwide every 15 min; we ask for English articles mentioning that place in the last 24 h. Your choice is remembered in this browser. |
+| `[ CVE-CRITICAL ]` | [NVD](https://nvd.nist.gov) API 2.0 | 30 min | Critical (CVSS ≥ 9.0) CVEs published in the last 7 days, newest first. |
+
+Location comes from your browser's location permission. Only Open-Meteo receives it.
+
+### Why no live flights?
+Every free flight API (OpenSky, adsb.lol, adsb.fi, airplanes.live) refuses requests
+from web pages on other domains. That browser rule is called **CORS**: the API must
+send `Access-Control-Allow-Origin` or the browser hides the answer from our page.
+Showing flights would need a small relay server, so the panel was swapped for news.
+
+## Errors are loud on purpose
+Every panel fails on its own and shows the reason in red (e.g. `HTTP 503 from services.nvd.nist.gov`).
+Nothing falls back to fake or old data. `js/http.js` turns any non-2xx response or timeout into an error,
+and `js/ui.js` `runPanel()` catches it and prints it in that panel. Details also go to the browser console.
+
+## Files
+```
+index.html            page layout, one <section> per panel
+style.css             the green terminal look (+ CRT scanlines)
+manifest.webmanifest  makes it installable ("Add to Home Screen")
+js/main.js            wires each panel to its loader and refresh timer
+js/http.js            fetch wrapper that throws on errors
+js/ui.js              render helpers + runPanel() error handling
+js/clock.js           GPS time maths
+js/satellites.js      TLE download/cache + SGP4 positions + sky plot
+js/weather.js, js/news.js, js/cves.js   one file per data source
+js/geo.js, js/location.js               distance/compass maths, browser location
+vendor/satellite.es.js                  satellite.js 6.0.2 (MIT), copied as-is
+tests/                                  unit tests (node --test)
+```
+Each data module has the same shape: `xxxUrl()` builds the request, `parseXxx()` turns raw JSON
+into a small object (and throws if it looks wrong), `renderXxx()` makes the HTML. Parsing is
+separate from fetching, which is what makes it testable without the internet.
+
+## Run it locally
+```bash
+npm run serve      # then open http://localhost:8000
+npm test           # 31 tests, needs Node 22+
+```
+Opening `index.html` directly from disk does not work: browsers block JavaScript modules on `file://`.
+
+## Install on iPhone
+Open the live link in **Safari** → Share → **Add to Home Screen**. It opens full-screen like an app.
+Allow location when asked.
+
+## Deploy
+GitHub Pages serves the `main` branch root. Push to `main` and the site updates within a minute.
