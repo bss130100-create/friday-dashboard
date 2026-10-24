@@ -1,0 +1,22 @@
+{
+  "topic": "GPS and relativity",
+  "start": "2026-10-24",
+  "facts": [
+    "Satellite clocks gain about 45 µs a day from weaker gravity (general relativity) and lose about 7 µs a day from their speed (special relativity). The net is +38 µs a day, which would make your position drift about 10 km a day if nobody corrected it.",
+    "The fix is built in before launch: GPS clocks are tuned to 10.22999999543 MHz instead of 10.23 MHz, so they tick at the right rate once they're in orbit.",
+    "Light covers about 30 cm per nanosecond. A clock error of just 1 µs puts you about 300 m off.",
+    "Your phone needs 4 satellites, not 3. The fourth solves your phone's own cheap clock error, so for a moment your phone keeps time almost as well as an atomic clock.",
+    "A GPS signal reaches you weaker than the background radio noise (around -130 dBm). The receiver digs it out by correlating with a known code, which is also why a small jammer can drown it out.",
+    "GPS time started on 6 January 1980 and never adds leap seconds. Today it runs 18 seconds ahead of UTC.",
+    "The old GPS message counts weeks with only 10 bits, so the count rolls over to 0 every 1024 weeks. That happened in August 1999 and April 2019, and some old receivers jumped back 20 years."
+  ],
+  "videos": [
+    { "title": "Everyday Einstein: GPS & Relativity", "by": "Perimeter Institute", "url": "https://www.youtube.com/watch?v=x7mWlAauLPs" },
+    { "title": "How an atomic clock works, and its use in GPS", "by": "engineerguy", "url": "https://www.youtube.com/watch?v=p2BxAu6WZI8" },
+    { "title": "How GPS Works, And How It Got Better Than The Designers Ever Imagined", "by": "Scott Manley", "url": "https://www.youtube.com/watch?v=qJ7ZAUjsycY" },
+    { "title": "GPS, an interactive article", "by": "Bartosz Ciechanowski", "url": "https://ciechanow.ski/gps/" },
+    { "title": "When Does Time Slow Down? GPS and Relativity", "by": "Gresham College", "url": "https://www.youtube.com/watch?v=gOeg4pyeNjQ" },
+    { "title": "How to fool a GPS", "by": "Todd Humphreys, TED", "url": "https://www.youtube.com/watch?v=r4UdHE3JNnU" },
+    { "title": "GPS/GNSS Spoofing and How To Detect It", "by": "GPSPATRON", "url": "https://www.youtube.com/watch?v=qLcHe18rtvI" }
+  ]
+}

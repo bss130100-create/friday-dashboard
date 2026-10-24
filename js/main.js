@@ -11,6 +11,9 @@ import { loadOutages, renderOutages } from './outages.js';
 import { loadGpsJam, renderGpsJam } from './gpsjam.js';
 import { loadAttacks, renderAttacks } from './attacks.js';
 import { makeZoomable } from './zoom.js';
+import { loadTopic, readWatched, toggleWatched, renderTopic } from './topic.js';
+import { STATIONS_URL, parseStations, findStation, readConfig, saveConfig, loadCommute } from './commute.js';
+import { fetchJson } from './http.js';
 import { ISS_TLE_URL, GPS_TLE_URL, loadTle, parseTle, satState, visibleGps, renderSatellites } from './satellites.js';
 
 const MINUTE = 60 * 1000;
@@ -103,3 +106,84 @@ form.addEventListener('submit', (event) => {
 });
 
 runPanel('news', refreshNews, 10 * MINUTE);
+
+// --- topic of the week: data/topic.json + "watched" ticks saved in this browser
+let topic = null;
+const drawTopic = () => showBody('topic', renderTopic(topic, readWatched(topic.topic), new Date()));
+runPanel('topic', async () => { topic = await loadTopic(); drawTopic(); }, 60 * MINUTE);
+document.getElementById('topic').addEventListener('change', (event) => {
+  const url = event.target.dataset.url;
+  if (!url) return;
+  try {
+    toggleWatched(topic.topic, url);
+    drawTopic();
+  } catch (err) {
+    showError('topic', err);
+  }
+});
+
+// --- commute: stations + minutes typed once in the setup form, saved only in this browser
+const setup = document.getElementById('commute-setup');
+const commuteForm = document.getElementById('commute-form');
+const formError = document.getElementById('commute-form-error');
+let stations = null;
+
+async function loadStations() {
+  stations ??= parseStations(await fetchJson(STATIONS_URL));
+  document.getElementById('stations').innerHTML = stations.map((st) => `<option value="${esc(st.name)}">`).join('');
+}
+
+function fillForm(config) {
+  const f = commuteForm.elements;
+  f.home.value = config.home.name;
+  f.homeMin.value = config.homeMin;
+  config.works.forEach((w, i) => {
+    f[`label${i + 1}`].value = w.label;
+    f[`station${i + 1}`].value = w.station.name;
+    f[`min${i + 1}`].value = w.min;
+  });
+}
+
+function configFromForm() {
+  const f = commuteForm.elements;
+  const works = [1, 2]
+    .filter((i) => i === 1 || f[`label${i}`].value.trim())
+    .map((i) => ({ label: f[`label${i}`].value.trim(), station: findStation(stations, f[`station${i}`].value), min: Number(f[`min${i}`].value) }));
+  return { home: findStation(stations, f.home.value), homeMin: Number(f.homeMin.value), works };
+}
+
+async function refreshCommute() {
+  const config = readConfig();
+  if (!config) {
+    setup.open = true;
+    showBody('commute', '<p class="dim">Open setup above: enter your home and work stations once.</p>');
+    return;
+  }
+  showBody('commute', await loadCommute(config, new Date()));
+}
+
+setup.addEventListener('toggle', () => {
+  if (setup.open) loadStations().catch((err) => { formError.textContent = `Station list failed: ${err.message}`; });
+});
+
+commuteForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  formError.textContent = '';
+  try {
+    if (!stations) throw new Error('Station list not loaded yet, try again in a moment');
+    saveConfig(configFromForm());
+  } catch (err) {
+    formError.textContent = err.message;
+    return;
+  }
+  setup.open = false;
+  refreshCommute().catch((err) => showError('commute', err));
+});
+
+try {
+  const saved = readConfig();
+  if (saved) fillForm(saved);
+} catch (err) {
+  formError.textContent = err.message;
+}
+runPanel('commute', refreshCommute, 2 * MINUTE);

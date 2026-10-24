@@ -37,6 +37,32 @@
   </header>
   <main>
     <section id="clock"><h2>Chronometer</h2><div class="body"></div><div class="status"></div></section>
+    <section id="topic"><h2>Topic of the week</h2><div class="body"><p class="dim">Loading topic…</p></div><div class="status"></div></section>
+    <section id="commute">
+      <h2>Commute · trains</h2>
+      <details id="commute-setup">
+        <summary>setup</summary>
+        <form id="commute-form" autocomplete="off">
+          <p class="dim small">Saved only in this browser. Pick stations from the suggestions.</p>
+          <label>Home station <input name="home" list="stations" required></label>
+          <label>Minutes home &rarr; station <input name="homeMin" type="number" min="0" max="120" required></label>
+          <fieldset><legend>Workplace 1</legend>
+            <label>Name <input name="label1" required></label>
+            <label>Station <input name="station1" list="stations" required></label>
+            <label>Minutes station &rarr; work <input name="min1" type="number" min="0" max="120" required></label>
+          </fieldset>
+          <fieldset><legend>Workplace 2 (optional)</legend>
+            <label>Name <input name="label2"></label>
+            <label>Station <input name="station2" list="stations"></label>
+            <label>Minutes station &rarr; work <input name="min2" type="number" min="0" max="120"></label>
+          </fieldset>
+          <button type="submit">Save</button>
+          <p class="err" id="commute-form-error"></p>
+        </form>
+        <datalist id="stations"></datalist>
+      </details>
+      <div class="body"></div><div class="status"></div>
+    </section>
     <section id="weather"><h2>Atmosphere</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
     <section id="air"><h2>Air quality · Pollen</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
     <section id="astro"><h2>Sun · Moon</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
@@ -53,7 +79,7 @@
     <section id="quakes" class="wide"><h2>Seismic activity</h2><div class="body"><p class="dim">Querying USGS…</p></div><div class="status"></div></section>
     <section id="outages"><h2>Internet outages</h2><div class="body"><p class="dim">Querying IODA…</p></div><div class="status"></div></section>
   </main>
-  <footer class="dim">Data: CelesTrak · Open-Meteo · CAMS · Bing News · GPSJam · Cloudflare Radar · USGS · IODA (Georgia Tech) · Natural Earth.
-    Your location only goes to Open-Meteo (weather, air, sun).</footer>
+  <footer class="dim">Data: iRail · CelesTrak · Open-Meteo · CAMS · Bing News · GPSJam · Cloudflare Radar · USGS · IODA (Georgia Tech) · Natural Earth.
+    Your location only goes to Open-Meteo (weather, air, sun). Commute stations stay in this browser.</footer>
 </body>
 </html>
