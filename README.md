@@ -11,6 +11,8 @@ Plain HTML + CSS + JavaScript: no framework, no build step. GitHub Pages serves 
 | Panel | Source | Refresh | What happens |
 |---|---|---|---|
 | Chronometer | your device clock | 1 s | Local, UTC and **GPS time**. GPS time started 1980-01-06 and never adds leap seconds, so today it runs **18 s ahead of UTC**. Also the GPS week number and its old 10-bit form (it rolled over to 0 in 1999 and 2019, which broke old receivers). |
+| Topic of the week | `data/topic.json` in this repo | 1 h | This week's topic, a fact of the day (rotates daily from the `start` date) and a watch list. Ticks are saved in this browser only. A new topic = Claude edits `data/topic.json` and pushes. |
+| Commute · trains | [iRail](https://docs.irail.be) (SNCB/NMBS trains) | 2 min | Live trains between your home station and each workplace station, with delays and cancellations. Before 13:00 it shows home → work, after that work → home. iRail only knows trains, so the walk/tram/bus at each end is a fixed number of minutes you enter. **Your stations are typed once under *setup* and saved only in this browser, never in this public repo.** |
 | Atmosphere | [Open-Meteo](https://open-meteo.com) | 10 min | Current weather at your location. |
 | Air quality · Pollen | Open-Meteo air quality (Copernicus CAMS model) | 30 min | European AQI (0-20 good … >100 extremely poor), particles, ozone, NO₂, and pollen. Pollen is only modelled for Europe. Pollen bands (<10 low, <50 moderate, else high, grains/m³) are a rough glance scale, not medical advice. |
 | Sun · Moon | Open-Meteo + local maths | 1 h (countdown every min) | Sunrise/sunset/daylight from Open-Meteo. The moon phase is computed: the moon repeats its phases every 29.53 days, so days since a known new moon give the phase. |
@@ -33,7 +35,7 @@ and `runPanel()` in `js/ui.js` catches it and prints it in that panel. Details a
 
 ## CORS, and why some data goes through helpers
 Browsers only let our page read another site's answer if that site sends the header
-`Access-Control-Allow-Origin` (the **CORS** rule). CelesTrak, Open-Meteo, USGS and IODA send it.
+`Access-Control-Allow-Origin` (the **CORS** rule). CelesTrak, Open-Meteo, iRail, USGS and IODA send it.
 Three sources don't, so they go through a helper:
 
 | Source | Helper | Why this helper |
@@ -75,10 +77,11 @@ js/worldmap.js        shared SVG world map (dots + attack arcs); land shapes in 
 js/zoom.js            zoom and drag for the maps
 js/countries-data.js  country centre points for the maps
 js/<panel>.js         one file per data source: clock, satellites, weather, airquality, astro,
-                      news, gpsjam, attacks, quakes, outages (+ geo, location helpers)
+                      news, gpsjam, attacks, quakes, outages, topic, commute (+ geo, location helpers)
 relay/worker.js       the Cloudflare Worker relay
 scripts/gpsjam.py     daily GPSJam converter (+ test_gpsjam.py)
 data/gpsjam.json      output of the daily job
+data/topic.json       topic of the week (facts + videos)
 vendor/satellite.es.js  satellite.js 6.0.2 (MIT), copied as-is
 tests/                unit tests (node --test)
 ```
@@ -100,4 +103,4 @@ Open the live link in **Safari** → Share → **Add to Home Screen**. Allow loc
 
 ## Credits
 Land shapes: Natural Earth (public domain). Country centres: mledoze/countries (ODbL).
-Data: CelesTrak, Open-Meteo / Copernicus CAMS, Bing News, GPSJam, Cloudflare Radar, USGS, IODA (Georgia Tech).
+Data: iRail, CelesTrak, Open-Meteo / Copernicus CAMS, Bing News, GPSJam, Cloudflare Radar, USGS, IODA (Georgia Tech).
