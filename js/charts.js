@@ -28,7 +28,7 @@ export function barChart(points, { height = 56, unit = '' } = {}) {
   const gap = Math.min(2, slot * 0.3);
   const bars = points.map((p, i) => {
     const h = Math.max(1, (p.value / max) * (height - 4));
-    return `<rect x="${f(i * slot + gap / 2)}" y="${f(height - h)}" width="${f(slot - gap)}" height="${f(h)}" class="bar"/>`
+    return `<rect x="${f(i * slot + gap / 2)}" y="${f(height - h)}" width="${f(slot - gap)}" height="${f(h)}" class="col"/>`
       + `<rect x="${f(i * slot)}" y="0" width="${f(slot)}" height="${height}" class="hit"><title>${esc(p.label)}: ${esc(String(p.value))}${unit}</title></rect>`;
   });
   return `<svg class="chart" viewBox="0 0 ${W} ${height}" role="img" aria-label="daily bars">

@@ -40,7 +40,7 @@ test('charts: a line needs 2 points; every day has a hover title', () => {
   const svg = lineChart([{ label: '2026-10-01', value: 3 }, { label: '2026-10-02', value: 5 }], { unit: '%' });
   assert.equal((svg.match(/<title>/g) ?? []).length, 2);
   assert.match(svg, /<title>2026-10-02: 5%<\/title>/);
-  assert.equal((barChart([{ label: 'd', value: 2 }, { label: 'e', value: 0 }]).match(/class="bar"/g) ?? []).length, 2);
+  assert.equal((barChart([{ label: 'd', value: 2 }, { label: 'e', value: 0 }]).match(/class="col"/g) ?? []).length, 2);
 });
 
 test('views render, and say so when the memory is still empty', () => {
@@ -57,7 +57,7 @@ test('views render, and say so when the memory is still empty', () => {
   assert.match(q, /<span class="kpi">52<\/span>/);
   assert.match(q, /M5\.1/);
   assert.match(q, /15\d km<\/span><span class="dim">nearest in a year: M2\.6 Vrancea/);
-  assert.equal((q.match(/class="bar"/g) ?? []).length, 3); // 22, 23 (0), 24
+  assert.equal((q.match(/class="col"/g) ?? []).length, 3); // 22, 23 (0), 24
   assert.doesNotMatch(renderQuakeHistory(quakes, null, now), /nearest/);
   const attacks = { days: days(3, '2026-10-22').flatMap((date) => [{ date, origin: 'CN', name: 'China', pct: 14.2 }]) };
   assert.match(renderAttackHistory(attacks), /China \(CN\)[\s\S]*14\.2%/);
