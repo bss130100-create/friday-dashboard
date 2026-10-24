@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install h3==4.*
-      - run: python scripts/gpsjam.py data/gpsjam.json
+      - run: mkdir -p data && python scripts/gpsjam.py data/gpsjam.json
       - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"
