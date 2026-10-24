@@ -7,7 +7,7 @@
 //   GET /news?q=brussels  ->  Bing News RSS search, English (US market), past 24 h
 //                            (Google News answers Cloudflare's servers with 503 "Sorry...", so Bing it is)
 //   GET /attacks          ->  Cloudflare Radar: top attack origin -> target country pairs, last 24 h
-//                             (needs the secret RADAR_TOKEN, see README)
+//                             (needs the secret RADAR_TOKEN, see README; cached 15 min, shared with the snapshot)
 //   GET /history?kind=gnss|quakes|attacks&days=90  ->  trends from MIAP's memory (D1 database)
 //   GET|PUT /settings/commute  ->  your commute addresses, kept in the D1 database (never in this public repo)
 //   GET /roads?lat=&lon=  ->  traffic incidents around you (TomTom, needs the secret TOMTOM_KEY), cached 30 min
@@ -28,7 +28,7 @@ const RADAR_ATTACKS_URL =
   'https://api.cloudflare.com/client/v4/radar/attacks/layer7/top/attacks?limit=25&dateRange=1d&format=JSON';
 
 // Returns { url, headers } for the upstream request, or throws RangeError for bad input.
-export function upstreamRequest(requestUrl, env) {
+export function upstreamRequest(requestUrl) {
   const url = new URL(requestUrl);
   if (url.pathname === '/news') {
     const q = (url.searchParams.get('q') ?? '').trim();
@@ -36,10 +36,6 @@ export function upstreamRequest(requestUrl, env) {
     // qft=interval="7" is Bing's "past 24 hours" filter; without it Bing returns week-old or older articles.
     const params = new URLSearchParams({ q, format: 'rss', setlang: 'en-US', mkt: 'en-US', qft: 'interval="7"' });
     return { url: `https://www.bing.com/news/search?${params}`, headers: { 'User-Agent': 'friday-dashboard-relay' } };
-  }
-  if (url.pathname === '/attacks') {
-    if (!env.RADAR_TOKEN) throw new RangeError('RADAR_TOKEN secret is not set on this Worker');
-    return { url: RADAR_ATTACKS_URL, headers: { Authorization: `Bearer ${env.RADAR_TOKEN}` } };
   }
   throw new RangeError(`unknown path ${url.pathname}`);
 }
@@ -56,11 +52,32 @@ const SCHEMA = [
   'CREATE TABLE IF NOT EXISTS alerts_sent (key TEXT NOT NULL PRIMARY KEY, at INTEGER NOT NULL)',
 ];
 
-// The tables, created on first use.
+// The tables, created on first use: once per database binding while this Worker instance lives,
+// not on every request (that was 7 extra statements each time).
+const schemaReady = new WeakSet();
 async function openDb(env) {
   const db = needDb(env);
-  await db.batch(SCHEMA.map((sql) => db.prepare(sql)));
+  if (!schemaReady.has(db)) {
+    await db.batch(SCHEMA.map((sql) => db.prepare(sql)));
+    schemaReady.add(db);
+  }
   return db;
+}
+
+// An upstream answer kept in the cache table for maxAgeMs, so many page loads cost one request.
+export async function cached(db, key, maxAgeMs, load, now = Date.now()) {
+  const hit = await db.prepare('SELECT saved, value FROM cache WHERE key = ?').bind(key).first();
+  if (hit && now - hit.saved < maxAgeMs) return JSON.parse(hit.value);
+  const value = await load();
+  await db.prepare('INSERT OR REPLACE INTO cache (key, saved, value) VALUES (?, ?, ?)').bind(key, now, JSON.stringify(value)).run();
+  return value;
+}
+
+// Radar's "last 24 h" ranking barely moves in 15 min; the page and the hourly snapshot share it.
+const RADAR_CACHE_MS = 15 * 60 * 1000;
+export async function radarAttacks(env, now = Date.now()) {
+  if (!env.RADAR_TOKEN) throw new Error('RADAR_TOKEN secret is not set on this Worker');
+  return cached(await openDb(env), 'radar-attacks', RADAR_CACHE_MS, () => getJson(RADAR_ATTACKS_URL, { Authorization: `Bearer ${env.RADAR_TOKEN}` }), now);
 }
 
 // Rows go in as ONE JSON parameter that SQLite unpacks with json_each: one statement per job,
@@ -123,8 +140,7 @@ export async function snapshot(env, now = new Date()) {
       if (n < 30) await db.prepare(BACKFILL_GNSS).bind(JSON.stringify(await assetJson(env, '/data/gnss-backfill.json'))).run();
     },
     attacks: async () => {
-      if (!env.RADAR_TOKEN) throw new Error('RADAR_TOKEN secret is not set');
-      const rows = attackRows(await getJson(RADAR_ATTACKS_URL, { Authorization: `Bearer ${env.RADAR_TOKEN}` }), today);
+      const rows = attackRows(await radarAttacks(env, now.getTime()), today);
       // the day's latest Radar snapshot replaces the earlier ones
       await db.batch([db.prepare('DELETE FROM attacks_daily WHERE date = ?').bind(today), db.prepare(INSERT_ATTACKS).bind(JSON.stringify(rows))]);
     },
@@ -209,19 +225,32 @@ function decodeToken(token) {
 // Settings hold your addresses, so the Worker checks the Access login itself too: if Access were
 // ever switched off, /settings refuses instead of handing them to anyone. Access puts a signed
 // token (JWT) on every request it lets through; we check its signature against the team's public
-// keys, its issuer and its expiry. getKeys is swappable for tests.
-export async function verifyLogin(request, now = Date.now(), getKeys = () => getJson(`${ACCESS_TEAM}/cdn-cgi/access/certs`)) {
+// keys, its issuer and its expiry. getKeys(kid) gives the team's keys (see accessKeys; tests pass their own).
+export async function verifyLogin(request, now, getKeys) {
   const token = request.headers.get('Cf-Access-Jwt-Assertion');
   if (!token) throw new LoginError('no Access login on this request');
   const { head, body, header, claims, signature } = decodeToken(token);
   if (claims.iss !== ACCESS_TEAM) throw new LoginError(`Access token from the wrong team: ${claims.iss}`);
   if (!(claims.exp * 1000 > now)) throw new LoginError('Access login expired, reload the page');
-  const jwk = (await getKeys()).keys?.find((k) => k.kid === header.kid);
+  const jwk = (await getKeys(header.kid)).keys?.find((k) => k.kid === header.kid);
   if (!jwk) throw new LoginError('Access token signed with an unknown key');
   const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
   const valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, signature, new TextEncoder().encode(`${head}.${body}`));
   if (!valid) throw new LoginError('Access token signature is invalid');
 }
+
+// The team's public keys change only every few weeks: kept 1 h in the cache table. A token signed
+// with a key we don't have yet means Cloudflare just rotated, so then the list is fetched again.
+const ACCESS_KEYS_MS = 60 * 60 * 1000;
+export async function accessKeys(env, kid, now = Date.now()) {
+  const db = await openDb(env);
+  const load = () => getJson(`${ACCESS_TEAM}/cdn-cgi/access/certs`);
+  const keys = await cached(db, 'access-keys', ACCESS_KEYS_MS, load, now);
+  if (keys.keys?.some((k) => k.kid === kid)) return keys;
+  return cached(db, 'access-keys', 0, load, now);
+}
+
+const loggedIn = (request, env) => verifyLogin(request, Date.now(), (kid) => accessKeys(env, kid));
 
 // GET -> the saved object (or null), PUT -> save the request body (a JSON object).
 export async function settings(env, request) {
@@ -292,21 +321,20 @@ export function parseIncidents(json) {
 }
 
 export async function roads(env, cell, now = Date.now()) {
-  const db = await openDb(env);
-  const key = `roads2:${cell.lat},${cell.lon}`; // roads2: answers that include the road shapes
-  const hit = await db.prepare('SELECT saved, value FROM cache WHERE key = ?').bind(key).first();
-  if (hit?.saved !== undefined && now - hit.saved < ROADS_CACHE_MS) return JSON.parse(hit.value);
   if (!env.TOMTOM_KEY) throw new Error('TOMTOM_KEY secret is not set on this Worker (see README, Roads)');
+  // roads2: answers that include the road shapes
+  return cached(await openDb(env), `roads2:${cell.lat},${cell.lon}`, ROADS_CACHE_MS, () => tomtom(env, cell, now), now);
+}
+
+async function tomtom(env, cell, now) {
   const params = new URLSearchParams({ apiVersion: '2', bbox: roadsBox(cell), timeValidity: 'present' });
   const answer = await getJson(`${TOMTOM_URL}?${params}`, { 'TomTom-Api-Key': env.TOMTOM_KEY, 'TomTom-Api-Version': '2', Attributes: TOMTOM_FIELDS, 'Accept-Language': 'en-GB' });
-  const value = { cell, saved: now, incidents: parseIncidents(answer) };
-  await db.prepare('INSERT OR REPLACE INTO cache (key, saved, value) VALUES (?, ?, ?)').bind(key, now, JSON.stringify(value)).run();
-  return value;
+  return { cell, saved: now, incidents: parseIncidents(answer) };
 }
 
 // ---------- AI briefing (Workers AI) ----------
 // The page sends what its panels show right now; a small model turns it into 2-3 sentences.
-// Free plan: 10,000 "neurons" a day; one briefing costs about 5.
+// Free plan: 10,000 "neurons" a day; one briefing costs about 75 (see BRIEF_MODEL).
 
 // Llama 3.3 70B: much better judgement than the 8B model. ~75 neurons a briefing, so ~100 a day fit the free 10,000.
 const BRIEF_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
@@ -421,10 +449,11 @@ export async function everyFiveMinutes(env, now) {
 
 // Paths answered with JSON by this Worker. Errors: 403 login, 400 bad input, 500 anything else.
 const ROUTES = {
-  '/push/key': async (request, env) => { await verifyLogin(request); return pushKey(env); },
-  '/push/subscribe': async (request, env) => { await verifyLogin(request); return subscribe(env, request); },
-  '/push/test': async (request, env) => { await verifyLogin(request); return pushTest(env, request); },
-  '/settings/commute': async (request, env) => { await verifyLogin(request); return settings(env, request); },
+  '/push/key': async (request, env) => { await loggedIn(request, env); return pushKey(env); },
+  '/push/subscribe': async (request, env) => { await loggedIn(request, env); return subscribe(env, request); },
+  '/push/test': async (request, env) => { await loggedIn(request, env); return pushTest(env, request); },
+  '/settings/commute': async (request, env) => { await loggedIn(request, env); return settings(env, request); },
+  '/attacks': (request, env) => radarAttacks(env),
   '/history': (request, env) => history(env, historyQuery(request.url)),
   '/roads': (request, env) => roads(env, roadsQuery(request.url)),
   '/briefing': (request, env) => briefing(env, request),
@@ -443,7 +472,7 @@ export default {
     }
     let target;
     try {
-      target = upstreamRequest(request.url, env);
+      target = upstreamRequest(request.url);
     } catch (err) {
       return new Response(err.message, { status: 400 });
     }
