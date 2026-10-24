@@ -35,7 +35,7 @@ a:hover { text-decoration: underline; }
 
 /* ---------- header with arc reactor ---------- */
 .hud-header { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
-.reactor { width: 84px; height: 84px; flex: none; filter: drop-shadow(0 0 8px var(--cyan)); }
+.reactor { width: 84px; height: 84px; flex: none; filter: drop-shadow(0 0 3px var(--cyan)); }
 .reactor circle { fill: none; stroke: var(--cyan); transform-origin: 50px 50px; }
 .reactor .r1 { stroke-width: 1; stroke-dasharray: 2 4; animation: spin 24s linear infinite; }
 .reactor .r2 { stroke-width: 4; stroke-dasharray: 30 10 6 10; opacity: .8; animation: spin 12s linear infinite reverse; }
@@ -44,7 +44,8 @@ a:hover { text-decoration: underline; }
 .reactor .core { fill: #dffcff; stroke: none; animation: glow 3s ease-in-out infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes glow { 50% { opacity: .55; } }
-h1 { margin: 0; font: 700 26px/1 var(--head); letter-spacing: .3em; color: var(--cyan); text-shadow: 0 0 12px rgba(41, 217, 255, .8); }
+/* glows stay small: a wide text-shadow makes letters look blurred on a phone screen */
+h1 { margin: 0; font: 700 26px/1 var(--head); letter-spacing: .3em; color: var(--cyan); text-shadow: 0 0 3px rgba(41, 217, 255, .6); }
 .sub { font-size: 11px; letter-spacing: .25em; text-transform: uppercase; color: var(--dim); margin-top: 4px; }
 .systems { margin-top: 6px; font: 12px var(--head); letter-spacing: .2em; color: var(--cool); }
 
@@ -55,7 +56,7 @@ nav.tabs a {
   font: 700 12px var(--head); letter-spacing: .18em; text-transform: uppercase;
 }
 nav.tabs a:hover { text-decoration: none; border-color: var(--cyan); color: var(--fg); }
-nav.tabs a.on { color: var(--bg); background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 12px rgba(41, 217, 255, .5); }
+nav.tabs a.on { color: var(--bg); background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 6px rgba(41, 217, 255, .4); }
 
 /* ---------- panels ---------- */
 main { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
@@ -65,7 +66,7 @@ section {
   background: var(--panel); border: 1px solid var(--line);
   clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
   box-shadow: inset 0 0 24px rgba(41, 217, 255, .08);
-  backdrop-filter: blur(3px);
+  /* no backdrop-filter: on iPhone (WebKit) it renders the panel text softer, and the background is plain anyway */
 }
 /* corner brackets */
 section::before, section::after {
@@ -82,7 +83,7 @@ h2 {
 h2::before { content: ""; width: 10px; height: 10px; border: 2px solid var(--cyan); border-radius: 50%; border-right-color: transparent; animation: spin 2.5s linear infinite; }
 h2::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
 h3 { margin: 12px 0 4px; font: 600 11px var(--head); letter-spacing: .2em; color: var(--dim); }
-.big { font: 40px/1.05 var(--mono); color: #eaffff; text-shadow: 0 0 14px rgba(41, 217, 255, .7); }
+.big { font: 40px/1.05 var(--mono); color: #eaffff; text-shadow: 0 0 3px rgba(41, 217, 255, .6); }
 .unit { font-size: 15px; color: var(--dim); margin-left: 4px; }
 .err { color: var(--hot); font-family: var(--mono); }
 .status { margin-top: 8px; font: 11px var(--mono); color: var(--dim); text-align: right; }
