@@ -32,8 +32,8 @@ export function mapPanel(el, halfKm) {
     async draw(here, paint) {
       const L = await loadLeaflet();
       if (!map) {
-        // no +/- buttons: they hid map labels; pinch or double-tap still zooms
         map = L.map(el, { scrollWheelZoom: false, zoomSnap: 0.25, zoomControl: false });
+        L.control.zoom({ position: 'bottomleft' }).addTo(map); // bottom-left: the top corners hold map labels
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(map);
         layer = L.layerGroup().addTo(map);
         map.setView([here.lat, here.lon], 9);
