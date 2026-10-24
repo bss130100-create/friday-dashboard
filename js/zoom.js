@@ -4,11 +4,15 @@
 // of the same drawing = zooming in; sliding the window = panning. Dots and attack arcs are
 // re-sized on each zoom so they stay the same size on screen.
 //
+// Country names are kept at a readable size and appear as countries get big enough on screen.
+//
 // Controls: + / − / reset buttons, double-click, drag (when zoomed), two-finger pinch
 // (phone), pinch or Ctrl/⌘ + scroll (laptop trackpad / mouse).
 
 export const FULL = Object.freeze({ x: 0, y: 0, w: 360, h: 180 });
 const MAX_ZOOM = 16;
+const LABEL_PX = 10; // country name size on screen
+const LABEL_MIN_COUNTRY_PX = 28; // label a country once it is at least this wide on screen
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
@@ -35,6 +39,16 @@ export function panBy(view, dx, dy) {
   return clampView({ x: view.x + dx, y: view.y + dy, w: view.w });
 }
 
+// Rough box around a centred label (monospace font: each character is about 0.6 em wide).
+export function labelBox(x, y, chars, fontSize) {
+  const w = chars * 0.6 * fontSize;
+  return { x0: x - w / 2, x1: x + w / 2, y0: y - fontSize / 2, y1: y + fontSize / 2 };
+}
+
+export function overlaps(a, b) {
+  return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+}
+
 // Browser part: wire zoom to one panel. The panel's map is re-drawn on every data refresh,
 // so the current view is kept here and re-applied whenever the panel body changes.
 export function makeZoomable(sectionId) {
@@ -53,6 +67,20 @@ export function makeZoomable(sectionId) {
       a.style.strokeWidth = (a.dataset.w * inv).toFixed(3);
       a.style.strokeDasharray = `${(3 * inv).toFixed(3)} ${(2 * inv).toFixed(3)}`;
     }
+    // Country names: constant size on screen, shown when the country is wide enough to hold one.
+    const pxPerUnit = map.getBoundingClientRect().width / view.w;
+    // Labels come biggest country first; a label that would overlap one already shown is skipped.
+    if (pxPerUnit > 0) {
+      const fontSize = LABEL_PX / pxPerUnit;
+      const placed = [];
+      for (const t of map.querySelectorAll('.labels text')) {
+        t.setAttribute('font-size', fontSize.toFixed(3));
+        const box = labelBox(Number(t.getAttribute('x')), Number(t.getAttribute('y')), t.textContent.length, fontSize);
+        const show = t.dataset.span * pxPerUnit >= LABEL_MIN_COUNTRY_PX && !placed.some((b) => overlaps(b, box));
+        if (show) placed.push(box);
+        t.classList.toggle('show', show);
+      }
+    }
     map.classList.toggle('zoomed', zoomLevel(view) > 1.01);
     const label = body.querySelector('.zoom-level');
     if (label) label.textContent = `${zoomLevel(view).toFixed(1)}×`;
@@ -67,6 +95,7 @@ export function makeZoomable(sectionId) {
   const centre = () => [view.x + view.w / 2, view.y + view.h / 2];
 
   new MutationObserver(apply).observe(body, { childList: true });
+  window.addEventListener('resize', apply); // label sizes depend on the map's width on screen
 
   body.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-zoom]');

@@ -106,6 +106,9 @@ td:first-child, th { color: var(--dim); }
 /* non-scaling strokes: outlines stay hairline-thin when zoomed in */
 .worldmap .land { fill: rgba(41, 217, 255, .10); stroke: rgba(41, 217, 255, .55); stroke-width: .7px; vector-effect: non-scaling-stroke; }
 .worldmap .borders { fill: none; stroke: rgba(41, 217, 255, .35); stroke-width: .5px; vector-effect: non-scaling-stroke; }
+.worldmap .labels text { display: none; letter-spacing: normal; fill: rgba(191, 246, 255, .75); font-family: var(--mono); text-anchor: middle; dominant-baseline: middle;
+  pointer-events: none; paint-order: stroke; stroke: rgba(2, 7, 13, .85); stroke-width: 2px; vector-effect: non-scaling-stroke; }
+.worldmap .labels text.show { display: inline; }
 .worldmap .grid { stroke: rgba(41, 217, 255, .12); stroke-width: .8px; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke; }
 .zoom-ctl { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; align-items: center; z-index: 1; }
 .zoom-ctl button { width: 26px; height: 26px; padding: 0; background: rgba(2, 7, 13, .8); color: var(--cyan);

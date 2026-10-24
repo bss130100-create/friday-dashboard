@@ -19,6 +19,9 @@ test('map projection: (0,0) is the centre, north-west corner is (0,0) in SVG', (
   assert.match(worldMap({ dots: [{ lat: 0, lon: 0 }] }), /<g transform="translate\(180\.0 90\.0\)"><circle r="1.5" data-r="1.5"/);
   assert.doesNotMatch(worldMap({}), /data-zoom/);
   assert.match(worldMap({ zoomable: true }), /data-zoom="in"/);
+  assert.match(worldMap({ zoomable: true }), /<text x="184\.0" y="39\.2" data-span="1\.6">Belgium<\/text>/);
+  assert.match(worldMap({}), /class="borders"/);
+  assert.doesNotMatch(worldMap({}), /class="labels"/);
 });
 
 test('quakes: newest first, rendered with nearest distance', () => {

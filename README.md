@@ -12,7 +12,7 @@ Plain HTML + CSS + JavaScript: no framework, no build step. GitHub Pages serves 
 |---|---|---|---|
 | Chronometer | your device clock | 1 s | Local time, UTC, today's date and the **ISO week number** (weeks start Monday; week 1 holds the year's first Thursday). |
 | Topic of the week | `data/topic.json` in this repo | 1 h | This week's topic, a fact of the day (rotates daily from the `start` date) and a watch list. Ticks are saved in this browser only. A new topic = Claude edits `data/topic.json` and pushes. |
-| Commute · public transport | [Transitous](https://transitous.org) (free community journey planner, data from SNCB, STIB, De Lijn, TEC…) | 3 min | Four routes: Home → Work 1, Home → Work 2, Work 1 → Home, Work 2 → Home. Door to door with trains, buses, trams, metro and walking, live delays and cancellations, and "leave in N min". **Addresses are typed once under *setup* and saved only in this browser, never in this public repo.** Transitous receives them to plan the trips. |
+| Commute · public transport | [Transitous](https://transitous.org) (free community journey planner, data from SNCB, STIB, De Lijn, TEC…) | 5 min | Four routes: Home → Work 1, Home → Work 2, Work 1 → Home, Work 2 → Home. Door to door with trains, buses, trams, metro and walking, live delays and cancellations, and "leave in N min". **Addresses are typed once under *setup* and saved only in this browser, never in this public repo.** Transitous receives them to plan the trips. |
 | Atmosphere | [Open-Meteo](https://open-meteo.com) | 10 min | Current weather at your location. |
 | Air quality · Pollen | Open-Meteo air quality (Copernicus CAMS model) | 30 min | European AQI (0-20 good … >100 extremely poor), particles, ozone, NO₂, and pollen. Pollen is only modelled for Europe. Pollen bands (<10 low, <50 moderate, else high, grains/m³) are a rough glance scale, not medical advice. |
 | Sun · Moon | Open-Meteo + local maths | 1 h (countdown every min) | Sunrise/sunset/daylight from Open-Meteo. The moon phase is computed: the moon repeats its phases every 29.53 days, so days since a known new moon give the phase. |
@@ -23,7 +23,7 @@ Plain HTML + CSS + JavaScript: no framework, no build step. GitHub Pages serves 
 | Seismic activity | [USGS](https://earthquake.usgs.gov) | 5 min | Magnitude 2.5+ quakes of the last 24 h, the biggest, and the nearest to you. |
 | Internet outages | [IODA](https://ioda.inetintel.cc.gatech.edu) (Georgia Tech) | 15 min | Countries where internet reachability dropped in the last 24 h, and which signal saw it (BGP routes, active probing, Google traffic). |
 
-All maps show land and country borders (Natural Earth 1:110m).
+All maps show land, country borders (Natural Earth 1:110m) and country names. Names keep a readable size and more appear as you zoom in.
 
 **Zoom (all four maps):** the + / − / ⟲ buttons, double-click, pinch on the phone, or pinch / Ctrl+scroll on a laptop. Drag to move around when zoomed. The zoom stays when the data refreshes.
 
@@ -77,7 +77,7 @@ js/ui.js              render helpers, runPanel() error handling, systems status
 js/config.js          your relay address
 js/worldmap.js        shared SVG world map (dots + attack arcs); land shapes in worldmap-data.js, borders in borders-data.js
 js/zoom.js            zoom and drag for the maps
-js/countries-data.js  country centre points for the maps
+js/countries-data.js  country centre points for the maps; js/labels-data.js country names
 js/<panel>.js         one file per data source: clock, satellites, weather, airquality, astro,
                       news, gpsjam, attacks, quakes, outages, topic, commute (+ geo, location helpers)
 relay/worker.js       the Cloudflare Worker relay
