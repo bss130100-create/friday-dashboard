@@ -133,7 +133,9 @@ function showFound(config) {
 
 async function configFromForm() {
   const f = commuteForm.elements;
-  const [home, place1, place2] = await Promise.all([geocode(f.home.value), geocode(f.addr1.value), geocode(f.addr2.value)]);
+  const home = await geocode(f.home.value); // one by one: Transitous rate-limits parallel requests
+  const place1 = await geocode(f.addr1.value);
+  const place2 = await geocode(f.addr2.value);
   return { home, works: [{ label: f.label1.value.trim(), place: place1 }, { label: f.label2.value.trim(), place: place2 }] };
 }
 
@@ -178,4 +180,4 @@ try {
 } catch (err) {
   formError.textContent = err.message;
 }
-runPanel('commute', refreshCommute, 3 * MINUTE);
+runPanel('commute', refreshCommute, 5 * MINUTE);

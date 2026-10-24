@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FULL, zoomAt, panBy, clampView, zoomLevel } from '../js/zoom.js';
+import { FULL, zoomAt, panBy, clampView, zoomLevel, labelBox, overlaps } from '../js/zoom.js';
 
 test('zoom: 2x around the centre halves the window and keeps the centre', () => {
   const v = zoomAt(FULL, 2, 180, 90);
@@ -26,4 +26,12 @@ test('pan: moves the window, stops at the edges', () => {
   assert.deepEqual(panBy(v, 10, -5), { x: 100, y: 40, w: 180, h: 90 });
   assert.deepEqual(panBy(v, 999, 999), { x: 180, y: 90, w: 180, h: 90 });
   assert.deepEqual(panBy(FULL, 20, 20), FULL); // nothing to pan at 1x
+});
+
+test('labels: boxes that touch overlap, far apart ones do not', () => {
+  const serbia = labelBox(200, 46, 6, 1); // 3.6 wide, centred
+  assert.deepEqual(serbia, { x0: 198.2, x1: 201.8, y0: 45.5, y1: 46.5 });
+  assert.equal(overlaps(serbia, labelBox(198, 46.2, 22, 1)), true); // "Bosnia and Herzegovina" next door
+  assert.equal(overlaps(serbia, labelBox(190, 46, 6, 1)), false);
+  assert.equal(overlaps(serbia, labelBox(200, 48, 6, 1)), false);
 });

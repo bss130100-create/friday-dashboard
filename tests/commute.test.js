@@ -74,9 +74,16 @@ test('render: countdown to the next running trip, in Brussels time', () => {
   assert.match(renderRoute('x', [trips[1]], new Date('2026-10-24T15:00:00Z')), /no trip found/);
 });
 
-test('loadCommute plans all four routes', async () => {
+test('loadCommute plans all four routes, one request at a time', async () => {
   const asked = [];
-  globalThis.fetch = async (url) => { asked.push(url); return new Response(JSON.stringify(PLAN)); };
+  let inFlight = 0;
+  globalThis.fetch = async (url) => {
+    asked.push(url);
+    assert.equal(++inFlight, 1, 'requests must not overlap (Transitous returns 429)');
+    await new Promise((r) => setTimeout(r, 5));
+    inFlight--;
+    return new Response(JSON.stringify(PLAN));
+  };
   const html = await loadCommute(CONFIG, new Date('2026-10-24T15:24:00Z'));
   assert.equal(asked.length, 4);
   assert.equal((html.match(/<h3>/g) ?? []).length, 4);

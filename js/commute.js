@@ -110,7 +110,10 @@ export function renderRoute(label, trips, now) {
   return `<h3>&gt; ${esc(label)}</h3>${head}<ul class="trips">${rows.join('')}</ul>`;
 }
 
+// One request at a time: Transitous answers parallel bursts with HTTP 429 (without a CORS
+// header, so the browser only says "Failed to fetch").
 export async function loadCommute(config, now) {
-  const parts = await Promise.all(routes(config).map(async (r) => renderRoute(r.label, parsePlan(await fetchJson(planUrl(r.from, r.to))), now)));
+  const parts = [];
+  for (const r of routes(config)) parts.push(renderRoute(r.label, parsePlan(await fetchJson(planUrl(r.from, r.to))), now));
   return parts.join('');
 }
