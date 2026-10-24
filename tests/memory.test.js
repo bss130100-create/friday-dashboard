@@ -23,13 +23,21 @@ const GPSJAM = { date: '2026-10-23', regions: [{ name: 'Baltic / Kaliningrad', h
 const BACKFILL = [['2026-09-01', 'Baltic / Kaliningrad', 25, 9], ['2026-10-23', 'Baltic / Kaliningrad', 1, 1]];
 const NOW = new Date('2026-10-24T10:00:00Z');
 
+// The site's own files come from the ASSETS binding, everything else from the internet.
+const ASSETS = {
+  fetch: async (req) => {
+    const path = new URL(req.url).pathname;
+    if (path === '/data/gpsjam.json') return Response.json(GPSJAM);
+    if (path === '/data/gnss-backfill.json') return Response.json(BACKFILL);
+    return new Response('not found', { status: 404 });
+  },
+};
+
 function fakeFetch({ failRadar = false } = {}) {
   const asked = [];
   globalThis.fetch = async (url, init) => {
     asked.push(url);
     if (url.includes('usgs.gov')) return Response.json(USGS_JSON);
-    if (url.endsWith('/data/gpsjam.json')) return Response.json(GPSJAM);
-    if (url.endsWith('/data/gnss-backfill.json')) return Response.json(BACKFILL);
     if (url.includes('/radar/')) {
       assert.equal(init.headers.Authorization, 'Bearer tok');
       return failRadar ? new Response('nope', { status: 401 }) : Response.json(RADAR_JSON);
@@ -52,7 +60,7 @@ test('API answers -> table rows', () => {
 
 test('snapshot fills all three tables; running it again does not duplicate', async () => {
   fakeFetch();
-  const env = { DB: fakeD1(), RADAR_TOKEN: 'tok' };
+  const env = { DB: fakeD1(), ASSETS, RADAR_TOKEN: 'tok' };
   await snapshot(env, NOW);
   await snapshot(env, NOW);
   const q = await history(env, { kind: 'quakes', days: 30 }, NOW);
@@ -70,7 +78,7 @@ test('snapshot fills all three tables; running it again does not duplicate', asy
 
 test('a failing source is reported, the others are still saved', async () => {
   fakeFetch({ failRadar: true });
-  const env = { DB: fakeD1(), RADAR_TOKEN: 'tok' };
+  const env = { DB: fakeD1(), ASSETS, RADAR_TOKEN: 'tok' };
   await assert.rejects(snapshot(env, NOW), /attacks: HTTP 401 from api\.cloudflare\.com/);
   assert.ok((await history(env, { kind: 'quakes', days: 30 }, NOW)).days.length > 0);
 });
@@ -84,5 +92,9 @@ test('/history validates input and explains a missing database', async () => {
   const res = await worker.fetch(new Request('https://r.example/history?kind=gnss'), {});
   assert.equal(res.status, 400);
   assert.match(await res.text(), /D1 database is not bound/);
-  assert.equal(res.headers.get('Access-Control-Allow-Origin'), 'https://bss130100-create.github.io');
+});
+
+test('snapshot explains missing static assets instead of failing silently', async () => {
+  fakeFetch();
+  await assert.rejects(snapshot({ DB: fakeD1(), RADAR_TOKEN: 'tok' }, NOW), /gnss: static assets are not bound/);
 });

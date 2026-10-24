@@ -1,7 +1,8 @@
-// Cloudflare Worker: a tiny relay that adds the CORS header browsers need.
-// Bing News and the Cloudflare Radar API send no CORS header, so a page on github.io
-// may not read them directly. This relay forwards to a few FIXED upstreams only,
-// so it cannot be abused as an open proxy.
+// Cloudflare Worker that IS MIAP: it serves the site's files (index.html, js/, data/... as static
+// assets, see wrangler.jsonc) and answers the few paths a browser can't fetch itself.
+// Bing News and the Cloudflare Radar API send no CORS header, so the page asks this Worker,
+// which forwards to a few FIXED upstreams only, so it cannot be abused as an open proxy.
+// The whole Worker sits behind Cloudflare Access (login), see README.
 //
 //   GET /news?q=brussels  ->  Bing News RSS search, English (US market), past 24 h
 //                            (Google News answers Cloudflare's servers with 503 "Sorry...", so Bing it is)
@@ -13,8 +14,6 @@
 // as DB: earthquakes (USGS), GNSS jamming per zone (data/gpsjam.json on the site) and the day's
 // attack routes (Radar). Tables are created automatically on the first run.
 
-const ALLOWED_ORIGIN = 'https://bss130100-create.github.io';
-const SITE = 'https://bss130100-create.github.io/friday-dashboard';
 const QUAKES_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson';
 const RADAR_ATTACKS_URL =
   'https://api.cloudflare.com/client/v4/radar/attacks/layer7/top/attacks?limit=25&dateRange=1d&format=JSON';
@@ -77,6 +76,15 @@ async function getJson(url, headers = {}) {
   return res.json();
 }
 
+// The site's own files (data/gpsjam.json ...) come from the assets binding, not over the
+// internet: the public URL is behind the Access login, which a Worker can't pass.
+async function assetJson(env, path) {
+  if (!env.ASSETS) throw new Error('static assets are not bound to this Worker as "ASSETS" (see wrangler.jsonc)');
+  const res = await env.ASSETS.fetch(new Request(`https://assets.local${path}`));
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
+  return res.json();
+}
+
 function needDb(env) {
   if (!env.DB) throw new RangeError('D1 database is not bound to this Worker as "DB" (see README, MIAP memory)');
   return env.DB;
@@ -91,9 +99,9 @@ export async function snapshot(env, now = new Date()) {
   const jobs = {
     quakes: async () => db.prepare(INSERT_QUAKES).bind(JSON.stringify(quakeRows(await getJson(QUAKES_URL)))).run(),
     gnss: async () => {
-      await db.prepare(INSERT_GNSS).bind(JSON.stringify(gnssRows(await getJson(`${SITE}/data/gpsjam.json`)))).run();
+      await db.prepare(INSERT_GNSS).bind(JSON.stringify(gnssRows(await assetJson(env, '/data/gpsjam.json')))).run();
       const { n } = await db.prepare('SELECT COUNT(DISTINCT date) AS n FROM gnss_daily').first();
-      if (n < 30) await db.prepare(BACKFILL_GNSS).bind(JSON.stringify(await getJson(`${SITE}/data/gnss-backfill.json`))).run();
+      if (n < 30) await db.prepare(BACKFILL_GNSS).bind(JSON.stringify(await assetJson(env, '/data/gnss-backfill.json'))).run();
     },
     attacks: async () => {
       if (!env.RADAR_TOKEN) throw new Error('RADAR_TOKEN secret is not set');
@@ -158,29 +166,28 @@ export async function history(env, { kind, days, near }, now = new Date()) {
 
 export default {
   async fetch(request, env) {
-    const cors = { 'Access-Control-Allow-Origin': ALLOWED_ORIGIN };
     if (new URL(request.url).pathname === '/history') {
       try {
         const body = await history(env, historyQuery(request.url));
-        return new Response(JSON.stringify(body), { headers: { ...cors, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
       } catch (err) {
-        return new Response(err.message, { status: err instanceof RangeError ? 400 : 500, headers: cors });
+        return new Response(err.message, { status: err instanceof RangeError ? 400 : 500 });
       }
     }
     let target;
     try {
       target = upstreamRequest(request.url, env);
     } catch (err) {
-      return new Response(err.message, { status: 400, headers: cors });
+      return new Response(err.message, { status: 400 });
     }
     try {
       const upstream = await fetch(target.url, { headers: target.headers });
       return new Response(upstream.body, {
         status: upstream.status,
-        headers: { ...cors, 'Content-Type': upstream.headers.get('Content-Type') ?? 'text/plain' },
+        headers: { 'Content-Type': upstream.headers.get('Content-Type') ?? 'text/plain' },
       });
     } catch (err) {
-      return new Response(`upstream failed: ${err.message}`, { status: 502, headers: cors });
+      return new Response(`upstream failed: ${err.message}`, { status: 502 });
     }
   },
 

@@ -4,16 +4,24 @@
 
 const TIMEOUT_MS = 15000;
 
+// Other sites are named by host; our own Worker's paths ('/history?...') by the path itself.
+function source(url) {
+  return /^https?:/.test(url) ? new URL(url).host : url;
+}
+
 async function request(url) {
   let response;
   try {
     response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
   } catch (err) {
     const reason = err.name === 'TimeoutError' ? `timed out after ${TIMEOUT_MS / 1000}s` : err.message;
-    throw new Error(`Network error for ${new URL(url).host}: ${reason}`);
+    // Our own Worker is behind the Cloudflare Access login: when the login expires, its answer is a
+    // redirect to the login page, which the browser reports only as a network error.
+    if (!/^https?:/.test(url)) throw new Error(`Network error for ${url}: ${reason} (login expired? reload the page)`);
+    throw new Error(`Network error for ${source(url)}: ${reason}`);
   }
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status} from ${new URL(url).host}`);
+    throw new Error(`HTTP ${response.status} from ${source(url)}`);
   }
   return response;
 }

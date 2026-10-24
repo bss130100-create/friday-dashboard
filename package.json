@@ -3,9 +3,9 @@
   "private": true,
   "license": "MIT",
   "type": "module",
-  "description": "Terminal-style live dashboard. No build step; package.json only exists to run tests.",
+  "description": "Terminal-style live dashboard. No build step; package.json only runs tests and the local Worker.",
   "scripts": {
     "test": "node --no-warnings=ExperimentalWarning --test \"tests/*.test.js\"",
-    "serve": "python3 -m http.server 8000"
+    "serve": "npx wrangler dev"
   }
 }

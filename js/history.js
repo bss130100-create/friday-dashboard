@@ -1,20 +1,18 @@
-// Trends panel: MIAP's memory. The relay Worker saves hourly snapshots into a Cloudflare D1
+// Trends panel: MIAP's memory. The Worker saves hourly snapshots into a Cloudflare D1
 // database and serves them at /history (see relay/worker.js). Three views:
 //   GNSS jamming per zone (daily high-interference cells), earthquakes per day, attack origins.
 import { fetchJson } from './http.js';
 import { esc } from './ui.js';
-import { RELAY_URL } from './config.js';
 import { distanceKm } from './geo.js';
 import { lineChart, barChart } from './charts.js';
 
-export function historyUrl(kind, days, near = null, relayUrl = RELAY_URL) {
-  if (!relayUrl) throw new Error('Relay not set up yet: put your Worker URL in js/config.js (see README).');
+export function historyUrl(kind, days, near = null) {
   const params = new URLSearchParams({ kind, days: String(days) });
   if (near) {
     params.set('lat', near.lat.toFixed(2));
     params.set('lon', near.lon.toFixed(2));
   }
-  return `${relayUrl}/history?${params}`;
+  return `/history?${params}`;
 }
 
 // The last 7 days vs the 7 before, as a whole percentage (null when there is no earlier week).

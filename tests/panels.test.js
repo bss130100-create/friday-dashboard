@@ -90,5 +90,5 @@ test('attacks: parsed from Radar, errors surfaced, needs relay', () => {
   assert.equal(p[0].pct, 4.21);
   assert.match(renderAttacks(p), /class="arc attack"/);
   assert.throws(() => parseAttacks({ success: false, errors: [{ message: 'Authentication error' }] }), /Authentication error/);
-  assert.throws(() => attacksUrl(''), /Relay not set up/);
+  assert.equal(attacksUrl(), '/attacks');
 });

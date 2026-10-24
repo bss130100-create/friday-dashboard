@@ -1,0 +1,14 @@
+// Cloudflare deploys MIAP from this file on every push to main (Workers Builds, see README).
+// One Worker serves the site files AND relay/worker.js (news, attacks, memory).
+{
+  "name": "friday-relay",
+  "main": "relay/worker.js",
+  "compatibility_date": "2026-10-01",
+  // Every file in the repo is a static asset except what .assetsignore lists.
+  "assets": { "directory": ".", "binding": "ASSETS" },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "miap-memory", "database_id": "5a98a893-6cb8-47e8-acab-07cb72df4356" }
+  ],
+  "triggers": { "crons": ["0 * * * *"] },
+  "observability": { "enabled": true }
+}
