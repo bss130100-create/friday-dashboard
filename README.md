@@ -14,7 +14,7 @@ Plain HTML + CSS + JavaScript: no framework, no build step. GitHub Pages serves 
 | Air quality · Pollen | Open-Meteo air quality (Copernicus CAMS model) | 30 min | European AQI (0-20 good … >100 extremely poor), particles, ozone, NO₂, and pollen. Pollen is only modelled for Europe. Pollen bands (<10 low, <50 moderate, else high, grains/m³) are a rough glance scale, not medical advice. |
 | Sun · Moon | Open-Meteo + local maths | 1 h (countdown every min) | Sunrise/sunset/daylight from Open-Meteo. The moon phase is computed: the moon repeats its phases every 29.53 days, so days since a known new moon give the phase. |
 | Orbital tracking | [CelesTrak](https://celestrak.org) TLEs | orbits 2 h, positions 2 s | Downloads each satellite's orbit as a *TLE* (two lines of numbers); the SGP4 model (`vendor/satellite.es.js`) predicts where the ISS and every GPS satellite is *now*. Sky plot: centre = straight up, edge = horizon, top = north. |
-| Newsfeed | Google News RSS, via your relay | 10 min | Type a place and press Enter: English articles about it from the last 24 h. Remembered in this browser. |
+| Newsfeed | Bing News RSS, via your relay | 10 min | Type a place and press Enter: English articles about it from the last 24 h. Remembered in this browser. |
 | GNSS interference | [GPSJam](https://gpsjam.org), prepared daily by a GitHub Action | 1 h (data changes daily) | Airliners broadcast how accurate their GPS fix is. Where many aircraft report a bad fix, GPS is being jammed or spoofed. Red = >10% of aircraft affected. Hotspots are grouped into known zones (Baltic, Black Sea, Eastern Med, …). |
 | Cyber attack vectors | [Cloudflare Radar](https://radar.cloudflare.com), via your relay | 30 min | Top country→country routes of HTTP attacks Cloudflare blocked in the last 24 h. "Origin" is where attack traffic came *from* (often hijacked machines), not necessarily where the attacker is. |
 | Seismic activity | [USGS](https://earthquake.usgs.gov) | 5 min | Magnitude 2.5+ quakes of the last 24 h, the biggest, and the nearest to you. |
@@ -36,21 +36,21 @@ Three sources don't, so they go through a helper:
 
 | Source | Helper | Why this helper |
 |---|---|---|
-| Google News | relay (Cloudflare Worker) | live search on whatever place you type |
+| Bing News | relay (Cloudflare Worker) | live search on whatever place you type (Google News was tried, but it answers Cloudflare servers with 503 "Sorry...") |
 | Cloudflare Radar | relay | also needs a secret API token, which must never be in this public repo |
 | GPSJam | GitHub Action, daily | data changes once a day, and its hexagon IDs need the `h3` library to become lat/lon |
 
 No free flight-tracking API allows CORS either, which is why there is no flights panel.
 
 ### Relay setup (one time, ~10 min)
-`relay/worker.js` is ~50 lines. It only forwards to Google News and Cloudflare Radar (it is not an open proxy) and only answers our github.io page.
+`relay/worker.js` is ~50 lines. It only forwards to Bing News and Cloudflare Radar (it is not an open proxy) and only answers our github.io page.
 
 1. Create a free account at https://dash.cloudflare.com/sign-up.
 2. **Workers & Pages** → **Create application** → **Hello World** → name it `friday-relay` → **Deploy**.
 3. **Edit code**, replace everything with `relay/worker.js` → **Deploy**.
 4. [API Tokens](https://dash.cloudflare.com/profile/api-tokens) → **Create Token** → **Custom token** → permission **Account › Radar › Read** → create, copy the token.
 5. Worker → **Settings** → **Variables and Secrets** → **Add** → type **Secret**, name `RADAR_TOKEN`, paste the token → **Deploy**.
-6. Put the Worker address (e.g. `https://friday-relay.<you>.workers.dev`, no trailing slash) in `js/config.js` and push.
+6. Put the Worker address (e.g. `https://friday-relay.<you>.workers.dev`, no trailing slash) in `js/config.js` and push. (Already done: `https://friday-relay.mcioroianu2.workers.dev`.)
 
 Test: `https://friday-relay.<you>.workers.dev/news?q=Brussels` in a browser should show XML.
 If you change `relay/worker.js`, paste it into Cloudflare again: the Worker does not update itself from GitHub.
@@ -97,4 +97,4 @@ Open the live link in **Safari** → Share → **Add to Home Screen**. Allow loc
 
 ## Credits
 Land shapes: Natural Earth (public domain). Country centres: mledoze/countries (ODbL).
-Data: CelesTrak, Open-Meteo / Copernicus CAMS, NVD, Google News, GPSJam, Cloudflare Radar, USGS, IODA (Georgia Tech).
+Data: CelesTrak, Open-Meteo / Copernicus CAMS, NVD, Bing News, GPSJam, Cloudflare Radar, USGS, IODA (Georgia Tech).

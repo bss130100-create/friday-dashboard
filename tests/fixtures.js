@@ -30,11 +30,12 @@ export const NVD_JSON = {
   ],
 };
 
-// Google News RSS, trimmed (note: items are NOT in date order).
-export const GOOGLE_NEWS_RSS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>"brussels when:1d" - Google News</title>
-<item><title>Brussels Shopkeepers Board Up Stores as Europe Braces for Protests - Kurdistan24</title><link>https://news.google.com/rss/articles/CBMirwFB?oc=5</link><guid isPermaLink="false">CBMirwFB</guid><pubDate>Sat, 24 Oct 2026 11:43:00 GMT</pubDate><description>&lt;a href="x"&gt;y&lt;/a&gt;</description><source url="https://www.kurdistan24.net">Kurdistan24</source></item>
-<item><title>Bergs leads Belgian charge, Griekspoor wins in Brussels &amp; more - ATP Tour</title><link>https://news.google.com/rss/articles/CBMi0AFB?oc=5</link><guid isPermaLink="false">CBMi0AFB</guid><pubDate>Sat, 24 Oct 2026 12:08:25 GMT</pubDate><description>z</description><source url="https://www.atptour.com">ATP Tour</source></item>
-<item><title>evil &lt;script&gt; - Evil</title><link>javascript:alert(1)</link><guid isPermaLink="false">e</guid><pubDate>Sat, 24 Oct 2026 13:00:00 GMT</pubDate><description>z</description><source url="https://evil.example">Evil</source></item>
+// Bing News RSS, trimmed (note: items are NOT in date order).
+export const BING_NEWS_RSS = `<?xml version="1.0" encoding="utf-8" ?><rss version="2.0" xmlns:News="https://www.bing.com/news/search?q=brussels&amp;format=rss"><channel><title>brussels - BingNews</title>
+<item><title>Brussels Shopkeepers Board Up Stores as Europe Braces for Protests</title><link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;aid=&amp;tid=abc&amp;url=https%3a%2f%2fwww.kurdistan24.net%2fen%2fstory%2f1&amp;c=1&amp;mkt=en-us</link><description>x</description><pubDate>Sat, 24 Oct 2026 11:43:00 GMT</pubDate><News:Source>Kurdistan24</News:Source></item>
+<item><title>Griekspoor wins in Brussels &amp; more</title><link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;aid=&amp;tid=def&amp;url=https%3a%2f%2fwww.atptour.com%2fen%2fnews%2f2&amp;c=2&amp;mkt=en-us</link><description>z</description><pubDate>Sat, 24 Oct 2026 12:08:25 GMT</pubDate><News:Source>ATP Tour</News:Source></item>
+<item><title>Last week's news</title><link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;url=https%3a%2f%2fold.example%2fx</link><description>z</description><pubDate>Sat, 17 Oct 2026 12:00:00 GMT</pubDate><News:Source>Old</News:Source></item>
+<item><title>evil</title><link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;url=javascript%3aalert(1)</link><description>z</description><pubDate>Sat, 24 Oct 2026 13:00:00 GMT</pubDate><News:Source>Evil</News:Source></item>
 </channel></rss>`;
 
 export const USGS_JSON = {

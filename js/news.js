@@ -1,5 +1,5 @@
-// News panel: latest English Google News headlines about a place you type.
-// Google News sends no CORS header, so we go through our own relay (relay/worker.js).
+// News panel: latest English Bing News headlines about a place you type (last 24 h).
+// Bing sends no CORS header, so we go through our own relay (relay/worker.js).
 import { fetchText } from './http.js';
 import { esc, ago } from './ui.js';
 import { RELAY_URL } from './config.js';
@@ -30,28 +30,33 @@ function tag(item, name) {
   return decodeXml(m[1]);
 }
 
-// Google News RSS text -> [{ title, url, source, published }], newest first.
+// Bing wraps each article link in a click-tracking URL; the real address is its "url" parameter.
+export function articleUrl(bingLink) {
+  const link = new URL(bingLink);
+  return link.searchParams.get('url') ?? bingLink;
+}
+
+const DAY_MS = 86400 * 1000;
+
+// Bing News RSS text -> [{ title, url, source, published }] from the last 24 h, newest first.
 // A small regex parser instead of DOMParser so the same code runs in tests (Node has no DOMParser).
-export function parseRss(text) {
+export function parseRss(text, now) {
   if (!text.includes('<rss')) throw new Error(`Not an RSS feed: ${text.slice(0, 120)}`);
   const items = text.match(/<item>[\s\S]*?<\/item>/g) ?? [];
   return items
-    .map((item) => {
-      const source = tag(item, 'source');
-      const title = tag(item, 'title');
-      return {
-        title: title.endsWith(` - ${source}`) ? title.slice(0, -(source.length + 3)) : title,
-        url: tag(item, 'link'),
-        source,
-        published: new Date(tag(item, 'pubDate')),
-      };
-    })
+    .map((item) => ({
+      title: tag(item, 'title'),
+      url: articleUrl(tag(item, 'link')),
+      source: tag(item, 'News:Source'),
+      published: new Date(tag(item, 'pubDate')),
+    }))
     .filter((a) => a.url.startsWith('https://')) // only real web links, never "javascript:" etc.
+    .filter((a) => now - a.published < DAY_MS)
     .sort((a, b) => b.published - a.published);
 }
 
-export async function loadNews(place) {
-  return parseRss(await fetchText(newsUrl(place)));
+export async function loadNews(place, now) {
+  return parseRss(await fetchText(newsUrl(place)), now);
 }
 
 export function renderNews(place, articles, now, max = 12) {

@@ -1,9 +1,10 @@
 // Cloudflare Worker: a tiny relay that adds the CORS header browsers need.
-// Google News and the Cloudflare Radar API send no CORS header, so a page on github.io
+// Bing News and the Cloudflare Radar API send no CORS header, so a page on github.io
 // may not read them directly. This relay forwards to a few FIXED upstreams only,
 // so it cannot be abused as an open proxy.
 //
-//   GET /news?q=brussels  ->  Google News RSS: English articles from the last 24 h
+//   GET /news?q=brussels  ->  Bing News RSS search, English (US market)
+//                            (Google News answers Cloudflare's servers with 503 "Sorry...", so Bing it is)
 //   GET /attacks          ->  Cloudflare Radar: top attack origin -> target country pairs, last 24 h
 //                             (needs the secret RADAR_TOKEN, see README)
 
@@ -17,8 +18,8 @@ export function upstreamRequest(requestUrl, env) {
   if (url.pathname === '/news') {
     const q = (url.searchParams.get('q') ?? '').trim();
     if (q.length < 2 || q.length > 80) throw new RangeError('q must be 2-80 characters');
-    const params = new URLSearchParams({ q: `${q} when:1d`, hl: 'en-US', gl: 'US', ceid: 'US:en' });
-    return { url: `https://news.google.com/rss/search?${params}`, headers: {} };
+    const params = new URLSearchParams({ q, format: 'rss', setlang: 'en-US', mkt: 'en-US' });
+    return { url: `https://www.bing.com/news/search?${params}`, headers: { 'User-Agent': 'friday-dashboard-relay' } };
   }
   if (url.pathname === '/attacks') {
     if (!env.RADAR_TOKEN) throw new RangeError('RADAR_TOKEN secret is not set on this Worker');

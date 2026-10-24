@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newsUrl, parseRss, decodeXml, renderNews } from '../js/news.js';
+import { newsUrl, parseRss, decodeXml, renderNews, articleUrl } from '../js/news.js';
 import { ago } from '../js/ui.js';
-import { GOOGLE_NEWS_RSS } from './fixtures.js';
+import { BING_NEWS_RSS } from './fixtures.js';
+
+const NOW = new Date('2026-10-24T14:00:00Z');
 
 const RELAY = 'https://friday-relay.example.workers.dev';
 
@@ -18,21 +20,26 @@ test('newsUrl rejects a 1-letter place', () => {
   assert.throws(() => newsUrl('B', RELAY), /at least 2/);
 });
 
-test('parseRss: newest first, source stripped from title, entities decoded, only https links', () => {
-  const articles = parseRss(GOOGLE_NEWS_RSS);
+test('parseRss: last 24 h only, newest first, entities decoded, real https links only', () => {
+  const articles = parseRss(BING_NEWS_RSS, NOW);
   assert.equal(articles.length, 2);
-  assert.equal(articles[0].title, 'Bergs leads Belgian charge, Griekspoor wins in Brussels & more');
+  assert.equal(articles[0].title, 'Griekspoor wins in Brussels & more');
   assert.equal(articles[0].source, 'ATP Tour');
+  assert.equal(articles[0].url, 'https://www.atptour.com/en/news/2');
   assert.equal(articles[0].published.toISOString(), '2026-10-24T12:08:25.000Z');
   assert.equal(articles[1].source, 'Kurdistan24');
 });
 
+test('articleUrl unwraps the Bing click-tracking link', () => {
+  assert.equal(articleUrl('http://www.bing.com/news/apiclick.aspx?ref=FexRss&url=https%3a%2f%2fa.example%2fx'), 'https://a.example/x');
+});
+
 test('parseRss rejects a non-RSS answer (e.g. an HTML error page)', () => {
-  assert.throws(() => parseRss('<html>Too many requests</html>'), /Not an RSS feed/);
+  assert.throws(() => parseRss('<html>Too many requests</html>', NOW), /Not an RSS feed/);
 });
 
 test('an empty feed means no articles, not an error', () => {
-  assert.deepEqual(parseRss('<rss><channel></channel></rss>'), []);
+  assert.deepEqual(parseRss('<rss><channel></channel></rss>', NOW), []);
   assert.match(renderNews('Brussels', [], new Date()), /No English news/);
 });
 

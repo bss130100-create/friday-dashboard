@@ -87,7 +87,8 @@ async function refreshNews() {
     return;
   }
   showBody('news', `<p class="dim">Scanning news for "${esc(place)}"…</p>`);
-  showBody('news', renderNews(place, await loadNews(place), new Date()));
+  const now = new Date();
+  showBody('news', renderNews(place, await loadNews(place, now), now));
 }
 
 form.addEventListener('submit', (event) => {
