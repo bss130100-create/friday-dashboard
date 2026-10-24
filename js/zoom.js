@@ -1,8 +1,8 @@
 // Zoom & pan for the world maps (viewBox 0 0 360 180, see worldmap.js).
 //
 // How it works: an SVG "viewBox" is the window onto the drawing. Showing a smaller window
-// of the same drawing = zooming in; sliding the window = panning. Dots are re-sized on each
-// zoom so they stay the same size on screen.
+// of the same drawing = zooming in; sliding the window = panning. Dots and attack arcs are
+// re-sized on each zoom so they stay the same size on screen.
 //
 // Controls: + / − / reset buttons, double-click, drag (when zoomed), two-finger pinch
 // (phone), pinch or Ctrl/⌘ + scroll (laptop trackpad / mouse).
@@ -49,6 +49,10 @@ export function makeZoomable(sectionId) {
     map.setAttribute('viewBox', `${view.x} ${view.y} ${view.w} ${view.h}`);
     const inv = view.w / FULL.w;
     for (const c of map.querySelectorAll('circle[data-r]')) c.setAttribute('r', (c.dataset.r * inv).toFixed(3));
+    for (const a of map.querySelectorAll('path[data-w]')) {
+      a.style.strokeWidth = (a.dataset.w * inv).toFixed(3);
+      a.style.strokeDasharray = `${(3 * inv).toFixed(3)} ${(2 * inv).toFixed(3)}`;
+    }
     map.classList.toggle('zoomed', zoomLevel(view) > 1.01);
     const label = body.querySelector('.zoom-level');
     if (label) label.textContent = `${zoomLevel(view).toFixed(1)}×`;

@@ -40,6 +40,7 @@ export function renderAttacks(pairs) {
     if (!ends.has(p.to)) ends.set(p.to, 'dst');
   }
   const map = worldMap({
+    zoomable: true,
     label: 'attack map',
     arcs: mapped.map((p) => ({ from: COUNTRIES[p.from], to: COUNTRIES[p.to], cls: 'attack', width: (0.3 + (p.pct / max) * 1.4).toFixed(2) })),
     dots: [...ends].map(([code, kind]) => ({ lat: COUNTRIES[code][0], lon: COUNTRIES[code][1], r: 1.6, cls: kind === 'src' ? 'hot' : 'cool pulse', title: COUNTRIES[code][2] })),

@@ -12,8 +12,7 @@ import { loadGpsJam, renderGpsJam } from './gpsjam.js';
 import { loadAttacks, renderAttacks } from './attacks.js';
 import { makeZoomable } from './zoom.js';
 import { loadTopic, readWatched, toggleWatched, renderTopic } from './topic.js';
-import { STATIONS_URL, parseStations, findStation, readConfig, saveConfig, loadCommute } from './commute.js';
-import { fetchJson } from './http.js';
+import { geocode, readConfig, saveConfig, loadCommute } from './commute.js';
 import { ISS_TLE_URL, GPS_TLE_URL, loadTle, parseTle, satState, visibleGps, renderSatellites } from './satellites.js';
 
 const MINUTE = 60 * 1000;
@@ -43,8 +42,8 @@ let astro = null;
 runPanel('astro', async () => { astro = await loadAstro(await location()); showBody('astro', renderAstro(astro, new Date())); }, 60 * MINUTE);
 setInterval(() => astro && showBody('astro', renderAstro(astro, new Date())), MINUTE); // keep "daylight left" ticking
 
-// --- world panels (three of them can be zoomed)
-for (const id of ['quakes', 'outages', 'gpsjam']) makeZoomable(id);
+// --- world panels (all zoomable)
+for (const id of ['quakes', 'outages', 'gpsjam', 'attacks']) makeZoomable(id);
 runPanel('quakes', async () => showBody('quakes', renderQuakes(await loadQuakes(), new Date(), knownLocation)), 5 * MINUTE);
 runPanel('outages', async () => showBody('outages', renderOutages(await loadOutages(new Date()))), 15 * MINUTE);
 runPanel('gpsjam', async () => showBody('gpsjam', renderGpsJam(await loadGpsJam(), knownLocation)), 60 * MINUTE);
@@ -122,68 +121,61 @@ document.getElementById('topic').addEventListener('change', (event) => {
   }
 });
 
-// --- commute: stations + minutes typed once in the setup form, saved only in this browser
+// --- commute: addresses typed once in the setup form, saved only in this browser
 const setup = document.getElementById('commute-setup');
 const commuteForm = document.getElementById('commute-form');
 const formError = document.getElementById('commute-form-error');
-let stations = null;
+const found = document.getElementById('commute-found');
 
-async function loadStations() {
-  stations ??= parseStations(await fetchJson(STATIONS_URL));
-  document.getElementById('stations').innerHTML = stations.map((st) => `<option value="${esc(st.name)}">`).join('');
+function showFound(config) {
+  found.textContent = `Found: home = ${config.home.name}; ${config.works.map((w) => `${w.label} = ${w.place.name}`).join('; ')}`;
 }
 
-function fillForm(config) {
+async function configFromForm() {
   const f = commuteForm.elements;
-  f.home.value = config.home.name;
-  f.homeMin.value = config.homeMin;
-  config.works.forEach((w, i) => {
-    f[`label${i + 1}`].value = w.label;
-    f[`station${i + 1}`].value = w.station.name;
-    f[`min${i + 1}`].value = w.min;
-  });
-}
-
-function configFromForm() {
-  const f = commuteForm.elements;
-  const works = [1, 2]
-    .filter((i) => i === 1 || f[`label${i}`].value.trim())
-    .map((i) => ({ label: f[`label${i}`].value.trim(), station: findStation(stations, f[`station${i}`].value), min: Number(f[`min${i}`].value) }));
-  return { home: findStation(stations, f.home.value), homeMin: Number(f.homeMin.value), works };
+  const [home, place1, place2] = await Promise.all([geocode(f.home.value), geocode(f.addr1.value), geocode(f.addr2.value)]);
+  return { home, works: [{ label: f.label1.value.trim(), place: place1 }, { label: f.label2.value.trim(), place: place2 }] };
 }
 
 async function refreshCommute() {
   const config = readConfig();
   if (!config) {
     setup.open = true;
-    showBody('commute', '<p class="dim">Open setup above: enter your home and work stations once.</p>');
+    showBody('commute', '<p class="dim">Open setup above: enter your home and work addresses once.</p>');
     return;
   }
   showBody('commute', await loadCommute(config, new Date()));
 }
 
-setup.addEventListener('toggle', () => {
-  if (setup.open) loadStations().catch((err) => { formError.textContent = `Station list failed: ${err.message}`; });
-});
-
-commuteForm.addEventListener('submit', (event) => {
+commuteForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   formError.textContent = '';
+  found.textContent = 'Looking up addresses…';
+  let config;
   try {
-    if (!stations) throw new Error('Station list not loaded yet, try again in a moment');
-    saveConfig(configFromForm());
+    config = await configFromForm();
+    saveConfig(config);
   } catch (err) {
+    found.textContent = '';
     formError.textContent = err.message;
     return;
   }
-  setup.open = false;
+  showFound(config);
   refreshCommute().catch((err) => showError('commute', err));
 });
 
 try {
   const saved = readConfig();
-  if (saved) fillForm(saved);
+  if (saved) {
+    const f = commuteForm.elements;
+    f.home.value = saved.home.name;
+    saved.works.forEach((w, i) => {
+      f[`label${i + 1}`].value = w.label;
+      f[`addr${i + 1}`].value = w.place.name;
+    });
+    showFound(saved);
+  }
 } catch (err) {
   formError.textContent = err.message;
 }
-runPanel('commute', refreshCommute, 2 * MINUTE);
+runPanel('commute', refreshCommute, 3 * MINUTE);
