@@ -17,6 +17,7 @@ import { geocode, readConfig, saveConfig, loadCommute, loadHere } from './commut
 import { tabFromHash, showTab } from './tabs.js';
 import { loadTraffic } from './traffic.js';
 import { readouts, loadBriefing } from './briefing.js';
+import { supported, UNSUPPORTED, renderAlerts, alertState, loadPushKey, enableAlerts, sendTest } from './alerts.js';
 import { ISS_TLE_URL, GPS_TLE_URL, loadTle, parseTle, satState, visibleGps, renderSatellites } from './satellites.js';
 
 const MINUTE = 60 * 1000;
@@ -151,6 +152,27 @@ runPanel('here', async () => {
   }
   showBody('here', await loadHere(await getLocation({ precise: true }), config.home, new Date()));
 }, 2 * MINUTE);
+
+// --- phone alerts: the key and the background notifier (sw.js) are ready before the tap,
+// because iOS only shows the permission prompt if subscribe() runs straight from the tap.
+if (!supported(window)) {
+  showBody('alerts', UNSUPPORTED);
+} else {
+  const notifier = navigator.serviceWorker.register('/sw.js').then(() => navigator.serviceWorker.ready);
+  let key = null;
+  let registration = null;
+  const refreshAlerts = async () => showBody('alerts', renderAlerts(await alertState(registration, Notification.permission)));
+  Promise.all([notifier, loadPushKey()])
+    .then(([reg, k]) => { registration = reg; key = k; return refreshAlerts(); })
+    .catch((err) => showError('alerts', err));
+  document.getElementById('alerts-on').addEventListener('click', () => {
+    if (!registration || !key) return showBody('alerts', '<p class="dim">Still starting up, try again in a second.</p>');
+    enableAlerts(registration, key).then(refreshAlerts).catch((err) => showError('alerts', err));
+  });
+  document.getElementById('alerts-test').addEventListener('click', () => {
+    sendTest().then((html) => showBody('alerts', html)).catch((err) => showError('alerts', err));
+  });
+}
 
 // --- commute: addresses typed once in the setup form, saved in MIAP's private database
 const setup = document.getElementById('commute-setup');

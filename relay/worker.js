@@ -12,10 +12,16 @@
 //   GET|PUT /settings/commute  ->  your commute addresses, kept in the D1 database (never in this public repo)
 //   GET /roads?lat=&lon=  ->  traffic incidents around you (TomTom, needs the secret TOMTOM_KEY), cached 30 min
 //   POST /briefing        ->  a 2-3 sentence AI briefing of what the panels show (Workers AI, bound as AI)
+//   GET /push/key, POST /push/subscribe, POST /push/test  ->  phone alerts (Web Push, see push.js + alerts.js)
+//
+// Cron: hourly = memory snapshot + earthquake alerts; every 5 min = commute alerts (inside the windows only).
 //
 // Memory: once an hour (Cron Trigger) scheduled() saves snapshots into the D1 database bound
 // as DB: earthquakes (USGS), GNSS jamming per zone (data/gpsjam.json on the site) and the day's
 // attack routes (Radar). Tables are created automatically on the first run.
+
+import { newVapidKeys, sendPush } from './push.js';
+import { commuteEvents, quakeEvents } from './alerts.js';
 
 const QUAKES_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson';
 const RADAR_ATTACKS_URL =
@@ -46,6 +52,8 @@ const SCHEMA = [
   'CREATE TABLE IF NOT EXISTS attacks_daily (date TEXT NOT NULL, origin TEXT NOT NULL, origin_name TEXT, target TEXT NOT NULL, pct REAL NOT NULL, PRIMARY KEY (date, origin, target))',
   'CREATE TABLE IF NOT EXISTS settings (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)',
   'CREATE TABLE IF NOT EXISTS cache (key TEXT NOT NULL PRIMARY KEY, saved INTEGER NOT NULL, value TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT NOT NULL PRIMARY KEY, p256dh TEXT NOT NULL, auth TEXT NOT NULL, added INTEGER NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS alerts_sent (key TEXT NOT NULL PRIMARY KEY, at INTEGER NOT NULL)',
 ];
 
 // The tables, created on first use.
@@ -323,8 +331,90 @@ export async function briefing(env, request) {
   return { text: out.response.trim() };
 }
 
+// ---------- phone alerts (Web Push) ----------
+
+// This Worker's VAPID key pair: made once, then kept in the settings table.
+async function vapidKeys(db) {
+  const saved = await readSetting(db, 'vapid');
+  if (saved) return saved;
+  const fresh = await newVapidKeys();
+  await db.prepare("INSERT INTO settings (key, value) VALUES ('vapid', ?)").bind(JSON.stringify(fresh)).run();
+  return fresh;
+}
+
+export async function pushKey(env) {
+  return { publicKey: (await vapidKeys(await openDb(env))).publicKey };
+}
+
+export async function subscribe(env, request) {
+  if (request.method !== 'POST') throw new RangeError(`${request.method} not allowed`);
+  const s = await request.json();
+  if (!/^https:\/\//.test(s?.endpoint ?? '') || !s.keys?.p256dh || !s.keys?.auth) throw new RangeError('not a push subscription');
+  const db = await openDb(env);
+  await db.prepare('INSERT OR REPLACE INTO push_subs (endpoint, p256dh, auth, added) VALUES (?, ?, ?, ?)')
+    .bind(s.endpoint, s.keys.p256dh, s.keys.auth, Date.now()).run();
+  const { n } = await db.prepare('SELECT COUNT(*) AS n FROM push_subs').first();
+  return { devices: n };
+}
+
+// Push each NEW event (not sent in the last 3 days) to every subscribed device.
+// Events are marked sent only after the pushes went out: if one fails, the next run tries again.
+// Subscriptions the push service reports gone (404/410) are deleted. Returns how many pushes went out.
+export async function notify(env, events, now = Date.now()) {
+  const db = await openDb(env);
+  await db.prepare('DELETE FROM alerts_sent WHERE at < ?').bind(now - 3 * 86400000).run();
+  const fresh = [];
+  for (const e of events) {
+    if (!(await db.prepare('SELECT 1 AS seen FROM alerts_sent WHERE key = ?').bind(e.key).first())) fresh.push(e);
+  }
+  if (!fresh.length) return 0;
+  const vapid = await vapidKeys(db);
+  const { results: subs } = await db.prepare('SELECT endpoint, p256dh, auth FROM push_subs').all();
+  let sent = 0;
+  for (const s of subs) {
+    for (const e of fresh) {
+      const status = await sendPush({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, { title: e.title, body: e.body, url: '/#commute' }, vapid, now);
+      if (status !== 201) {
+        await db.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(s.endpoint).run();
+        break;
+      }
+      sent++;
+    }
+  }
+  for (const e of fresh) await db.prepare('INSERT OR REPLACE INTO alerts_sent (key, at) VALUES (?, ?)').bind(e.key, now).run();
+  return sent;
+}
+
+export async function pushTest(env, request) {
+  if (request.method !== 'POST') throw new RangeError(`${request.method} not allowed`);
+  const at = new Date().toISOString();
+  return { sent: await notify(env, [{ key: `test|${at}`, title: 'MIAP alerts are on', body: `Test sent ${at.slice(11, 16)} UTC.` }]) };
+}
+
+// Cron jobs. Each part runs even if another fails; failures are re-thrown so they show in the logs.
+export async function hourly(env, now) {
+  const results = await Promise.allSettled([
+    snapshot(env, now),
+    (async () => {
+      const config = await readSetting(await openDb(env), 'commute');
+      if (config) await notify(env, quakeEvents(await getJson(QUAKES_URL), config.home, now), now.getTime());
+    })(),
+  ]);
+  const failed = results.filter((r) => r.status === 'rejected').map((r) => r.reason.message);
+  if (failed.length) throw new Error(failed.join(' | '));
+}
+
+export async function everyFiveMinutes(env, now) {
+  const config = await readSetting(await openDb(env), 'commute');
+  if (!config) return; // no addresses saved yet
+  await notify(env, await commuteEvents(config, now, getJson), now.getTime());
+}
+
 // Paths answered with JSON by this Worker. Errors: 403 login, 400 bad input, 500 anything else.
 const ROUTES = {
+  '/push/key': async (request, env) => { await verifyLogin(request); return pushKey(env); },
+  '/push/subscribe': async (request, env) => { await verifyLogin(request); return subscribe(env, request); },
+  '/push/test': async (request, env) => { await verifyLogin(request); return pushTest(env, request); },
   '/settings/commute': async (request, env) => { await verifyLogin(request); return settings(env, request); },
   '/history': (request, env) => history(env, historyQuery(request.url)),
   '/roads': (request, env) => roads(env, roadsQuery(request.url)),
@@ -359,8 +449,9 @@ export default {
     }
   },
 
-  // Cron Trigger (hourly): save the snapshots.
   async scheduled(event, env) {
-    await snapshot(env, new Date(event.scheduledTime));
+    const now = new Date(event.scheduledTime);
+    if (event.cron === '*/5 * * * *') await everyFiveMinutes(env, now);
+    else await hourly(env, now);
   },
 };
