@@ -2,7 +2,8 @@
 // keeps the API key and caches) and SNCB rail disruptions near you (iRail, see rail.js).
 import { fetchJson } from './http.js';
 import { esc, ago } from './ui.js';
-import { DISTURBANCES_URL, STATIONS_URL, parseDisturbances, parseStations, stationNamesNear, mentions } from './rail.js';
+import { DISTURBANCES_URL, STATIONS_URL, parseDisturbances, parseStations, stationNamesNear, mentions, railShapes } from './rail.js';
+import { mapShapes } from './trafficmap.js';
 
 const KIND_LABEL = {
   roadClosed: 'CLOSED', accident: 'ACCIDENT', jam: 'JAM', laneClosed: 'LANE CLOSED', roadWorks: 'WORKS',
@@ -25,7 +26,8 @@ async function loadStations() {
 export async function loadRail(here) {
   const [all, list] = [parseDisturbances(await fetchJson(DISTURBANCES_URL)), await loadStations()];
   const names = stationNamesNear(list, here);
-  return { near: all.filter((d) => mentions(d, names)), elsewhere: all.filter((d) => !mentions(d, names)).length };
+  const near = all.filter((d) => mentions(d, names));
+  return { near, elsewhere: all.length - near.length, shapes: railShapes(near, list) };
 }
 
 export function renderRoads(incidents) {
@@ -58,8 +60,10 @@ export function renderTraffic(roads, rail, now) {
     <div>${part('RAIL · lines near you', rail, (r) => renderRail(r, now))}</div></div>`;
 }
 
+// -> { html: the lists, shapes: what to draw on the map }
 export async function loadTraffic(here, now) {
   const [roads, rail] = await Promise.allSettled([fetchJson(roadsUrl(here)), loadRail(here)]);
   if (roads.status === 'rejected' && rail.status === 'rejected') throw new Error(`roads: ${roads.reason.message}; rail: ${rail.reason.message}`);
-  return renderTraffic(roads, rail, now);
+  const shapes = mapShapes(roads.status === 'fulfilled' ? roads.value.incidents : [], rail.status === 'fulfilled' ? rail.value.shapes : []);
+  return { html: renderTraffic(roads, rail, now), shapes };
 }

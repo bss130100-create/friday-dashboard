@@ -16,6 +16,7 @@ import { loadTopic, readWatched, toggleWatched, renderTopic } from './topic.js';
 import { geocode, readConfig, saveConfig, loadCommute, loadHere } from './commute.js';
 import { tabFromHash, showTab } from './tabs.js';
 import { loadTraffic } from './traffic.js';
+import { drawTrafficMap, resizeTrafficMap } from './trafficmap.js';
 import { readouts, loadBriefing } from './briefing.js';
 import { supported, UNSUPPORTED, renderAlerts, alertState, loadPushKey, enableAlerts, sendTest } from './alerts.js';
 import { ISS_TLE_URL, GPS_TLE_URL, loadTle, parseTle, satState, visibleGps, renderSatellites } from './satellites.js';
@@ -24,7 +25,10 @@ const MINUTE = 60 * 1000;
 
 // --- sub-menus (tabs): the open one is in the address, e.g. .../#commute
 showTab(tabFromHash(window.location.hash));
-window.addEventListener('hashchange', () => showTab(tabFromHash(window.location.hash)));
+window.addEventListener('hashchange', () => {
+  showTab(tabFromHash(window.location.hash));
+  resizeTrafficMap(); // a map drawn while its tab was hidden must re-measure itself
+});
 
 // Ask for location once; if it fails, the next panel refresh asks again.
 let locationPromise = null;
@@ -52,7 +56,12 @@ runPanel('astro', async () => { astro = await loadAstro(await location()); showB
 setInterval(() => astro && showBody('astro', renderAstro(astro, new Date())), MINUTE); // keep "daylight left" ticking
 
 // --- roads & rail around you (TomTom via the Worker + SNCB disruptions via iRail)
-runPanel('traffic', async () => showBody('traffic', await loadTraffic(await location(), new Date())), 15 * MINUTE);
+runPanel('traffic', async () => {
+  const here = await location();
+  const { html, shapes } = await loadTraffic(here, new Date());
+  showBody('traffic', html);
+  await drawTrafficMap(document.getElementById('traffic-map'), here, shapes);
+}, 15 * MINUTE);
 
 // --- AI briefing: built from what the other panels show, so it waits for them to load first
 const briefMe = async () => showBody('briefing', await loadBriefing(readouts(document, new Date()), new Date()));

@@ -167,6 +167,11 @@ test('roads: position snapped to a ~20 km cell, box under 10,000 km², closures 
   assert.equal(roadsBox({ lat: 50.8, lon: 4.4 }), '3.850,50.450,4.950,51.150');
   const list = parseIncidents(TOMTOM);
   assert.deepEqual(list.map((i) => [i.kind, i.delayMin, i.km, i.lat]), [['roadClosed', 0, 1.2, 50.79], ['jam', 14, 3.4, 50.92]]);
+  assert.deepEqual(list.map((i) => i.line), [[[50.79, 4.3]], [[50.92, 4.43], [50.93, 4.44]]]); // [lat, lon] for the map
+  const long = { incidents: [{ geometry: { type: 'LineString', coordinates: Array.from({ length: 401 }, (_, k) => [4 + k / 1000, 50]) }, properties: { iconCategory: 'jam' } }] };
+  const line = parseIncidents(long)[0].line;
+  assert.ok(line.length <= 41);
+  assert.deepEqual(line.at(-1), [50, 4.4]); // the end of the road is kept
   assert.throws(() => parseIncidents({}), /no incidents/);
 });
 
