@@ -4,11 +4,12 @@ import { upstreamRequest } from '../relay/worker.js';
 
 const ENV = { RADAR_TOKEN: 'secret' };
 
-test('relay maps /news?q= to a Google News search limited to the last day', () => {
+test('relay maps /news?q= to an English Bing News RSS search', () => {
   const url = new URL(upstreamRequest('https://relay.example/news?q=Brussels', ENV).url);
-  assert.equal(url.host, 'news.google.com');
-  assert.equal(url.searchParams.get('q'), 'Brussels when:1d');
-  assert.equal(url.searchParams.get('hl'), 'en-US');
+  assert.equal(url.host, 'www.bing.com');
+  assert.equal(url.searchParams.get('q'), 'Brussels');
+  assert.equal(url.searchParams.get('format'), 'rss');
+  assert.equal(url.searchParams.get('mkt'), 'en-US');
 });
 
 test('relay maps /attacks to Cloudflare Radar with the token', () => {
