@@ -10,6 +10,7 @@ test('relay maps /news?q= to an English Bing News RSS search', () => {
   assert.equal(url.searchParams.get('q'), 'Brussels');
   assert.equal(url.searchParams.get('format'), 'rss');
   assert.equal(url.searchParams.get('mkt'), 'en-US');
+  assert.equal(url.searchParams.get('qft'), 'interval="7"');
 });
 
 test('relay maps /attacks to Cloudflare Radar with the token', () => {
