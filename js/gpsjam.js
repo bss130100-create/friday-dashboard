@@ -6,38 +6,15 @@ import { worldMap } from './worldmap.js';
 
 export const GPSJAM_DATA_URL = 'data/gpsjam.json';
 
-// Known hot zones, checked in order (first match wins). [name, latMin, latMax, lonMin, lonMax]
-export const REGIONS = [
-  ['Baltic / Kaliningrad', 53, 61, 12, 30],
-  ['Finnmark / Kola', 66, 72, 20, 45],
-  ['Ukraine & neighbours', 43, 53, 20, 41],
-  ['Turkey / Anatolia', 36, 43, 26, 41],
-  ['Caucasus / Caspian', 38, 48, 41, 55],
-  ['Eastern Mediterranean', 30, 37.5, 28, 37],
-  ['Middle East / Gulf', 23, 38, 37, 62],
-  ['Red Sea / Horn of Africa', 5, 23, 32, 52],
-  ['Pakistan / India border', 26, 38, 64, 80],
-  ['Myanmar', 10, 28, 92, 102],
-  ['Western Russia', 50, 66, 30, 60],
-  ['Siberia / Mongolia', 42, 60, 85, 120],
-  ['Korean Peninsula', 33, 43, 124, 132],
-];
-
-export function regionOf(lat, lon) {
-  const hit = REGIONS.find(([, la0, la1, lo0, lo1]) => lat >= la0 && lat <= la1 && lon >= lo0 && lon <= lo1);
-  return hit ? hit[0] : 'Elsewhere';
-}
-
+// gpsjam.json: { date, regions: [{ name, high, medium }], cells: [[lat, lon, level]] }.
+// The hot zones (Baltic, Black Sea, ...) are defined once, in scripts/gpsjam.py.
 export function parseGpsJam(json) {
-  if (!json.date || !Array.isArray(json.cells)) throw new Error('gpsjam.json is malformed');
-  const cells = json.cells.map(([lat, lon, level]) => ({ lat, lon, level }));
-  const counts = {};
-  for (const c of cells.filter((c) => c.level === 2)) {
-    const r = regionOf(c.lat, c.lon);
-    counts[r] = (counts[r] ?? 0) + 1;
-  }
-  const regions = Object.entries(counts).map(([name, high]) => ({ name, high })).sort((a, b) => b.high - a.high);
-  return { date: json.date, cells, regions };
+  if (!json.date || !Array.isArray(json.cells) || !Array.isArray(json.regions)) throw new Error('gpsjam.json is malformed');
+  return {
+    date: json.date,
+    cells: json.cells.map(([lat, lon, level]) => ({ lat, lon, level })),
+    regions: json.regions.filter((r) => r.high > 0),
+  };
 }
 
 export async function loadGpsJam() {

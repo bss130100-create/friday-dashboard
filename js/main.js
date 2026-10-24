@@ -11,6 +11,7 @@ import { loadOutages, renderOutages } from './outages.js';
 import { loadGpsJam, renderGpsJam } from './gpsjam.js';
 import { loadAttacks, renderAttacks } from './attacks.js';
 import { makeZoomable } from './zoom.js';
+import { renderHistory } from './history.js';
 import { loadTopic, readWatched, toggleWatched, renderTopic } from './topic.js';
 import { geocode, readConfig, saveConfig, loadCommute } from './commute.js';
 import { ISS_TLE_URL, GPS_TLE_URL, loadTle, parseTle, satState, visibleGps, renderSatellites } from './satellites.js';
@@ -48,6 +49,8 @@ runPanel('quakes', async () => showBody('quakes', renderQuakes(await loadQuakes(
 runPanel('outages', async () => showBody('outages', renderOutages(await loadOutages(new Date()))), 15 * MINUTE);
 runPanel('gpsjam', async () => showBody('gpsjam', renderGpsJam(await loadGpsJam(), knownLocation)), 60 * MINUTE);
 runPanel('attacks', async () => showBody('attacks', renderAttacks(await loadAttacks())), 30 * MINUTE);
+// trends: your location is optional here (only for "nearest quake in a year")
+runPanel('history', async () => showBody('history', await renderHistory(await location().catch(() => null), new Date())), 60 * MINUTE);
 
 // --- satellites: orbits (TLEs) are refreshed rarely, positions are recomputed every 2 s
 let orbits = null;

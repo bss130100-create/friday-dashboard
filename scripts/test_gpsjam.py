@@ -1,6 +1,6 @@
 import unittest
 
-from gpsjam import classify, hotspots, latest_date
+from gpsjam import classify, hotspots, latest_date, region_counts, region_of
 
 
 class GpsJamTest(unittest.TestCase):
@@ -29,6 +29,19 @@ class GpsJamTest(unittest.TestCase):
         lat, lon, level = cells[0]
         self.assertEqual(level, 2)
         self.assertTrue(-90 <= lat <= 90 and -180 <= lon <= 180)
+
+    def test_regions(self):
+        self.assertEqual(region_of(55, 20), "Baltic / Kaliningrad")
+        self.assertEqual(region_of(34.5, 33), "Eastern Mediterranean")
+        self.assertEqual(region_of(0, 0), "Elsewhere")
+
+    def test_region_counts_most_high_first(self):
+        cells = [[55, 20, 2], [56, 21, 2], [57, 22, 1], [34.5, 33, 2], [10, 10, 1]]
+        self.assertEqual(region_counts(cells), [
+            {"name": "Baltic / Kaliningrad", "high": 2, "medium": 1},
+            {"name": "Eastern Mediterranean", "high": 1, "medium": 0},
+            {"name": "Elsewhere", "high": 0, "medium": 1},
+        ])
 
 
 if __name__ == "__main__":

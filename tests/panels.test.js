@@ -6,7 +6,7 @@ import { parseQuakes, renderQuakes } from '../js/quakes.js';
 import { outagesUrl, parseOutages, renderOutages } from '../js/outages.js';
 import { parseAir, aqiBand, pollenBand, renderAir } from '../js/airquality.js';
 import { moonPhase, parseAstro, renderAstro } from '../js/astro.js';
-import { regionOf, parseGpsJam, renderGpsJam } from '../js/gpsjam.js';
+import { parseGpsJam, renderGpsJam } from '../js/gpsjam.js';
 import { attacksUrl, parseAttacks, renderAttacks } from '../js/attacks.js';
 import { USGS_JSON, IODA_JSON, AIR_JSON, ASTRO_JSON, RADAR_JSON } from './fixtures.js';
 
@@ -76,14 +76,12 @@ test('astro: local sunrise is converted to the right UTC instant', () => {
   assert.match(renderAstro(a, NOW), /daylight left/);
 });
 
-test('gpsjam: regions and counts', () => {
-  assert.equal(regionOf(55, 20), 'Baltic / Kaliningrad');
-  assert.equal(regionOf(34.5, 33), 'Eastern Mediterranean');
-  assert.equal(regionOf(0, 0), 'Elsewhere');
-  const j = parseGpsJam({ date: '2026-10-23', cells: [[55, 20, 2], [56, 21, 2], [34.5, 33, 2], [10, 10, 1]] });
-  assert.deepEqual(j.regions[0], { name: 'Baltic / Kaliningrad', high: 2 });
+test('gpsjam: zones with high cells, ranked by the script', () => {
+  const j = parseGpsJam({ date: '2026-10-23', cells: [[55, 20, 2], [56, 21, 2], [34.5, 33, 2], [10, 10, 1]],
+    regions: [{ name: 'Baltic / Kaliningrad', high: 2, medium: 0 }, { name: 'Eastern Mediterranean', high: 1, medium: 0 }, { name: 'Elsewhere', high: 0, medium: 1 }] });
+  assert.deepEqual(j.regions.map((r) => r.name), ['Baltic / Kaliningrad', 'Eastern Mediterranean']);
   assert.match(renderGpsJam(j, BUCHAREST), /3<\/span><span class="dim">high-interference/);
-  assert.throws(() => parseGpsJam({}), /malformed/);
+  assert.throws(() => parseGpsJam({ date: 'x', cells: [] }), /malformed/);
 });
 
 test('attacks: parsed from Radar, errors surfaced, needs relay', () => {

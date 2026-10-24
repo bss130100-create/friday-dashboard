@@ -16,9 +16,11 @@ jobs:
           python-version: '3.12'
       - run: pip install h3==4.*
       - run: mkdir -p data && python scripts/gpsjam.py data/gpsjam.json
+      # one-off: past days per zone, loaded into the Worker's D1 memory on its first run
+      - run: '[ -f data/gnss-backfill.json ] || python scripts/gpsjam.py --history 120 data/gnss-backfill.json'
       - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/gpsjam.json
+          git add data/gpsjam.json data/gnss-backfill.json
           git diff --cached --quiet || (git commit -m "Update GPS jamming data" && git push)
