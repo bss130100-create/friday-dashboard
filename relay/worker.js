@@ -303,12 +303,16 @@ export async function roads(env, cell, now = Date.now()) {
 // The page sends what its panels show right now; a small model turns it into 2-3 sentences.
 // Free plan: 10,000 "neurons" a day; one briefing costs about 5.
 
-const BRIEF_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8-fast';
+// Llama 3.3 70B: much better judgement than the 8B model. ~75 neurons a briefing, so ~100 a day fit the free 10,000.
+const BRIEF_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const MAX_BRIEF_CHARS = 6000;
 const BRIEF_RULES = [
-  "You are MIAP, Mihai's personal assistant. From the dashboard readouts, write a briefing of at most 3 short sentences (60 words max).",
-  'Lead with what needs action now: when to leave, cancellations, disruptions, what to wear for the weather.',
-  'Then one notable world item if any. No greeting, no lists, no markdown. Use only facts from the readouts; never invent numbers.',
+  "You are MIAP, the personal assistant of Mihai, who lives in Brussels. From the dashboard readouts, write a briefing of at most 3 short sentences (60 words max). No greeting, no lists, no markdown.",
+  'First think about what matters at this local day and time: weekday mornings = getting to work; weekday afternoons and evenings = getting home; weekends = weather, being out and about, the world.',
+  'Never mention work or the commute to work on a Saturday or Sunday.',
+  'Lead with whatever should change what he does next: a delay, cancellation or closure on his way, rain or cold (say what to wear or bring), poor air, a quake near him.',
+  'If nothing needs action, say that in a few words, then give the single most notable news or world item.',
+  'Be specific: use the names, times and numbers from the readouts. Use only facts from the readouts; never invent anything. Skip readouts with nothing notable.',
 ].join(' ');
 
 export function briefingMessages(body) {

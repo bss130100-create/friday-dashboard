@@ -2,7 +2,7 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { placesIn, parseDisturbances, parseStations, stationNamesNear, mentions } from '../js/rail.js';
 import { roadsUrl, renderRoads, renderRail, renderTraffic, loadTraffic } from '../js/traffic.js';
-import { readouts, localNow, loadBriefing } from '../js/briefing.js';
+import { readouts, isWeekend, localNow, loadBriefing } from '../js/briefing.js';
 
 afterEach(() => { delete globalThis.fetch; });
 
@@ -89,15 +89,21 @@ test('briefing: reads healthy, loaded panels only, and posts them', async () => 
     weather: { text: '  12 °C   light rain  ' },
     quakes: { text: 'ERROR', error: true },
     news: { text: 'Scanning news for "Brussels"…' },
+    commute: { text: 'Home → Office A leave in 12 min' },
   });
-  assert.deepEqual(readouts(doc), { Weather: '12 °C light rain' });
+  // NOW is a Saturday: the work commute is left out
+  assert.equal(isWeekend(NOW), true);
+  assert.deepEqual(readouts(doc, NOW), { Weather: '12 °C light rain' });
+  const monday = new Date('2026-10-26T07:00:00Z');
+  assert.equal(isWeekend(monday), false);
+  assert.deepEqual(readouts(doc, monday), { Commute: 'Home → Office A leave in 12 min', Weather: '12 °C light rain' });
   assert.equal(localNow(NOW), 'Saturday 19:30');
   let sent;
   globalThis.fetch = async (url, init) => {
     sent = { url, method: init.method, body: JSON.parse(init.body) };
     return Response.json({ text: 'Rain at 12 °C: take a coat.' });
   };
-  assert.match(await loadBriefing(readouts(doc), NOW), /<p class="brief">Rain at 12 °C: take a coat\.<\/p>/);
+  assert.match(await loadBriefing(readouts(doc, NOW), NOW), /<p class="brief">Rain at 12 °C: take a coat\.<\/p>/);
   assert.deepEqual(sent, { url: '/briefing', method: 'POST', body: { now: 'Saturday 19:30', panels: { Weather: '12 °C light rain' } } });
   await assert.rejects(loadBriefing({}, NOW), /No panel data yet/);
 });
