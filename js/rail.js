@@ -13,11 +13,17 @@ export function normalize(name) {
   return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 }
 
-// The places in a title: the part before ':' split on ' - ' (stretch ends) and '/' (FR/NL names).
+// The ends of the stretch in a title: the part before ':' split on ' - ', each end with its
+// FR/NL names split on '/'. "Louvain / Leuven - Ottignies: ..." -> [['louvain', 'leuven'], ['ottignies']].
 // Titles shorten Brussels stations ("Brux.-Midi/Brus.-Zuid"); the station list spells them out.
+export function stretchEnds(title) {
+  return title.split(':')[0].split(' - ')
+    .map((end) => end.split('/').map(normalize).map((p) => p.replace(/^brux\./, 'bruxelles').replace(/^brus\./, 'brussel')).filter(Boolean))
+    .filter((end) => end.length);
+}
+
 export function placesIn(title) {
-  return title.split(':')[0].split(' - ').flatMap((part) => part.split('/')).map(normalize)
-    .map((p) => p.replace(/^brux\./, 'bruxelles').replace(/^brus\./, 'brussel')).filter(Boolean);
+  return stretchEnds(title).flat();
 }
 
 export function parseDisturbances(json) {
@@ -38,6 +44,19 @@ export function parseStations(json) {
 
 export function stationNamesNear(stations, here, km = NEAR_KM) {
   return new Set(stations.filter((s) => distanceKm(here.lat, here.lon, s.lat, s.lon) <= km).flatMap((s) => s.names));
+}
+
+// Where each disruption is, for the map: the known stations at its stretch ends, as [lat, lon]
+// (two = a line between them, one = a point). Disruptions naming no known station are left out.
+export function railShapes(disruptions, stations) {
+  const byName = new Map(stations.flatMap((s) => s.names.map((n) => [n, s])));
+  return disruptions.flatMap((d) => {
+    const points = stretchEnds(d.title)
+      .map((names) => names.map((n) => byName.get(n)).find(Boolean))
+      .filter(Boolean)
+      .map((s) => [s.lat, s.lon]);
+    return points.length ? [{ title: d.title, planned: d.planned, points }] : [];
+  });
 }
 
 export function mentions(disturbance, names) {

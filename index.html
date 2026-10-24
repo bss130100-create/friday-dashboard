@@ -19,6 +19,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600&family=Share+Tech+Mono&display=swap">
+  <link rel="stylesheet" href="vendor/leaflet.css">
   <link rel="stylesheet" href="style.css">
   <script type="module" src="js/main.js"></script>
 </head>
@@ -87,7 +88,10 @@
       <div class="body"></div><div class="status"></div>
     </section>
     <section data-tab="news" id="topic"><h2>Topic of the week</h2><div class="body"><p class="dim">Loading topic…</p></div><div class="status"></div></section>
-    <section data-tab="global" id="traffic" class="wide"><h2>Roads &amp; rail around you</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
+    <section data-tab="global" id="traffic" class="wide"><h2>Roads &amp; rail around you</h2>
+      <div id="traffic-map" class="tmap"></div>
+      <p class="legend small"><span class="key red"></span>closed road <span class="key red dashed"></span>rail disruption <span class="key orange"></span>jam · accident · lane closed</p>
+      <div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
     <section data-tab="global" id="gpsjam" class="wide"><h2>GNSS interference</h2><div class="body"><p class="dim">Loading GPSJam data…</p></div><div class="status"></div></section>
     <section data-tab="global" id="attacks" class="wide"><h2>Cyber attack vectors</h2><div class="body"><p class="dim">Querying Cloudflare Radar…</p></div><div class="status"></div></section>
     <section data-tab="global" id="quakes" class="wide"><h2>Seismic activity</h2><div class="body"><p class="dim">Querying USGS…</p></div><div class="status"></div></section>

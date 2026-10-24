@@ -204,6 +204,17 @@ footer { margin-top: 18px; font-size: 12px; }
 @media (min-width: 720px) { .traffic { grid-template-columns: 1fr 1fr; } }
 .incidents { list-style: none; padding: 0; margin: 4px 0; font-size: 14px; }
 .incidents li { margin: 6px 0; }
+/* traffic map: OpenStreetMap tiles inverted to a dark map; our red/orange lines are not filtered */
+.tmap { height: 340px; margin: 4px 0 6px; border: 1px solid var(--line); background: var(--bg); }
+.tmap .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.8) contrast(1.1); }
+.tmap .leaflet-control-attribution { background: rgba(2, 7, 13, .75); color: var(--dim); }
+.tmap .leaflet-control-attribution a { color: var(--cool); }
+.tmap .leaflet-popup-content { font: 13px var(--body); }
+.tmap .leaflet-bar a { background: rgba(2, 7, 13, .85); color: var(--cyan); border-color: var(--line); }
+.legend { margin: 0 0 6px; color: var(--dim); }
+.legend .key { display: inline-block; width: 22px; margin: 0 6px 3px 12px; border-top: 4px solid; vertical-align: middle; }
+.legend .key:first-child { margin-left: 0; }
+.legend .key.red { border-color: #ff3b3b; } .legend .key.orange { border-color: #ff9f1a; } .legend .key.dashed { border-top-style: dashed; }
 #brief-me { position: absolute; top: 10px; right: 16px; padding: 3px 10px; font-size: 12px; }
 .brief { font-size: 17px; line-height: 1.45; margin: 4px 0; }
 

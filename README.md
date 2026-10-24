@@ -24,7 +24,7 @@ Panels are grouped in five tabs: **Time** (AI briefing, chronometer, sun & moon)
 | Sun · Moon | Open-Meteo + local maths | 1 h (countdown every min) | Sunrise/sunset/daylight from Open-Meteo. The moon phase is computed: the moon repeats its phases every 29.53 days, so days since a known new moon give the phase. |
 | Orbital tracking | [CelesTrak](https://celestrak.org) TLEs | orbits 2 h, positions 2 s | Downloads each satellite's orbit as a *TLE* (two lines of numbers); the SGP4 model (`vendor/satellite.es.js`) predicts where the ISS and every GPS satellite is *now*. Shows the ISS height, speed and position, and how many GPS satellites are above you. Sky plot: centre = straight up, ring = horizon, top = north; hover a dot for its PRN. |
 | Newsfeed | Bing News RSS, via the Worker | 10 min | Type a place and press Enter: English articles about it from the last 24 h. Remembered in this browser. |
-| Roads & rail around you | [TomTom](https://developer.tomtom.com) traffic incidents via the Worker + SNCB disruptions via [iRail](https://api.irail.be) | 15 min | Roads: closures, accidents, jams and roadworks in a ~78 × 78 km box around you, worst first, with delay and length. TomTom's free plan is 2,500 calls a month, so the Worker caches each ~20 km cell for 30 min and only that rounded cell is sent. Rail: current disruptions and planned works whose title names a station within 30 km of you, plus how many others there are in Belgium. |
+| Roads & rail around you | [TomTom](https://developer.tomtom.com) traffic incidents via the Worker + SNCB disruptions via [iRail](https://api.irail.be) | 15 min | Roads: closures, accidents, jams and roadworks in a ~78 × 78 km box around you, worst first, with delay and length. TomTom's free plan is 2,500 calls a month, so the Worker caches each ~20 km cell for 30 min and only that rounded cell is sent. Rail: current disruptions and planned works whose title names a station within 30 km of you, plus how many others there are in Belgium. Map (~50 km across, centred on you, zoom and drag): red = closed roads, dashed red = live rail disruptions (drawn station to station: iRail names the stretch, not the track), orange = jams, accidents, lane closures. Tap a line for details. |
 | GNSS interference | [GPSJam](https://gpsjam.org), prepared daily by a GitHub Action | 1 h (data changes daily) | Airliners broadcast how accurate their GPS fix is. Where many aircraft report a bad fix, GPS is being jammed or spoofed. Red = >10% of aircraft affected. Hotspots are grouped into known zones (Baltic, Black Sea, Eastern Med, …). |
 | Cyber attack vectors | [Cloudflare Radar](https://radar.cloudflare.com), via the Worker | 30 min | Top country→country routes of HTTP attacks Cloudflare blocked in the last 24 h. "Origin" is where attack traffic came *from* (often hijacked machines), not necessarily where the attacker is. |
 | Seismic activity | [USGS](https://earthquake.usgs.gov) | 5 min | Magnitude 2.5+ quakes of the last 24 h, the biggest, and the nearest to you. |
@@ -126,6 +126,7 @@ scripts/gpsjam.py     daily GPSJam converter (+ test_gpsjam.py)
 data/gpsjam.json      output of the daily job
 data/topic.json       topic of the week (facts + videos)
 vendor/satellite.es.js  satellite.js 6.0.2 (MIT), copied as-is
+vendor/leaflet.*      Leaflet 1.9.4 (BSD-2), copied as-is: draws the Roads & rail map (js/trafficmap.js)
 tests/                unit tests (node --test)
 ```
 Each data module has the same shape: `xxxUrl()` builds the request, `parseXxx()` turns raw JSON
@@ -145,7 +146,7 @@ Attacks need `RADAR_TOKEN`: put `RADAR_TOKEN=...` in a file named `.dev.vars` (n
 Open the live link in **Safari**, log in, then Share → **Add to Home Screen**. Allow location when asked.
 
 ## Credits
-Land shapes: Natural Earth (public domain). Country centres: mledoze/countries (ODbL).
+Land shapes: Natural Earth (public domain). Roads & rail map: © OpenStreetMap contributors (tiles), Leaflet. Country centres: mledoze/countries (ODbL).
 Data: Transitous (© OpenStreetMap contributors, [sources](https://transitous.org/sources/)), CelesTrak, Open-Meteo / Copernicus CAMS, Bing News, GPSJam, Cloudflare Radar, USGS, IODA (Georgia Tech).
 
 ## License

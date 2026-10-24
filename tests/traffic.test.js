@@ -1,6 +1,7 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { placesIn, parseDisturbances, parseStations, stationNamesNear, mentions } from '../js/rail.js';
+import { placesIn, stretchEnds, railShapes, parseDisturbances, parseStations, stationNamesNear, mentions } from '../js/rail.js';
+import { roadColor, mapShapes, viewBounds } from '../js/trafficmap.js';
 import { roadsUrl, renderRoads, renderRail, renderTraffic, loadTraffic } from '../js/traffic.js';
 import { readouts, isWeekend, localNow, loadBriefing } from '../js/briefing.js';
 
@@ -37,9 +38,33 @@ test('rail: disruptions naming a station within 30 km count as near', () => {
 });
 
 const INCIDENTS = [
-  { kind: 'roadClosed', what: 'Closed', roads: ['R0'], from: 'Ruisbroek', to: 'Drogenbos', delayMin: 0, km: 1.2, lat: 50.79, lon: 4.3 },
-  { kind: 'jam', what: 'Stationary traffic', roads: ['E19'], from: 'Vilvoorde', to: 'Machelen', delayMin: 14, km: 3.4, lat: 50.92, lon: 4.43 },
+  { kind: 'roadClosed', what: 'Closed', roads: ['R0'], from: 'Ruisbroek', to: 'Drogenbos', delayMin: 0, km: 1.2, lat: 50.79, lon: 4.3, line: [[50.79, 4.3]] },
+  { kind: 'jam', what: 'Stationary traffic', roads: ['E19'], from: 'Vilvoorde', to: 'Machelen', delayMin: 14, km: 3.4, lat: 50.92, lon: 4.43, line: [[50.92, 4.43], [50.93, 4.44]] },
+  { kind: 'roadWorks', what: 'Road works', roads: [], from: 'A', to: 'B', delayMin: 0, km: 0.3, lat: 50.8, lon: 4.4, line: [[50.8, 4.4]] },
 ];
+
+test('map: red = closed roads and live rail disruptions, orange = blockages, works left out', () => {
+  assert.deepEqual(stretchEnds('Louvain / Leuven - Ottignies: No trains'), [['louvain', 'leuven'], ['ottignies']]);
+  const stations = parseStations(STATIONS);
+  const rail = railShapes(parseDisturbances(DISTURBANCES), stations);
+  // newest first; Ottignies and Florenville are not in the trimmed station list -> one point each
+  assert.deepEqual(rail.map((r) => [r.title.slice(0, 7), r.points]), [
+    ['Louvain', [[50.88228, 4.715866]]], ['Florenv', [[49.5667, 5.5333]]], ['Brux.-M', [[50.835707, 4.336531]]],
+  ]);
+  assert.equal(roadColor('roadClosed'), 'red');
+  assert.equal(roadColor('accident'), 'orange');
+  assert.equal(roadColor('roadWorks'), null);
+  const shapes = mapShapes(INCIDENTS, rail);
+  assert.deepEqual(shapes.map((s) => [s.color, s.dashed, s.label]), [
+    ['red', false, 'R0: Closed'],
+    ['orange', false, 'E19: Stationary traffic (+14 min)'],
+    ['red', true, 'Louvain / Leuven - Ottignies: No trains'],
+    ['red', true, 'Florenville - Virton: Delays and cancellations'], // the planned works are not drawn
+  ]);
+  const [[s, w], [n, e]] = viewBounds(GRAND_PLACE);
+  assert.ok(Math.abs((n - s) * 111.32 - 50) < 0.01); // 50 km tall
+  assert.ok(Math.abs((e - w) * 111.32 * Math.cos((GRAND_PLACE.lat * Math.PI) / 180) - 50) < 0.01); // and wide
+});
 
 test('roads: URL, severity labels and an empty answer', () => {
   assert.equal(roadsUrl(GRAND_PLACE), '/roads?lat=50.847&lon=4.353');
@@ -69,8 +94,9 @@ test('loadTraffic: roads from our Worker, rail from iRail', async () => {
     if (url.includes('stations')) return Response.json(STATIONS);
     throw new Error(`unexpected ${url}`);
   };
-  const html = await loadTraffic(GRAND_PLACE, NOW);
+  const { html, shapes } = await loadTraffic(GRAND_PLACE, NOW);
   assert.match(html, /ROADS[\s\S]*CLOSED[\s\S]*RAIL[\s\S]*Louvain \/ Leuven - Ottignies[\s\S]*1 more elsewhere/);
+  assert.deepEqual(shapes.map((s) => s.color), ['red', 'orange', 'red']); // closure, jam, Leuven disruption
 });
 
 // A tiny stand-in for the page: sections with a .body, some in error.

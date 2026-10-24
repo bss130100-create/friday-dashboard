@@ -248,6 +248,7 @@ export async function readSetting(db, key) {
 const TOMTOM_URL = 'https://api.tomtom.com/maps/orbis/traffic/incidents/details';
 const TOMTOM_FIELDS = 'incidents(type,geometry(type,coordinates),properties(iconCategory,magnitudeOfDelay,events(description),startTime,endTime,from,to,lengthInMeters,delayInSeconds,roadNumbers))';
 const ROADS_CACHE_MS = 30 * 60 * 1000;
+const MAX_LINE_POINTS = 40; // enough to draw an incident's road on the map
 const CELL_DEG = 0.2;
 
 export function roadsQuery(requestUrl) {
@@ -270,7 +271,9 @@ export function parseIncidents(json) {
   if (!Array.isArray(json?.incidents)) throw new Error('TomTom: no incidents list');
   return json.incidents
     .map(({ geometry, properties: p }) => {
-      const first = geometry.type === 'Point' ? geometry.coordinates : geometry.coordinates[0];
+      const coords = geometry.type === 'Point' ? [geometry.coordinates] : geometry.coordinates;
+      const first = coords[0];
+      const step = Math.ceil(coords.length / MAX_LINE_POINTS);
       return {
         kind: p.iconCategory,
         what: p.events?.map((e) => e.description).join(', ') || p.iconCategory,
@@ -281,6 +284,8 @@ export function parseIncidents(json) {
         km: Math.round((p.lengthInMeters ?? 0) / 100) / 10,
         lat: first[1],
         lon: first[0],
+        // the affected road as [lat, lon] points (thinned out), for the map
+        line: coords.filter((_, i) => i % step === 0 || i === coords.length - 1).map(([lon, lat]) => [Number(lat.toFixed(5)), Number(lon.toFixed(5))]),
       };
     })
     .sort((a, b) => (SEVERITY[a.kind] ?? 9) - (SEVERITY[b.kind] ?? 9) || b.delayMin - a.delayMin);
@@ -288,7 +293,7 @@ export function parseIncidents(json) {
 
 export async function roads(env, cell, now = Date.now()) {
   const db = await openDb(env);
-  const key = `roads:${cell.lat},${cell.lon}`;
+  const key = `roads2:${cell.lat},${cell.lon}`; // roads2: answers that include the road shapes
   const hit = await db.prepare('SELECT saved, value FROM cache WHERE key = ?').bind(key).first();
   if (hit?.saved !== undefined && now - hit.saved < ROADS_CACHE_MS) return JSON.parse(hit.value);
   if (!env.TOMTOM_KEY) throw new Error('TOMTOM_KEY secret is not set on this Worker (see README, Roads)');
