@@ -7,12 +7,16 @@ plus the few helpers the page needs, and it sits behind a **Cloudflare Access lo
 **Live (login):** https://friday-relay.mcioroianu2.workers.dev
 
 ## Panels and how they work
+Panels are grouped in five tabs: **Time** (chronometer, sun & moon), **Commute** (where I am, commute),
+**Weather** (atmosphere, air quality & pollen), **News** (newsfeed, topic of the week) and **Global events**
+(GNSS, cyber attacks, seismic, outages, orbital tracking, archive). The open tab is in the address (`#commute`), so a bookmark opens it.
 
 | Panel | Source | Refresh | What happens |
 |---|---|---|---|
 | Chronometer | your device clock | 1 s | Local time, UTC, today's date and the **ISO week number** (weeks start Monday; week 1 holds the year's first Thursday). |
 | Topic of the week | `data/topic.json` in this repo | 1 h | This week's topic, a fact of the day (rotates daily from the `start` date) and a watch list. Ticks are saved in this browser only. A new topic = Claude edits `data/topic.json` and pushes. |
 | Commute · public transport | [Transitous](https://transitous.org) (free community journey planner, data from SNCB, STIB, De Lijn, TEC…) | 5 min | Four routes: Home → Work 1, Home → Work 2, Work 1 → Home, Work 2 → Home. Door to door with trains, buses, trams, metro and walking, live delays and cancellations, and "leave in N min". **Addresses are typed once under *setup* and saved in MIAP's private database (D1, behind the login), so every device you log in from has them. They are never in this public repo.** The Worker also checks the Access login token itself before reading or saving them. Transitous receives them to plan the trips. |
+| Where I am · way home | your phone's GPS + Transitous | 2 min | Your precise position (GPS on a phone, Wi-Fi on a laptop) with its accuracy, the nearest street address, the distance to home, and the next trips home with "leave in N min". Needs the home address from Commute setup. |
 | Atmosphere | [Open-Meteo](https://open-meteo.com) | 10 min | Current weather at your location. |
 | Air quality · Pollen | Open-Meteo air quality (Copernicus CAMS model) | 30 min | European AQI (0-20 good … >100 extremely poor), particles, ozone, NO₂, and pollen. Pollen is only modelled for Europe. Pollen bands (<10 low, <50 moderate, else high, grains/m³) are a rough glance scale, not medical advice. |
 | Sun · Moon | Open-Meteo + local maths | 1 h (countdown every min) | Sunrise/sunset/daylight from Open-Meteo. The moon phase is computed: the moon repeats its phases every 29.53 days, so days since a known new moon give the phase. |
@@ -29,7 +33,7 @@ All maps show land, country borders (Natural Earth 1:110m) and country names. Na
 **Zoom (all four maps):** the + / − / ⟲ buttons, double-click, pinch on the phone, or pinch / Ctrl+scroll on a laptop. Drag to move around when zoomed. The zoom stays when the data refreshes.
 
 The header shows **ALL SYSTEMS NOMINAL**, or how many panels are online when some fail.
-Your location (browser permission) only goes to Open-Meteo.
+Your location (browser permission) goes to Open-Meteo, and to Transitous for *Where I am*. It is never stored.
 
 ## Errors are loud on purpose
 Every panel fails on its own and shows the reason in red (e.g. `HTTP 503 from earthquake.usgs.gov`).
