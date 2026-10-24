@@ -49,6 +49,11 @@ h1 { margin: 0; font: 700 26px/1 var(--head); letter-spacing: .3em; color: var(-
 .sub { font-size: 11px; letter-spacing: .25em; text-transform: uppercase; color: var(--dim); margin-top: 4px; }
 .systems { margin-top: 6px; font: 12px var(--head); letter-spacing: .2em; color: var(--cool); }
 
+/* iPhone: room above the title (two grid squares) so iOS 26's glass status bar doesn't distort it */
+@media (max-width: 720px) {
+  body { padding-top: calc(max(16px, env(safe-area-inset-top)) + 80px); }
+}
+
 /* ---------- sub-menus ---------- */
 nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 nav.tabs a {
@@ -212,6 +217,9 @@ footer { margin-top: 18px; font-size: 12px; }
 .tmap .leaflet-popup-content { font: 13px var(--body); }
 .tmap .leaflet-bar a { background: rgba(2, 7, 13, .85); color: var(--cyan); border-color: var(--line); }
 .legend { margin: 0 0 6px; color: var(--dim); }
+/* weather map labels: value per grid point, readable on any colour */
+.wx-label { font: 700 12px var(--mono); color: #fff; text-align: center; line-height: 20px; text-shadow: 0 0 2px #000, 0 0 2px #000; white-space: nowrap; }
+.wx-label .arrow { display: inline-block; font-size: 15px; margin-right: 2px; }
 .legend .key { display: inline-block; width: 22px; margin: 0 6px 3px 12px; border-top: 4px solid; vertical-align: middle; }
 .legend .key:first-child { margin-left: 0; }
 .legend .key.red { border-color: #ff3b3b; } .legend .key.orange { border-color: #ff9f1a; } .legend .key.dashed { border-top-style: dashed; }
