@@ -8,7 +8,6 @@ export function weatherUrl({ lat, lon }) {
     latitude: lat.toFixed(3),
     longitude: lon.toFixed(3),
     current: 'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,pressure_msl,weather_code',
-    daily: 'sunrise,sunset',
     timezone: 'auto',
     forecast_days: '1',
   });
@@ -43,8 +42,6 @@ export function parseWeather(json) {
     windFrom: compassPoint(c.wind_direction_10m),
     pressureHpa: c.pressure_msl,
     sky: describeWeatherCode(c.weather_code),
-    sunrise: json.daily.sunrise[0].slice(11),
-    sunset: json.daily.sunset[0].slice(11),
   };
 }
 
@@ -54,12 +51,12 @@ export async function loadWeather(location) {
 
 export function renderWeather(w) {
   return `
-    <div class="big">${w.tempC.toFixed(1)}°C <span class="dim">${esc(w.sky)}</span></div>
+    <div class="big">${w.tempC.toFixed(1)}<span class="unit">°C</span></div>
+    <div class="accent">${esc(w.sky)}</div>
     <table>
       <tr><td>FEELS</td><td>${w.feelsC.toFixed(1)}°C</td></tr>
       <tr><td>HUMIDITY</td><td>${w.humidity}%</td></tr>
       <tr><td>WIND</td><td>${w.windKmh.toFixed(0)} km/h from ${w.windFrom}</td></tr>
       <tr><td>PRESSURE</td><td>${w.pressureHpa.toFixed(0)} hPa</td></tr>
-      <tr><td>SUN</td><td>&uarr; ${esc(w.sunrise)}  &darr; ${esc(w.sunset)}</td></tr>
     </table>`;
 }

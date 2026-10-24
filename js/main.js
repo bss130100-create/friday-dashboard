@@ -3,8 +3,14 @@ import { runPanel, showBody, showError, esc } from './ui.js';
 import { getLocation } from './location.js';
 import { renderClock } from './clock.js';
 import { loadWeather, renderWeather } from './weather.js';
+import { loadAir, renderAir } from './airquality.js';
+import { loadAstro, renderAstro } from './astro.js';
 import { loadCves, renderCves } from './cves.js';
 import { loadNews, renderNews } from './news.js';
+import { loadQuakes, renderQuakes } from './quakes.js';
+import { loadOutages, renderOutages } from './outages.js';
+import { loadGpsJam, renderGpsJam } from './gpsjam.js';
+import { loadAttacks, renderAttacks } from './attacks.js';
 import { ISS_TLE_URL, GPS_TLE_URL, loadTle, parseTle, satState, visibleGps, renderSatellites } from './satellites.js';
 
 const MINUTE = 60 * 1000;
@@ -19,14 +25,26 @@ function location() {
   return locationPromise;
 }
 
+// Location is optional for the world maps: show "you" if we already have it, never wait for it.
+let knownLocation = null;
+location().then((here) => { knownLocation = here; }, () => {});
+
 // --- clock: pure computation, every second
 setInterval(() => showBody('clock', renderClock(new Date())), 1000);
 showBody('clock', renderClock(new Date()));
 
-// --- weather: every 10 min
+// --- location-based panels
 runPanel('weather', async () => showBody('weather', renderWeather(await loadWeather(await location()))), 10 * MINUTE);
+runPanel('air', async () => showBody('air', renderAir(await loadAir(await location()))), 30 * MINUTE);
+let astro = null;
+runPanel('astro', async () => { astro = await loadAstro(await location()); showBody('astro', renderAstro(astro, new Date())); }, 60 * MINUTE);
+setInterval(() => astro && showBody('astro', renderAstro(astro, new Date())), MINUTE); // keep "daylight left" ticking
 
-// --- CVEs: every 30 min
+// --- world panels
+runPanel('quakes', async () => showBody('quakes', renderQuakes(await loadQuakes(), new Date(), knownLocation)), 5 * MINUTE);
+runPanel('outages', async () => showBody('outages', renderOutages(await loadOutages(new Date()))), 15 * MINUTE);
+runPanel('gpsjam', async () => showBody('gpsjam', renderGpsJam(await loadGpsJam(), knownLocation)), 60 * MINUTE);
+runPanel('attacks', async () => showBody('attacks', renderAttacks(await loadAttacks())), 30 * MINUTE);
 runPanel('cves', async () => showBody('cves', renderCves(await loadCves(new Date()))), 30 * MINUTE);
 
 // --- satellites: orbits (TLEs) are refreshed rarely, positions are recomputed every 2 s
@@ -68,7 +86,7 @@ async function refreshNews() {
     showBody('news', '<p class="dim">Type a city, region or country above and press Enter.</p>');
     return;
   }
-  showBody('news', `<p class="dim">Searching "${esc(place)}"<span class="cursor">_</span></p>`);
+  showBody('news', `<p class="dim">Scanning news for "${esc(place)}"…</p>`);
   showBody('news', renderNews(place, await loadNews(place), new Date()));
 }
 

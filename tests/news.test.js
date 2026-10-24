@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newsUrl, parseRss, decodeXml, ago, renderNews } from '../js/news.js';
+import { newsUrl, parseRss, decodeXml, renderNews } from '../js/news.js';
+import { ago } from '../js/ui.js';
 import { GOOGLE_NEWS_RSS } from './fixtures.js';
 
 const RELAY = 'https://friday-relay.example.workers.dev';

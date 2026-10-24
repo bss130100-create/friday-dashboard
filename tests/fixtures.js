@@ -17,7 +17,6 @@ export const WEATHER_JSON = {
     temperature_2m: 14.1, apparent_temperature: 12.9, relative_humidity_2m: 71,
     wind_speed_10m: 2.6, wind_direction_10m: 270, pressure_msl: 1016.4, weather_code: 3,
   },
-  daily: { sunrise: ['2026-10-24T07:54'], sunset: ['2026-10-24T18:19'] },
 };
 
 export const NVD_JSON = {
@@ -37,3 +36,39 @@ export const GOOGLE_NEWS_RSS = `<?xml version="1.0" encoding="UTF-8" standalone=
 <item><title>Bergs leads Belgian charge, Griekspoor wins in Brussels &amp; more - ATP Tour</title><link>https://news.google.com/rss/articles/CBMi0AFB?oc=5</link><guid isPermaLink="false">CBMi0AFB</guid><pubDate>Sat, 24 Oct 2026 12:08:25 GMT</pubDate><description>z</description><source url="https://www.atptour.com">ATP Tour</source></item>
 <item><title>evil &lt;script&gt; - Evil</title><link>javascript:alert(1)</link><guid isPermaLink="false">e</guid><pubDate>Sat, 24 Oct 2026 13:00:00 GMT</pubDate><description>z</description><source url="https://evil.example">Evil</source></item>
 </channel></rss>`;
+
+export const USGS_JSON = {
+  type: 'FeatureCollection',
+  features: [
+    { properties: { mag: 4.7, place: '72 km S of Basco, Philippines', time: 1792842488678, url: 'https://earthquake.usgs.gov/a' }, geometry: { coordinates: [121.9, 19.8, 35.2] } },
+    { properties: { mag: 2.6, place: '10 km N of Vrancea, Romania', time: 1792850000000, url: 'https://earthquake.usgs.gov/b' }, geometry: { coordinates: [26.6, 45.8, 120] } },
+  ],
+};
+
+export const IODA_JSON = {
+  type: 'outages.summary', error: null,
+  data: [
+    { scores: { 'gtr.sarima': 863484.1, overall: 863484.1 }, event_cnt: 1, entity: { code: 'LT', name: 'Lithuania' } },
+    { scores: { 'gtr.sarima': 5150.6, 'bgp.median': 5013.2, overall: 25821093.2 }, event_cnt: 2, entity: { code: 'NF', name: 'Norfolk Island' } },
+  ],
+};
+
+export const AIR_JSON = {
+  current: {
+    european_aqi: 34, pm2_5: 8.2, pm10: 14.9, ozone: 61, nitrogen_dioxide: 12.3,
+    alder_pollen: 0, birch_pollen: 0.4, grass_pollen: 12.5, mugwort_pollen: 0, olive_pollen: 0, ragweed_pollen: 60.2,
+  },
+};
+
+export const ASTRO_JSON = {
+  utc_offset_seconds: 10800, // Bucharest summer time, UTC+3
+  daily: { sunrise: ['2026-10-24T07:54'], sunset: ['2026-10-24T18:19'], daylight_duration: [37500], uv_index_max: [2.35] },
+};
+
+export const RADAR_JSON = {
+  success: true,
+  result: { top_0: [
+    { originCountryAlpha2: 'US', originCountryName: 'United States', targetCountryAlpha2: 'DE', targetCountryName: 'Germany', value: '4.21' },
+    { originCountryAlpha2: 'CN', originCountryName: 'China', targetCountryAlpha2: 'US', targetCountryName: 'United States', value: '2.5' },
+  ] },
+};
