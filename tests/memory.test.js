@@ -3,7 +3,7 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import worker, { quakeRows, gnssRows, attackRows, snapshot, history, historyQuery } from '../relay/worker.js';
+import worker, { quakeRows, gnssRows, attackRows, snapshot, history, historyQuery, verifyLogin, settings } from '../relay/worker.js';
 import { USGS_JSON, RADAR_JSON } from './fixtures.js';
 
 function fakeD1() {
@@ -97,4 +97,55 @@ test('/history validates input and explains a missing database', async () => {
 test('snapshot explains missing static assets instead of failing silently', async () => {
   fakeFetch();
   await assert.rejects(snapshot({ DB: fakeD1(), RADAR_TOKEN: 'tok' }, NOW), /gnss: static assets are not bound/);
+});
+
+// --- settings: only through a valid Access login token
+const TEAM = 'https://falling-king-09ce.cloudflareaccess.com';
+const b64url = (bytes) => Buffer.from(bytes).toString('base64url');
+
+async function accessKeys() {
+  const pair = await crypto.subtle.generateKey(
+    { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['sign', 'verify']);
+  const jwk = { ...(await crypto.subtle.exportKey('jwk', pair.publicKey)), kid: 'k1' };
+  const sign = async (claims) => {
+    const head = b64url(JSON.stringify({ alg: 'RS256', kid: 'k1' }));
+    const body = b64url(JSON.stringify(claims));
+    const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', pair.privateKey, new TextEncoder().encode(`${head}.${body}`));
+    return `${head}.${body}.${b64url(new Uint8Array(sig))}`;
+  };
+  return { getKeys: async () => ({ keys: [jwk] }), sign };
+}
+
+test('verifyLogin accepts only a valid, unexpired token from our Access team', async () => {
+  const { getKeys, sign } = await accessKeys();
+  const other = await accessKeys();
+  const now = Date.parse('2026-10-24T17:00:00Z');
+  const req = (token) => new Request('https://m.example/settings/commute', token ? { headers: { 'Cf-Access-Jwt-Assertion': token } } : {});
+  const good = { iss: TEAM, exp: now / 1000 + 3600, email: 'me@example.com' };
+  await verifyLogin(req(await sign(good)), now, getKeys);
+  await assert.rejects(verifyLogin(req(null), now, getKeys), /no Access login/);
+  await assert.rejects(verifyLogin(req('a.b.c'), now, getKeys), /malformed/);
+  await assert.rejects(verifyLogin(req('only-one-part'), now, getKeys), /malformed/);
+  await assert.rejects(verifyLogin(req(await sign({ ...good, exp: now / 1000 - 1 })), now, getKeys), /expired/);
+  await assert.rejects(verifyLogin(req(await sign({ ...good, iss: 'https://evil.cloudflareaccess.com' })), now, getKeys), /wrong team/);
+  await assert.rejects(verifyLogin(req(await other.sign(good)), now, getKeys), /signature is invalid/);
+  const [h, , s] = (await sign(good)).split('.');
+  await assert.rejects(verifyLogin(req(`${h}.${b64url(JSON.stringify({ ...good, email: 'x@y' }))}.${s}`), now, getKeys), /signature is invalid/);
+});
+
+test('settings: null until saved, then the saved object; bad input refused', async () => {
+  const env = { DB: fakeD1() };
+  const put = (body) => new Request('https://m.example/settings/commute', { method: 'PUT', body });
+  assert.equal(await settings(env, new Request('https://m.example/settings/commute')), 'null');
+  await settings(env, put('{"home":{"name":"H","lat":1,"lon":2}}'));
+  assert.deepEqual(JSON.parse(await settings(env, new Request('https://m.example/settings/commute'))), { home: { name: 'H', lat: 1, lon: 2 } });
+  await assert.rejects(settings(env, put('[1]')), /JSON object/);
+  await assert.rejects(settings(env, put('x'.repeat(5000))), /too big/);
+  await assert.rejects(settings(env, new Request('https://m.example/settings/commute', { method: 'DELETE' })), /not allowed/);
+});
+
+test('/settings/commute without a login is refused with 403', async () => {
+  const res = await worker.fetch(new Request('https://m.example/settings/commute'), { DB: fakeD1() });
+  assert.equal(res.status, 403);
+  assert.match(await res.text(), /no Access login/);
 });

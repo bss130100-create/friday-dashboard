@@ -124,7 +124,7 @@ document.getElementById('topic').addEventListener('change', (event) => {
   }
 });
 
-// --- commute: addresses typed once in the setup form, saved only in this browser
+// --- commute: addresses typed once in the setup form, saved in MIAP's private database
 const setup = document.getElementById('commute-setup');
 const commuteForm = document.getElementById('commute-form');
 const formError = document.getElementById('commute-form-error');
@@ -143,7 +143,7 @@ async function configFromForm() {
 }
 
 async function refreshCommute() {
-  const config = readConfig();
+  const config = await readConfig();
   if (!config) {
     setup.open = true;
     showBody('commute', '<p class="dim">Open setup above: enter your home and work addresses once.</p>');
@@ -158,8 +158,7 @@ commuteForm.addEventListener('submit', async (event) => {
   found.textContent = 'Looking up addresses…';
   let config;
   try {
-    config = await configFromForm();
-    saveConfig(config);
+    config = await saveConfig(await configFromForm());
   } catch (err) {
     found.textContent = '';
     formError.textContent = err.message;
@@ -169,9 +168,10 @@ commuteForm.addEventListener('submit', async (event) => {
   refreshCommute().catch((err) => showError('commute', err));
 });
 
-try {
-  const saved = readConfig();
-  if (saved) {
+localStorage.removeItem('commuteRoutes'); // the old browser-only copy; the database has them now
+readConfig()
+  .then((saved) => {
+    if (!saved) return;
     const f = commuteForm.elements;
     f.home.value = saved.home.name;
     saved.works.forEach((w, i) => {
@@ -179,8 +179,6 @@ try {
       f[`addr${i + 1}`].value = w.place.name;
     });
     showFound(saved);
-  }
-} catch (err) {
-  formError.textContent = err.message;
-}
+  })
+  .catch((err) => { formError.textContent = err.message; });
 runPanel('commute', refreshCommute, 5 * MINUTE);

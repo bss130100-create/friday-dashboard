@@ -1,12 +1,13 @@
 // Commute panel: door-to-door public transport (trains, buses, trams, metro) from Transitous,
 // a free community-run journey planner for Europe (https://transitous.org, no key, CORS allowed).
-// Your addresses are typed once in the setup form and kept only in this browser (localStorage),
-// never in the public repository. Transitous does receive them, to find stops and plan trips.
-import { fetchJson } from './http.js';
+// Your addresses are typed once in the setup form and saved in MIAP's private database (our Worker,
+// behind the Access login), so every device you log in from knows them. They are never in the
+// public repository. Transitous does receive them, to find stops and plan trips.
+import { fetchJson, putJson } from './http.js';
 import { esc } from './ui.js';
 
 const API = 'https://api.transitous.org/api';
-const CONFIG_KEY = 'commuteRoutes';
+const SETTINGS_URL = '/settings/commute';
 const ZONE = 'Europe/Brussels';
 
 // --- addresses -> coordinates
@@ -37,13 +38,14 @@ export function parseConfig(c) {
   return c;
 }
 
-export function readConfig() {
-  const raw = localStorage.getItem(CONFIG_KEY);
-  return raw === null ? null : parseConfig(JSON.parse(raw));
+// null until the setup form has been saved once
+export async function readConfig() {
+  const saved = await fetchJson(SETTINGS_URL);
+  return saved === null ? null : parseConfig(saved);
 }
 
-export function saveConfig(config) {
-  localStorage.setItem(CONFIG_KEY, JSON.stringify(parseConfig(config)));
+export async function saveConfig(config) {
+  return parseConfig(await putJson(SETTINGS_URL, parseConfig(config)));
 }
 
 // The four routes, in the order they are shown.
