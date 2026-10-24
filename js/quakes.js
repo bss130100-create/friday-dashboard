@@ -32,6 +32,7 @@ export function renderQuakes(quakes, now, you) {
   const nearest = you ? quakes.reduce((a, b) => (distanceKm(you.lat, you.lon, b.lat, b.lon) < distanceKm(you.lat, you.lon, a.lat, a.lon) ? b : a)) : null;
   const map = worldMap({
     label: 'earthquakes map',
+    zoomable: true,
     you,
     dots: quakes.map((q) => ({ lat: q.lat, lon: q.lon, r: Math.max(0.8, (q.mag - 2) * 0.9), cls: q.mag >= 5 ? 'hot pulse' : 'warm', title: `M${q.mag} ${q.place}` })),
   });

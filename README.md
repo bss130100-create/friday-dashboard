@@ -1,6 +1,7 @@
 # friday-dashboard
 
-**F.R.I.D.A.Y.**: a JARVIS-style holographic HUD dashboard with live data.
+**M.I.A.P. (Mihai's Intelligent Assist Platform)**: a JARVIS-style holographic HUD dashboard with live data.
+(The repository keeps its old name, `friday-dashboard`, so the web address doesn't change.)
 Plain HTML + CSS + JavaScript: no framework, no build step. GitHub Pages serves the files as they are.
 
 **Live:** https://bss130100-create.github.io/friday-dashboard/
@@ -13,25 +14,26 @@ Plain HTML + CSS + JavaScript: no framework, no build step. GitHub Pages serves 
 | Atmosphere | [Open-Meteo](https://open-meteo.com) | 10 min | Current weather at your location. |
 | Air quality · Pollen | Open-Meteo air quality (Copernicus CAMS model) | 30 min | European AQI (0-20 good … >100 extremely poor), particles, ozone, NO₂, and pollen. Pollen is only modelled for Europe. Pollen bands (<10 low, <50 moderate, else high, grains/m³) are a rough glance scale, not medical advice. |
 | Sun · Moon | Open-Meteo + local maths | 1 h (countdown every min) | Sunrise/sunset/daylight from Open-Meteo. The moon phase is computed: the moon repeats its phases every 29.53 days, so days since a known new moon give the phase. |
-| Orbital tracking | [CelesTrak](https://celestrak.org) TLEs | orbits 2 h, positions 2 s | Downloads each satellite's orbit as a *TLE* (two lines of numbers); the SGP4 model (`vendor/satellite.es.js`) predicts where the ISS and every GPS satellite is *now*. Sky plot: centre = straight up, edge = horizon, top = north. |
+| Orbital tracking | [CelesTrak](https://celestrak.org) TLEs | orbits 2 h, positions 2 s | Downloads each satellite's orbit as a *TLE* (two lines of numbers); the SGP4 model (`vendor/satellite.es.js`) predicts where the ISS and every GPS satellite is *now*. Shows the ISS height, speed and position, and how many GPS satellites are above you. Sky plot: centre = straight up, ring = horizon, top = north; hover a dot for its PRN. |
 | Newsfeed | Bing News RSS, via your relay | 10 min | Type a place and press Enter: English articles about it from the last 24 h. Remembered in this browser. |
 | GNSS interference | [GPSJam](https://gpsjam.org), prepared daily by a GitHub Action | 1 h (data changes daily) | Airliners broadcast how accurate their GPS fix is. Where many aircraft report a bad fix, GPS is being jammed or spoofed. Red = >10% of aircraft affected. Hotspots are grouped into known zones (Baltic, Black Sea, Eastern Med, …). |
 | Cyber attack vectors | [Cloudflare Radar](https://radar.cloudflare.com), via your relay | 30 min | Top country→country routes of HTTP attacks Cloudflare blocked in the last 24 h. "Origin" is where attack traffic came *from* (often hijacked machines), not necessarily where the attacker is. |
 | Seismic activity | [USGS](https://earthquake.usgs.gov) | 5 min | Magnitude 2.5+ quakes of the last 24 h, the biggest, and the nearest to you. |
 | Internet outages | [IODA](https://ioda.inetintel.cc.gatech.edu) (Georgia Tech) | 15 min | Countries where internet reachability dropped in the last 24 h, and which signal saw it (BGP routes, active probing, Google traffic). |
-| Critical CVEs | [NVD](https://nvd.nist.gov) API 2.0 | 30 min | Critical (CVSS ≥ 9.0) CVEs published in the last 7 days. |
+
+**Zoom (seismic, outages, GNSS maps):** the + / − / ⟲ buttons, double-click, pinch on the phone, or pinch / Ctrl+scroll on a laptop. Drag to move around when zoomed. The zoom stays when the data refreshes.
 
 The header shows **ALL SYSTEMS NOMINAL**, or how many panels are online when some fail.
 Your location (browser permission) only goes to Open-Meteo.
 
 ## Errors are loud on purpose
-Every panel fails on its own and shows the reason in red (e.g. `HTTP 503 from services.nvd.nist.gov`).
+Every panel fails on its own and shows the reason in red (e.g. `HTTP 503 from earthquake.usgs.gov`).
 Nothing falls back to fake or old data. `js/http.js` turns any non-2xx response or timeout into an error,
 and `runPanel()` in `js/ui.js` catches it and prints it in that panel. Details also go to the browser console.
 
 ## CORS, and why some data goes through helpers
 Browsers only let our page read another site's answer if that site sends the header
-`Access-Control-Allow-Origin` (the **CORS** rule). CelesTrak, Open-Meteo, NVD, USGS and IODA send it.
+`Access-Control-Allow-Origin` (the **CORS** rule). CelesTrak, Open-Meteo, USGS and IODA send it.
 Three sources don't, so they go through a helper:
 
 | Source | Helper | Why this helper |
@@ -70,9 +72,10 @@ js/http.js            fetch wrapper that throws on errors
 js/ui.js              render helpers, runPanel() error handling, systems status
 js/config.js          your relay address
 js/worldmap.js        shared SVG world map (dots + attack arcs); land shapes in worldmap-data.js
+js/zoom.js            zoom and drag for the maps
 js/countries-data.js  country centre points for the maps
 js/<panel>.js         one file per data source: clock, satellites, weather, airquality, astro,
-                      news, gpsjam, attacks, quakes, outages, cves (+ geo, location helpers)
+                      news, gpsjam, attacks, quakes, outages (+ geo, location helpers)
 relay/worker.js       the Cloudflare Worker relay
 scripts/gpsjam.py     daily GPSJam converter (+ test_gpsjam.py)
 data/gpsjam.json      output of the daily job
@@ -97,4 +100,4 @@ Open the live link in **Safari** → Share → **Add to Home Screen**. Allow loc
 
 ## Credits
 Land shapes: Natural Earth (public domain). Country centres: mledoze/countries (ODbL).
-Data: CelesTrak, Open-Meteo / Copernicus CAMS, NVD, Bing News, GPSJam, Cloudflare Radar, USGS, IODA (Georgia Tech).
+Data: CelesTrak, Open-Meteo / Copernicus CAMS, Bing News, GPSJam, Cloudflare Radar, USGS, IODA (Georgia Tech).

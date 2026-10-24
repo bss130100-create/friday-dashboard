@@ -16,7 +16,9 @@ const BUCHAREST = { lat: 44.43, lon: 26.1 };
 test('map projection: (0,0) is the centre, north-west corner is (0,0) in SVG', () => {
   assert.deepEqual(project(0, 0), [180, 90]);
   assert.deepEqual(project(90, -180), [0, 0]);
-  assert.match(worldMap({ dots: [{ lat: 0, lon: 0 }] }), /<circle cx="180.0" cy="90.0"/);
+  assert.match(worldMap({ dots: [{ lat: 0, lon: 0 }] }), /<g transform="translate\(180\.0 90\.0\)"><circle r="1.5" data-r="1.5"/);
+  assert.doesNotMatch(worldMap({}), /data-zoom/);
+  assert.match(worldMap({ zoomable: true }), /data-zoom="in"/);
 });
 
 test('quakes: newest first, rendered with nearest distance', () => {

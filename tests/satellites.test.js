@@ -39,7 +39,8 @@ test('renderSatellites produces a sky plot', () => {
   const [iss] = parseTle(ISS_TLE);
   const html = renderSatellites(satState(iss.satrec, WHEN, BUCHAREST), [], 31);
   assert.match(html, /<svg/);
-  assert.match(html, /0\/31 sats/);
+  assert.match(html, /<span class="big">0<\/span> of 31 sats/);
+  assert.doesNotMatch(html, /<table/);
 });
 
 // --- loadTle caching: fake fetch + fake localStorage

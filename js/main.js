@@ -5,12 +5,12 @@ import { renderClock } from './clock.js';
 import { loadWeather, renderWeather } from './weather.js';
 import { loadAir, renderAir } from './airquality.js';
 import { loadAstro, renderAstro } from './astro.js';
-import { loadCves, renderCves } from './cves.js';
 import { loadNews, renderNews } from './news.js';
 import { loadQuakes, renderQuakes } from './quakes.js';
 import { loadOutages, renderOutages } from './outages.js';
 import { loadGpsJam, renderGpsJam } from './gpsjam.js';
 import { loadAttacks, renderAttacks } from './attacks.js';
+import { makeZoomable } from './zoom.js';
 import { ISS_TLE_URL, GPS_TLE_URL, loadTle, parseTle, satState, visibleGps, renderSatellites } from './satellites.js';
 
 const MINUTE = 60 * 1000;
@@ -40,12 +40,12 @@ let astro = null;
 runPanel('astro', async () => { astro = await loadAstro(await location()); showBody('astro', renderAstro(astro, new Date())); }, 60 * MINUTE);
 setInterval(() => astro && showBody('astro', renderAstro(astro, new Date())), MINUTE); // keep "daylight left" ticking
 
-// --- world panels
+// --- world panels (three of them can be zoomed)
+for (const id of ['quakes', 'outages', 'gpsjam']) makeZoomable(id);
 runPanel('quakes', async () => showBody('quakes', renderQuakes(await loadQuakes(), new Date(), knownLocation)), 5 * MINUTE);
 runPanel('outages', async () => showBody('outages', renderOutages(await loadOutages(new Date()))), 15 * MINUTE);
 runPanel('gpsjam', async () => showBody('gpsjam', renderGpsJam(await loadGpsJam(), knownLocation)), 60 * MINUTE);
 runPanel('attacks', async () => showBody('attacks', renderAttacks(await loadAttacks())), 30 * MINUTE);
-runPanel('cves', async () => showBody('cves', renderCves(await loadCves(new Date()))), 30 * MINUTE);
 
 // --- satellites: orbits (TLEs) are refreshed rarely, positions are recomputed every 2 s
 let orbits = null;
