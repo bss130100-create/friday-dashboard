@@ -1,37 +1,51 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newsUrl, parseNews, parseGdeltDate, ago, renderNews } from '../js/news.js';
-import { GDELT_TEXT } from './fixtures.js';
+import { newsUrl, parseRss, decodeXml, ago, renderNews } from '../js/news.js';
+import { GOOGLE_NEWS_RSS } from './fixtures.js';
 
-test('newsUrl quotes the place and restricts to English, last 24 h', () => {
-  const url = new URL(newsUrl('  New York '));
-  assert.equal(url.searchParams.get('query'), '"New York" sourcelang:english');
-  assert.equal(url.searchParams.get('timespan'), '24h');
+const RELAY = 'https://friday-relay.example.workers.dev';
+
+test('newsUrl goes through the relay with the trimmed place', () => {
+  assert.equal(newsUrl('  New York ', RELAY), `${RELAY}/news?q=New+York`);
 });
 
-test('newsUrl rejects places shorter than 3 letters (GDELT would refuse them)', () => {
-  assert.throws(() => newsUrl('NY'), /at least 3/);
+test('newsUrl fails clearly when the relay is not configured', () => {
+  assert.throws(() => newsUrl('Brussels', ''), /relay not set up/);
 });
 
-test('parseNews keeps only http(s) links', () => {
-  const articles = parseNews(GDELT_TEXT);
-  assert.equal(articles.length, 1);
-  assert.equal(articles[0].domain, 'rri.ro');
+test('newsUrl rejects a 1-letter place', () => {
+  assert.throws(() => newsUrl('B', RELAY), /at least 2/);
 });
 
-test('parseNews turns GDELT plain-text errors into exceptions', () => {
-  assert.throws(() => parseNews('Please limit requests to one every 5 seconds'), /GDELT: Please limit/);
+test('parseRss: newest first, source stripped from title, entities decoded, only https links', () => {
+  const articles = parseRss(GOOGLE_NEWS_RSS);
+  assert.equal(articles.length, 2);
+  assert.equal(articles[0].title, 'Bergs leads Belgian charge, Griekspoor wins in Brussels & more');
+  assert.equal(articles[0].source, 'ATP Tour');
+  assert.equal(articles[0].published.toISOString(), '2026-10-24T12:08:25.000Z');
+  assert.equal(articles[1].source, 'Kurdistan24');
 });
 
-test('empty result means no articles, not an error', () => {
-  assert.deepEqual(parseNews('{}'), []);
-  assert.match(renderNews('Bucharest', [], new Date()), /No English articles/);
+test('parseRss rejects a non-RSS answer (e.g. an HTML error page)', () => {
+  assert.throws(() => parseRss('<html>Too many requests</html>'), /Not an RSS feed/);
 });
 
-test('GDELT dates and "ago" labels', () => {
-  const d = parseGdeltDate('20261024T121500Z');
-  assert.equal(d.toISOString(), '2026-10-24T12:15:00.000Z');
+test('an empty feed means no articles, not an error', () => {
+  assert.deepEqual(parseRss('<rss><channel></channel></rss>'), []);
+  assert.match(renderNews('Brussels', [], new Date()), /No English news/);
+});
+
+test('decodeXml handles named and numeric entities', () => {
+  assert.equal(decodeXml('a &amp; b &#39;c&#x27; &lt;d&gt;'), "a & b 'c' <d>");
+});
+
+test('"ago" labels', () => {
+  const d = new Date('2026-10-24T12:15:00Z');
   assert.equal(ago(d, new Date('2026-10-24T12:45:00Z')), '30m ago');
   assert.equal(ago(d, new Date('2026-10-24T15:20:00Z')), '3h ago');
-  assert.throws(() => parseGdeltDate('yesterday'), /Unexpected GDELT date/);
+});
+
+test('renderNews escapes titles', () => {
+  const html = renderNews('x', [{ title: '<b>hi</b>', url: 'https://a.example', source: 'S', published: new Date() }], new Date());
+  assert.ok(!html.includes('<b>'));
 });
