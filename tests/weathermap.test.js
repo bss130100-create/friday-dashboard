@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { gridPoints, gridUrl, parseGrid, tempColor, windColor, radarTiles, loadGrid, loadRadar, gridSummary, radarSummary, RADAR_INDEX_URL } from '../js/weathermap.js';
+import { gridPoints, gridUrl, parseGrid, bilinear, colorAt, tempStops, WIND_STOPS, scaleBar, radarTiles, loadGrid, loadRadar, gridSummary, radarSummary, RADAR_INDEX_URL } from '../js/weathermap.js';
 
 afterEach(() => { delete globalThis.fetch; });
 
@@ -29,12 +29,30 @@ test('grid answer: one entry per point, in order; anything else fails loudly', (
   assert.match(gridSummary(grid, 'wind'), /gusts on the map: 41 km\/h/);
 });
 
-test('colours: temperature in 5 °C bands, wind by strength', () => {
-  assert.equal(tempColor(-12), '#2c3e9e');
-  assert.equal(tempColor(12), '#5fd38d');
-  assert.equal(tempColor(40), '#d7263d');
-  assert.equal(windColor(5), '#7ff6ff');
-  assert.equal(windColor(90), '#ff3b3b');
+test('smooth field: corners keep the grid values, the middle blends them', () => {
+  const field = bilinear([0, 10, 20, 30], 2, 3); // 2 x 2 grid -> 3 x 3 picture
+  assert.deepEqual([...field], [0, 5, 10, 10, 15, 20, 20, 25, 30]);
+  const big = bilinear(Array.from({ length: 49 }, (_, i) => i), 7, 64);
+  assert.equal(big[0], 0);
+  assert.equal(big[64 * 64 - 1], 48);
+  // padded one step: the picture's border holds the edge values, the grid sits inside
+  const padded = bilinear([0, 10, 20, 30], 2, 4, 1); // reaches -1..2 grid steps, 1 step per pixel
+  assert.deepEqual([...padded], [0, 0, 10, 10, 0, 0, 10, 10, 20, 20, 30, 30, 20, 20, 30, 30]);
+});
+
+test('colours: blended between stops, ends held', () => {
+  const stops = [[0, '#000000'], [10, '#ffffff']];
+  assert.deepEqual(colorAt(stops, 5), [128, 128, 128]);
+  assert.deepEqual(colorAt(stops, -3), [0, 0, 0]);
+  assert.deepEqual(colorAt(stops, 99), [255, 255, 255]);
+  assert.deepEqual(colorAt(WIND_STOPS, 80), [255, 59, 59]);
+});
+
+test('temperature scale: the map\'s own range, at least 6 °C wide', () => {
+  const g = (temps) => temps.map((temp) => ({ temp }));
+  assert.deepEqual(tempStops(g([9, 10, 11])).map(([v]) => v), [7, 8.5, 10, 11.5, 13]);
+  assert.deepEqual(tempStops(g([0, 20])).map(([v]) => v), [0, 5, 10, 15, 20]);
+  assert.match(scaleBar(tempStops(g([0, 20])), '°'), /<span>0°<\/span><i style="background:linear-gradient\(90deg, #3f6fd8 0%.*#ff6a3d 100%\)"><\/i><span>20°<\/span>/);
 });
 
 test('radar: latest past frame as a tile URL with its time', () => {

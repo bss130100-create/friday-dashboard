@@ -219,8 +219,12 @@ footer { margin-top: 18px; font-size: 12px; }
 .tmap .leaflet-bar a { background: rgba(2, 7, 13, .85); color: var(--cyan); border-color: var(--line); }
 .legend { margin: 0 0 6px; color: var(--dim); }
 /* weather map labels: value per grid point, readable on any colour */
-.wx-label { font: 700 12px var(--mono); color: #fff; text-align: center; line-height: 20px; text-shadow: 0 0 2px #000, 0 0 2px #000; white-space: nowrap; }
-.wx-label .arrow { display: inline-block; font-size: 15px; margin-right: 2px; }
+.wx-label { font: 700 12px var(--mono); color: #fff; text-align: center; line-height: 20px; text-shadow: 0 0 3px #000, 0 0 2px #000; white-space: nowrap; }
+.wx-label.big { font-size: 15px; color: var(--cool); }
+.wx-field { image-rendering: auto; } /* the small field picture is stretched smoothly */
+.wx-arrow span { display: block; width: 16px; text-align: center; font: 700 14px/16px var(--mono); color: rgba(255, 255, 255, .85); text-shadow: 0 0 2px #000; }
+.wx-scale { display: flex; align-items: center; gap: 8px; margin: 2px 0 4px; font: 12px var(--mono); color: var(--dim); }
+.wx-scale i { flex: 1; height: 8px; border: 1px solid var(--line); }
 .legend .key { display: inline-block; width: 22px; margin: 0 6px 3px 12px; border-top: 4px solid; vertical-align: middle; }
 .legend .key:first-child { margin-left: 0; }
 .legend .key.red { border-color: #ff3b3b; } .legend .key.orange { border-color: #ff9f1a; } .legend .key.dashed { border-top-style: dashed; }
