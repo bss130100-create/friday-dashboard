@@ -8,9 +8,8 @@ const days = (n, start = '2026-09-01') => Array.from({ length: n }, (_, i) => ne
 afterEach(() => delete globalThis.fetch);
 
 test('history url: needs the relay, sends position only when given', () => {
-  assert.equal(historyUrl('gnss', 90, null, 'https://r.example'), 'https://r.example/history?kind=gnss&days=90');
-  assert.equal(historyUrl('quakes', 90, BUCHAREST, 'https://r.example'), 'https://r.example/history?kind=quakes&days=90&lat=44.43&lon=26.10');
-  assert.throws(() => historyUrl('gnss', 90, null, ''), /Relay not set up/);
+  assert.equal(historyUrl('gnss', 90), '/history?kind=gnss&days=90');
+  assert.equal(historyUrl('quakes', 90, BUCHAREST), '/history?kind=quakes&days=90&lat=44.43&lon=26.10');
 });
 
 test('week-over-week change', () => {
@@ -63,10 +62,10 @@ test('views render, and say so when the memory is still empty', () => {
   assert.match(renderAttackHistory(attacks), /China \(CN\)[\s\S]*14\.2%/);
 });
 
-test('renderHistory asks the relay for all three, one after another', async () => {
+test('renderHistory asks the Worker for all three, one after another', async () => {
   const asked = [];
   globalThis.fetch = async (url) => {
-    asked.push(new URL(url).searchParams.get('kind'));
+    asked.push(new URLSearchParams(url.split('?')[1]).get('kind'));
     return Response.json(url.includes('quakes') ? { days: [], biggest30d: [] } : { days: [] });
   };
   const html = await renderHistory(null, new Date());

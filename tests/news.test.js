@@ -6,18 +6,12 @@ import { BING_NEWS_RSS } from './fixtures.js';
 
 const NOW = new Date('2026-10-24T14:00:00Z');
 
-const RELAY = 'https://friday-relay.example.workers.dev';
-
-test('newsUrl goes through the relay with the trimmed place', () => {
-  assert.equal(newsUrl('  New York ', RELAY), `${RELAY}/news?q=New+York`);
-});
-
-test('newsUrl fails clearly when the relay is not configured', () => {
-  assert.throws(() => newsUrl('Brussels', ''), /relay not set up/);
+test('newsUrl asks our own Worker, with the trimmed place', () => {
+  assert.equal(newsUrl('  New York '), '/news?q=New+York');
 });
 
 test('newsUrl rejects a 1-letter place', () => {
-  assert.throws(() => newsUrl('B', RELAY), /at least 2/);
+  assert.throws(() => newsUrl('B'), /at least 2/);
 });
 
 test('parseRss: last 24 h only, newest first, entities decoded, real https links only', () => {

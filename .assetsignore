@@ -1,0 +1,14 @@
+# Files Cloudflare must NOT serve as part of the site (code, tests, tooling).
+.git
+.github
+.gitignore
+.assetsignore
+.wrangler
+node_modules
+relay
+scripts
+tests
+wrangler.jsonc
+package.json
+package-lock.json
+.dev.vars

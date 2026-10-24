@@ -1,16 +1,15 @@
 // Attack map panel: top application-layer (HTTP) attack routes of the last 24 h,
-// as seen by Cloudflare's network (Cloudflare Radar API, through our relay).
+// as seen by Cloudflare's network (Cloudflare Radar API, through our Worker).
 // "Origin" is where the attack traffic came FROM (often hijacked machines or proxies),
 // not necessarily where the attacker sits.
 import { fetchJson } from './http.js';
 import { esc } from './ui.js';
 import { worldMap } from './worldmap.js';
 import { COUNTRIES } from './countries-data.js';
-import { RELAY_URL } from './config.js';
 
-export function attacksUrl(relayUrl = RELAY_URL) {
-  if (!relayUrl) throw new Error('Relay not set up yet: put your Worker URL in js/config.js (see README).');
-  return `${relayUrl}/attacks`;
+// Same Worker that serves this page (relay/worker.js), so a plain path is enough.
+export function attacksUrl() {
+  return '/attacks';
 }
 
 export function parseAttacks(json) {

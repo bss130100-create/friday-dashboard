@@ -1,10 +1,10 @@
 # friday-dashboard
 
 **M.I.A.P. (Mihai's Intelligent Assist Platform)**: a JARVIS-style holographic HUD dashboard with live data.
-(The repository keeps its old name, `friday-dashboard`, so the web address doesn't change.)
-Plain HTML + CSS + JavaScript: no framework, no build step. GitHub Pages serves the files as they are.
+Plain HTML + CSS + JavaScript: no framework, no build step. One Cloudflare Worker serves the files as they are,
+plus the few helpers the page needs, and it sits behind a **Cloudflare Access login**: only you can open it.
 
-**Live:** https://bss130100-create.github.io/friday-dashboard/
+**Live (login):** https://friday-relay.mcioroianu2.workers.dev
 
 ## Panels and how they work
 
@@ -17,9 +17,9 @@ Plain HTML + CSS + JavaScript: no framework, no build step. GitHub Pages serves 
 | Air quality · Pollen | Open-Meteo air quality (Copernicus CAMS model) | 30 min | European AQI (0-20 good … >100 extremely poor), particles, ozone, NO₂, and pollen. Pollen is only modelled for Europe. Pollen bands (<10 low, <50 moderate, else high, grains/m³) are a rough glance scale, not medical advice. |
 | Sun · Moon | Open-Meteo + local maths | 1 h (countdown every min) | Sunrise/sunset/daylight from Open-Meteo. The moon phase is computed: the moon repeats its phases every 29.53 days, so days since a known new moon give the phase. |
 | Orbital tracking | [CelesTrak](https://celestrak.org) TLEs | orbits 2 h, positions 2 s | Downloads each satellite's orbit as a *TLE* (two lines of numbers); the SGP4 model (`vendor/satellite.es.js`) predicts where the ISS and every GPS satellite is *now*. Shows the ISS height, speed and position, and how many GPS satellites are above you. Sky plot: centre = straight up, ring = horizon, top = north; hover a dot for its PRN. |
-| Newsfeed | Bing News RSS, via your relay | 10 min | Type a place and press Enter: English articles about it from the last 24 h. Remembered in this browser. |
+| Newsfeed | Bing News RSS, via the Worker | 10 min | Type a place and press Enter: English articles about it from the last 24 h. Remembered in this browser. |
 | GNSS interference | [GPSJam](https://gpsjam.org), prepared daily by a GitHub Action | 1 h (data changes daily) | Airliners broadcast how accurate their GPS fix is. Where many aircraft report a bad fix, GPS is being jammed or spoofed. Red = >10% of aircraft affected. Hotspots are grouped into known zones (Baltic, Black Sea, Eastern Med, …). |
-| Cyber attack vectors | [Cloudflare Radar](https://radar.cloudflare.com), via your relay | 30 min | Top country→country routes of HTTP attacks Cloudflare blocked in the last 24 h. "Origin" is where attack traffic came *from* (often hijacked machines), not necessarily where the attacker is. |
+| Cyber attack vectors | [Cloudflare Radar](https://radar.cloudflare.com), via the Worker | 30 min | Top country→country routes of HTTP attacks Cloudflare blocked in the last 24 h. "Origin" is where attack traffic came *from* (often hijacked machines), not necessarily where the attacker is. |
 | Seismic activity | [USGS](https://earthquake.usgs.gov) | 5 min | Magnitude 2.5+ quakes of the last 24 h, the biggest, and the nearest to you. |
 | Internet outages | [IODA](https://ioda.inetintel.cc.gatech.edu) (Georgia Tech) | 15 min | Countries where internet reachability dropped in the last 24 h, and which signal saw it (BGP routes, active probing, Google traffic). |
 | Archive · trends | your Worker's D1 database (`/history`) | 1 h | MIAP's memory: GNSS jamming per zone (120 days, top 4 zones, change vs previous week), earthquakes per day + biggest in 30 days + nearest to you in a year, and attack origin countries' share per day. Hover a chart for the exact value. Setup below. |
@@ -43,44 +43,42 @@ Three sources don't, so they go through a helper:
 
 | Source | Helper | Why this helper |
 |---|---|---|
-| Bing News | relay (Cloudflare Worker) | live search on whatever place you type (Google News was tried, but it answers Cloudflare servers with 503 "Sorry...") |
-| Cloudflare Radar | relay | also needs a secret API token, which must never be in this public repo |
+| Bing News | the Worker | live search on whatever place you type (Google News was tried, but it answers Cloudflare servers with 503 "Sorry...") |
+| Cloudflare Radar | the Worker | also needs a secret API token, which must never be in this public repo |
 | GPSJam | GitHub Action, daily | data changes once a day, and its hexagon IDs need the `h3` library to become lat/lon |
 
 No free flight-tracking API allows CORS either, which is why there is no flights panel.
 
-### Relay setup (one time, ~10 min)
-`relay/worker.js` forwards only to Bing News and Cloudflare Radar (it is not an open proxy), answers only our github.io page, and keeps MIAP's memory (below).
+### Hosting on Cloudflare (one time)
+`wrangler.jsonc` describes the whole Worker: the site files (everything except what `.assetsignore` lists),
+`relay/worker.js` for the helpers, the D1 memory and the hourly job. Cloudflare reads it on **every push to main**
+and deploys by itself (Workers Builds), so nothing is ever pasted by hand.
+`relay/worker.js` forwards only to Bing News and Cloudflare Radar (it is not an open proxy) and keeps MIAP's memory (below).
 
-1. Create a free account at https://dash.cloudflare.com/sign-up.
-2. **Workers & Pages** → **Create application** → **Hello World** → name it `friday-relay` → **Deploy**.
-3. **Edit code**, replace everything with `relay/worker.js` → **Deploy**.
-4. [API Tokens](https://dash.cloudflare.com/profile/api-tokens) → **Create Token** → **Custom token** → permission **Account › Radar › Read** → create, copy the token.
-5. Worker → **Settings** → **Variables and Secrets** → **Add** → type **Secret**, name `RADAR_TOKEN`, paste the token → **Deploy**.
-6. Put the Worker address (e.g. `https://friday-relay.<you>.workers.dev`, no trailing slash) in `js/config.js` and push. (Already done: `https://friday-relay.mcioroianu2.workers.dev`.)
+1. Free account at https://dash.cloudflare.com/sign-up, then **Workers & Pages** → **Create** → Hello World → name `friday-relay`.
+2. [API Tokens](https://dash.cloudflare.com/profile/api-tokens) → **Create Token** → **Custom token** → permission **Account › Radar › Read** → copy it.
+   Worker → **Settings** → **Variables and Secrets** → **Add** → type **Secret**, name `RADAR_TOKEN`, paste. The token never goes in this repo.
+3. **D1 SQL database** (under Storage & databases) → **Create Database** → name `miap-memory`. Put its **Database ID** in `wrangler.jsonc`.
+4. Worker → **Settings** → **Build** → **Connect** → GitHub → repo `friday-dashboard`, branch `main`, keep the deploy command `npx wrangler deploy` → **Connect**.
+5. **Login wall:** left menu **Zero Trust** → pick a team name → **Free** plan (asks for a card, charges nothing, up to 50 users).
+   Then Worker → **Access** tab → **Protect this Worker behind Access** → **All traffic** → policy: **Emails** = your address
+   → session duration **1 month** → **Apply Access**. You log in with a code sent to that email.
 
-Test: `https://friday-relay.<you>.workers.dev/news?q=Brussels` in a browser should show XML.
-If you change `relay/worker.js`, paste it into Cloudflare again: the Worker does not update itself from GitHub.
+Builds and their logs: Worker → **Deployments**. The hourly job's runs and errors: Worker → **Settings** → **Trigger Events** → **View events**.
+When the login expires, panels say "login expired? reload the page": reloading shows the login screen.
 
-### MIAP memory: trends (one time, ~5 min)
+### MIAP memory: trends
 The **Archive · trends** panel reads history the Worker saves into a free Cloudflare **D1** database
 (SQL, 5 GB and 100k writes/day free; MIAP uses about 2k writes/day). Every hour the Worker's
 `scheduled()` handler stores: every M2.5+ earthquake (USGS), GNSS interference per hot zone
-(from `data/gpsjam.json`), and the day's attack routes (Radar). Tables are created on the first run,
-and the first run also loads 120 days of GNSS history from `data/gnss-backfill.json`.
-
-1. Dashboard left menu → **D1 SQL database** (under Storage & databases) → **Create Database** → name `miap-memory` → **Create**.
-2. **Workers & Pages** → `friday-relay` → **Bindings** → **Add binding** → **D1 database** → variable name **`DB`** → pick `miap-memory` → **Add binding**.
-3. `friday-relay` → **Settings** → **Trigger Events** (or **Triggers**) → **Add** → **Cron Triggers** → schedule `0 * * * *` (every hour) → **Add**.
-4. `friday-relay` → **Edit code** → replace everything with the new `relay/worker.js` → **Deploy**.
-
-Check: after the next full hour, `https://friday-relay.<you>.workers.dev/history?kind=gnss&days=30` shows JSON.
-Cron runs and errors: `friday-relay` → **Settings** → **Trigger Events** → **View events**.
+(from `data/gpsjam.json`, read through the Worker's own assets), and the day's attack routes (Radar).
+Tables are created on the first run, and the first run also loads 120 days of GNSS history from `data/gnss-backfill.json`.
+The database binding (`DB`) and the hourly cron (`0 * * * *`) are in `wrangler.jsonc`.
 
 ### GPS jamming data
 `.github/workflows/gpsjam.yml` runs `scripts/gpsjam.py` every day at 07:17 UTC (or by hand: Actions → gpsjam → Run workflow).
 It downloads the newest day from gpsjam.org, keeps hexagons with ≥3 aircraft and ≥2% bad fixes, converts them to lat/lon,
-counts them per hot zone (the zones are defined in `scripts/gpsjam.py`), and commits `data/gpsjam.json`. That push redeploys the site.
+counts them per hot zone (the zones are defined in `scripts/gpsjam.py`), and commits `data/gpsjam.json`. That push redeploys MIAP.
 If `data/gnss-backfill.json` is missing it also builds it once (120 past days, per zone).
 
 ## Files
@@ -91,14 +89,14 @@ manifest.webmanifest  makes it installable ("Add to Home Screen")
 js/main.js            wires each panel to its loader and refresh timer
 js/http.js            fetch wrapper that throws on errors
 js/ui.js              render helpers, runPanel() error handling, systems status
-js/config.js          your relay address
 js/worldmap.js        shared SVG world map (dots + attack arcs); land shapes in worldmap-data.js, borders in borders-data.js
 js/zoom.js            zoom and drag for the maps
 js/history.js         trends panel (reads /history); js/charts.js tiny SVG charts
 js/countries-data.js  country centre points for the maps; js/labels-data.js country names
 js/<panel>.js         one file per data source: clock, satellites, weather, airquality, astro,
                       news, gpsjam, attacks, quakes, outages, topic, commute (+ geo, location helpers)
-relay/worker.js       the Cloudflare Worker relay
+relay/worker.js       the Cloudflare Worker: helpers (news, attacks) + memory
+wrangler.jsonc        how Cloudflare deploys it (site files, database, hourly job); .assetsignore = files not served
 scripts/gpsjam.py     daily GPSJam converter (+ test_gpsjam.py)
 data/gpsjam.json      output of the daily job
 data/topic.json       topic of the week (facts + videos)
@@ -111,15 +109,15 @@ separate from fetching, which is what makes it testable without the internet.
 
 ## Run it locally
 ```bash
-npm run serve      # then open http://localhost:8000
+npm run serve      # the whole Worker locally (site + helpers + a local database), open http://localhost:8787
 npm test           # JavaScript tests, needs Node 22+
 cd scripts && pip install h3 && python -m unittest test_gpsjam   # Python tests
 ```
 Opening `index.html` straight from disk does not work: browsers block JavaScript modules on `file://`.
-The relay only answers the github.io address, so news and attacks show an error on localhost.
+Attacks need `RADAR_TOKEN`: put `RADAR_TOKEN=...` in a file named `.dev.vars` (never commit it).
 
 ## Install on iPhone
-Open the live link in **Safari** → Share → **Add to Home Screen**. Allow location when asked.
+Open the live link in **Safari**, log in, then Share → **Add to Home Screen**. Allow location when asked.
 
 ## Credits
 Land shapes: Natural Earth (public domain). Country centres: mledoze/countries (ODbL).

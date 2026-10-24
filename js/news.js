@@ -1,14 +1,12 @@
 // News panel: latest English Bing News headlines about a place you type (last 24 h).
-// Bing sends no CORS header, so we go through our own relay (relay/worker.js).
+// Bing sends no CORS header, so we go through our own Worker (relay/worker.js), which also serves this page.
 import { fetchText } from './http.js';
 import { esc, ago } from './ui.js';
-import { RELAY_URL } from './config.js';
 
-export function newsUrl(place, relayUrl = RELAY_URL) {
-  if (!relayUrl) throw new Error('News relay not set up yet: put your Worker URL in js/config.js (see README).');
+export function newsUrl(place) {
   const clean = place.trim();
   if (clean.length < 2) throw new Error('Type a place with at least 2 letters.');
-  return `${relayUrl}/news?${new URLSearchParams({ q: clean })}`;
+  return `/news?${new URLSearchParams({ q: clean })}`;
 }
 
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
