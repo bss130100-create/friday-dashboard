@@ -9,10 +9,10 @@ function source(url) {
   return /^https?:/.test(url) ? new URL(url).host : url;
 }
 
-async function request(url) {
+async function request(url, init = {}) {
   let response;
   try {
-    response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    response = await fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
   } catch (err) {
     const reason = err.name === 'TimeoutError' ? `timed out after ${TIMEOUT_MS / 1000}s` : err.message;
     // Our own Worker is behind the Cloudflare Access login: when the login expires, its answer is a
@@ -21,7 +21,9 @@ async function request(url) {
     throw new Error(`Network error for ${source(url)}: ${reason}`);
   }
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status} from ${source(url)}`);
+    // our own Worker explains its errors in the body; other sites' bodies are HTML noise
+    const detail = /^https?:/.test(url) ? '' : `: ${(await response.text()).slice(0, 200)}`;
+    throw new Error(`HTTP ${response.status} from ${source(url)}${detail}`);
   }
   return response;
 }
@@ -32,4 +34,8 @@ export async function fetchJson(url) {
 
 export async function fetchText(url) {
   return (await request(url)).text();
+}
+
+export async function putJson(url, value) {
+  return (await request(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) })).json();
 }

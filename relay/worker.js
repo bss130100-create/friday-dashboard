@@ -9,6 +9,7 @@
 //   GET /attacks          ->  Cloudflare Radar: top attack origin -> target country pairs, last 24 h
 //                             (needs the secret RADAR_TOKEN, see README)
 //   GET /history?kind=gnss|quakes|attacks&days=90  ->  trends from MIAP's memory (D1 database)
+//   GET|PUT /settings/commute  ->  your commute addresses, kept in the D1 database (never in this public repo)
 //
 // Memory: once an hour (Cron Trigger) scheduled() saves snapshots into the D1 database bound
 // as DB: earthquakes (USGS), GNSS jamming per zone (data/gpsjam.json on the site) and the day's
@@ -41,6 +42,7 @@ const SCHEMA = [
   'CREATE TABLE IF NOT EXISTS quakes (id TEXT NOT NULL PRIMARY KEY, time INTEGER NOT NULL, mag REAL, place TEXT, lat REAL, lon REAL, depth REAL)',
   'CREATE TABLE IF NOT EXISTS gnss_daily (date TEXT NOT NULL, zone TEXT NOT NULL, high INTEGER NOT NULL, medium INTEGER NOT NULL, PRIMARY KEY (date, zone))',
   'CREATE TABLE IF NOT EXISTS attacks_daily (date TEXT NOT NULL, origin TEXT NOT NULL, origin_name TEXT, target TEXT NOT NULL, pct REAL NOT NULL, PRIMARY KEY (date, origin, target))',
+  'CREATE TABLE IF NOT EXISTS settings (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)',
 ];
 
 // Rows go in as ONE JSON parameter that SQLite unpacks with json_each: one statement per job,
@@ -164,8 +166,74 @@ export async function history(env, { kind, days, near }, now = new Date()) {
   return out;
 }
 
+// ---------- settings (personal data) ----------
+
+const ACCESS_TEAM = 'https://falling-king-09ce.cloudflareaccess.com';
+const MAX_SETTING_CHARS = 4096;
+
+export class LoginError extends Error {}
+
+// JWT parts are base64url without '=' padding; atob wants classic, padded base64.
+function base64url(text) {
+  const b64 = text.replace(/-/g, '+').replace(/_/g, '/');
+  return Uint8Array.from(atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4)), (c) => c.charCodeAt(0));
+}
+
+function decodeToken(token) {
+  const [head, body, signature] = token.split('.');
+  try {
+    const json = (part) => JSON.parse(new TextDecoder().decode(base64url(part)));
+    return { head, body, header: json(head), claims: json(body), signature: base64url(signature) };
+  } catch {
+    throw new LoginError('malformed Access token');
+  }
+}
+
+// Settings hold your addresses, so the Worker checks the Access login itself too: if Access were
+// ever switched off, /settings refuses instead of handing them to anyone. Access puts a signed
+// token (JWT) on every request it lets through; we check its signature against the team's public
+// keys, its issuer and its expiry. getKeys is swappable for tests.
+export async function verifyLogin(request, now = Date.now(), getKeys = () => getJson(`${ACCESS_TEAM}/cdn-cgi/access/certs`)) {
+  const token = request.headers.get('Cf-Access-Jwt-Assertion');
+  if (!token) throw new LoginError('no Access login on this request');
+  const { head, body, header, claims, signature } = decodeToken(token);
+  if (claims.iss !== ACCESS_TEAM) throw new LoginError(`Access token from the wrong team: ${claims.iss}`);
+  if (!(claims.exp * 1000 > now)) throw new LoginError('Access login expired, reload the page');
+  const jwk = (await getKeys()).keys?.find((k) => k.kid === header.kid);
+  if (!jwk) throw new LoginError('Access token signed with an unknown key');
+  const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+  const valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, signature, new TextEncoder().encode(`${head}.${body}`));
+  if (!valid) throw new LoginError('Access token signature is invalid');
+}
+
+// GET -> the saved JSON (or null), PUT -> save the request body (a JSON object).
+export async function settings(env, request) {
+  const db = needDb(env);
+  await db.batch(SCHEMA.map((sql) => db.prepare(sql)));
+  if (request.method === 'GET') {
+    const row = await db.prepare("SELECT value FROM settings WHERE key = 'commute'").first();
+    return row?.value ?? 'null';
+  }
+  if (request.method !== 'PUT') throw new RangeError(`${request.method} not allowed`);
+  const text = await request.text();
+  if (text.length > MAX_SETTING_CHARS) throw new RangeError(`settings too big (max ${MAX_SETTING_CHARS} characters)`);
+  const value = JSON.parse(text);
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new RangeError('settings must be a JSON object');
+  await db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('commute', ?)").bind(JSON.stringify(value)).run();
+  return JSON.stringify(value);
+}
+
 export default {
   async fetch(request, env) {
+    if (new URL(request.url).pathname === '/settings/commute') {
+      try {
+        await verifyLogin(request);
+        return new Response(await settings(env, request), { headers: { 'Content-Type': 'application/json' } });
+      } catch (err) {
+        const status = err instanceof LoginError ? 403 : err instanceof RangeError || err instanceof SyntaxError ? 400 : 500;
+        return new Response(err.message, { status });
+      }
+    }
     if (new URL(request.url).pathname === '/history') {
       try {
         const body = await history(env, historyQuery(request.url));

@@ -24,11 +24,16 @@ const PLAN = { itineraries: [
 const place = (name) => ({ name, lat: 50.8, lon: 4.3 });
 const CONFIG = { home: place('Home St 1'), works: [{ label: 'Office A', place: place('A') }, { label: 'Office B', place: place('B') }] };
 
-function fakeStorage() {
-  const data = new Map();
-  return { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => data.set(k, String(v)) };
+// Stands in for the Worker's /settings/commute (GET returns null until a PUT).
+function fakeSettings() {
+  let saved = 'null';
+  globalThis.fetch = async (url, init = {}) => {
+    assert.equal(url, '/settings/commute');
+    if (init.method === 'PUT') saved = init.body;
+    return new Response(saved, { headers: { 'Content-Type': 'application/json' } });
+  };
 }
-afterEach(() => { delete globalThis.localStorage; delete globalThis.fetch; });
+afterEach(() => { delete globalThis.fetch; });
 
 test('geocode: first hit with its town; nothing found fails loudly', async () => {
   assert.equal(geocodeUrl('Gare de Tubize'), 'https://api.transitous.org/api/v1/geocode?text=Gare+de+Tubize&language=en');
@@ -38,11 +43,12 @@ test('geocode: first hit with its town; nothing found fails loudly', async () =>
   await assert.rejects(geocode('ab'), /full address/);
 });
 
-test('config: needs home + exactly two workplaces; saved and read back', () => {
-  globalThis.localStorage = fakeStorage();
-  assert.equal(readConfig(), null);
-  saveConfig(CONFIG);
-  assert.deepEqual(readConfig(), CONFIG);
+test('config: needs home + exactly two workplaces; saved to the Worker and read back', async () => {
+  fakeSettings();
+  assert.equal(await readConfig(), null);
+  assert.deepEqual(await saveConfig(CONFIG), CONFIG);
+  assert.deepEqual(await readConfig(), CONFIG);
+  await assert.rejects(saveConfig({ home: CONFIG.home, works: [] }), /both workplaces/);
   assert.throws(() => parseConfig({ ...CONFIG, home: { name: 'x' } }), /home address/);
   assert.throws(() => parseConfig({ ...CONFIG, works: [CONFIG.works[0]] }), /both workplaces/);
 });
