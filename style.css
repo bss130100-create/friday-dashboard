@@ -163,6 +163,19 @@ button:hover { border-color: var(--cyan); }
 .videos input { width: auto; margin-right: 6px; accent-color: var(--cyan); }
 .videos a { color: var(--fg); }
 
+/* ---------- trends (history) ---------- */
+.history { display: grid; gap: 4px 24px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.trend { margin: 6px 0 10px; }
+.trend-head { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.kpi-sm { font: 16px var(--mono); color: #eaffff; margin-right: 6px; }
+.chart { width: 100%; height: auto; display: block; margin-top: 2px; }
+.chart .base { stroke: var(--line); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.chart .line { fill: none; stroke: var(--cyan); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.chart .end { fill: var(--cyan); }
+.chart .bar { fill: var(--cyan); opacity: .8; }
+.chart .hit { fill: transparent; }
+.chart .hit:hover { fill: rgba(41, 217, 255, .12); }
+
 /* ---------- commute ---------- */
 #commute-setup summary { cursor: pointer; color: var(--dim); font: 11px var(--mono); letter-spacing: .2em; text-transform: uppercase; margin-bottom: 6px; }
 #commute-form label { display: block; margin: 6px 0; font-size: 12px; color: var(--dim); }

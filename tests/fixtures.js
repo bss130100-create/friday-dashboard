@@ -30,8 +30,8 @@ export const BING_NEWS_RSS = `<?xml version="1.0" encoding="utf-8" ?><rss versio
 export const USGS_JSON = {
   type: 'FeatureCollection',
   features: [
-    { properties: { mag: 4.7, place: '72 km S of Basco, Philippines', time: 1792842488678, url: 'https://earthquake.usgs.gov/a' }, geometry: { coordinates: [121.9, 19.8, 35.2] } },
-    { properties: { mag: 2.6, place: '10 km N of Vrancea, Romania', time: 1792850000000, url: 'https://earthquake.usgs.gov/b' }, geometry: { coordinates: [26.6, 45.8, 120] } },
+    { id: 'us7000abcd', properties: { mag: 4.7, place: '72 km S of Basco, Philippines', time: 1792842488678, url: 'https://earthquake.usgs.gov/a' }, geometry: { coordinates: [121.9, 19.8, 35.2] } },
+    { id: 'us7000abce', properties: { mag: 2.6, place: '10 km N of Vrancea, Romania', time: 1792850000000, url: 'https://earthquake.usgs.gov/b' }, geometry: { coordinates: [26.6, 45.8, 120] } },
   ],
 };
 

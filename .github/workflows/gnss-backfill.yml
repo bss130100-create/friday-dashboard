@@ -1,0 +1,27 @@
+name: gnss-backfill
+# One-off (run by hand): per-zone GNSS interference counts for past days -> data/gnss-backfill.json.
+# The Worker loads it into the D1 memory the first time it runs, so the trend starts with months of data.
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'How many past days'
+        default: '120'
+permissions:
+  contents: write
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install h3==4.*
+      - run: python scripts/gpsjam.py --history "${{ inputs.days }}" data/gnss-backfill.json
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/gnss-backfill.json
+          git diff --cached --quiet || (git commit -m "GNSS history backfill" && git push)
