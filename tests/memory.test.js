@@ -193,6 +193,7 @@ test('briefing: panels go to the model as readouts; bad input and missing AI are
   const body = { now: 'Saturday 19:30', panels: { Weather: '12 °C light rain' } };
   const [system, user] = briefingMessages(body);
   assert.match(system.content, /at most 3 short sentences/);
+  assert.match(system.content, /Never mention work or the commute to work on a Saturday or Sunday/);
   assert.equal(user.content, 'Local time: Saturday 19:30\n[Weather] 12 °C light rain');
   assert.throws(() => briefingMessages({ panels: {} }), /needs \{ now, panels \}/);
   assert.throws(() => briefingMessages({ now: 'x', panels: { a: 'y'.repeat(7000) } }), /too long/);
@@ -200,7 +201,7 @@ test('briefing: panels go to the model as readouts; bad input and missing AI are
   let asked;
   const env = { AI: { run: async (model, input) => { asked = { model, input }; return { response: ' Rain: take a coat. ' }; } } };
   assert.deepEqual(await briefing(env, post()), { text: 'Rain: take a coat.' });
-  assert.equal(asked.model, '@cf/meta/llama-3.1-8b-instruct-fp8-fast');
+  assert.equal(asked.model, '@cf/meta/llama-3.3-70b-instruct-fp8-fast');
   assert.equal(asked.input.max_tokens, 160);
   await assert.rejects(briefing({}, post()), /Workers AI is not bound/);
   await assert.rejects(briefing({ AI: { run: async () => ({}) } }, post()), /no text/);

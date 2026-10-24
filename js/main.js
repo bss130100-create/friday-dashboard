@@ -55,7 +55,7 @@ setInterval(() => astro && showBody('astro', renderAstro(astro, new Date())), MI
 runPanel('traffic', async () => showBody('traffic', await loadTraffic(await location(), new Date())), 15 * MINUTE);
 
 // --- AI briefing: built from what the other panels show, so it waits for them to load first
-const briefMe = async () => showBody('briefing', await loadBriefing(readouts(document), new Date()));
+const briefMe = async () => showBody('briefing', await loadBriefing(readouts(document, new Date()), new Date()));
 setTimeout(() => runPanel('briefing', briefMe, 60 * MINUTE), 20 * 1000);
 document.getElementById('brief-me').addEventListener('click', () => {
   showBody('briefing', '<p class="dim">Thinking…</p>');
