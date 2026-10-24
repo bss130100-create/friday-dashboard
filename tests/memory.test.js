@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import worker, {
   quakeRows, gnssRows, attackRows, snapshot, history, historyQuery, verifyLogin, settings,
-  roadsQuery, roadsBox, parseIncidents, roads, briefingMessages, briefing,
+  roadsQuery, roadsBox, parseIncidents, roads, briefingMessages, briefing, radarAttacks, accessKeys as teamKeys,
 } from '../relay/worker.js';
 import { USGS_JSON, RADAR_JSON } from './fixtures.js';
 
@@ -134,6 +134,40 @@ test('verifyLogin accepts only a valid, unexpired token from our Access team', a
   await assert.rejects(verifyLogin(req(await other.sign(good)), now, getKeys), /signature is invalid/);
   const [h, , s] = (await sign(good)).split('.');
   await assert.rejects(verifyLogin(req(`${h}.${b64url(JSON.stringify({ ...good, email: 'x@y' }))}.${s}`), now, getKeys), /signature is invalid/);
+});
+
+test('Access keys: fetched once an hour, again at once when a token names a new key', async () => {
+  let calls = 0;
+  let kids = ['k1'];
+  globalThis.fetch = async (url) => {
+    assert.equal(url, `${TEAM}/cdn-cgi/access/certs`);
+    calls++;
+    return Response.json({ keys: kids.map((kid) => ({ kid })) });
+  };
+  const env = { DB: fakeD1() };
+  const t0 = Date.parse('2026-10-24T17:00:00Z');
+  await teamKeys(env, 'k1', t0);
+  await teamKeys(env, 'k1', t0 + 59 * 60000);
+  assert.equal(calls, 1);
+  kids = ['k1', 'k2']; // Cloudflare rotated its key
+  assert.deepEqual((await teamKeys(env, 'k2', t0 + 60000)).keys.map((k) => k.kid), ['k1', 'k2']);
+  assert.equal(calls, 2);
+  await teamKeys(env, 'k1', t0 + 61 * 60000 + 60000);
+  assert.equal(calls, 3); // an hour after the refresh
+});
+
+test('Radar attacks: one request per 15 min for the page and the snapshot together', async () => {
+  const asked = fakeFetch();
+  const env = { DB: fakeD1(), RADAR_TOKEN: 'tok' };
+  const t0 = NOW.getTime();
+  assert.deepEqual(await radarAttacks(env, t0), RADAR_JSON);
+  await radarAttacks(env, t0 + 14 * 60000);
+  assert.equal(asked.length, 1);
+  await radarAttacks(env, t0 + 15 * 60000);
+  assert.equal(asked.length, 2);
+  await assert.rejects(radarAttacks({ DB: fakeD1() }, t0), /RADAR_TOKEN secret is not set/);
+  const res = await worker.fetch(new Request('https://m.example/attacks'), env); // the page's route
+  assert.deepEqual(await res.json(), RADAR_JSON);
 });
 
 test('settings: null until saved, then the saved object; bad input refused', async () => {

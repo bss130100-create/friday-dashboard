@@ -60,7 +60,7 @@ No free flight-tracking API allows CORS either, which is why there is no flights
 `wrangler.jsonc` describes the whole Worker: the site files (everything except what `.assetsignore` lists),
 `relay/worker.js` for the helpers, the D1 memory and the hourly job. Cloudflare reads it on **every push to main**
 and deploys by itself (Workers Builds), so nothing is ever pasted by hand.
-`relay/worker.js` forwards only to Bing News and Cloudflare Radar (it is not an open proxy) and keeps MIAP's memory (below).
+`relay/worker.js` forwards only to Bing News and Cloudflare Radar (it is not an open proxy) and keeps MIAP's memory (below). To stay well inside the free limits it keeps answers in the D1 `cache` table: Radar 15 min (shared by the page and the hourly snapshot), TomTom 30 min, and the Access login keys 1 h (fetched again at once if Cloudflare rotates them).
 
 1. Free account at https://dash.cloudflare.com/sign-up, then **Workers & Pages** → **Create** → Hello World → name `friday-relay`.
 2. [API Tokens](https://dash.cloudflare.com/profile/api-tokens) → **Create Token** → **Custom token** → permission **Account › Radar › Read** → copy it.
