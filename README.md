@@ -58,7 +58,7 @@ and deploys by itself (Workers Builds), so nothing is ever pasted by hand.
 1. Free account at https://dash.cloudflare.com/sign-up, then **Workers & Pages** → **Create** → Hello World → name `friday-relay`.
 2. [API Tokens](https://dash.cloudflare.com/profile/api-tokens) → **Create Token** → **Custom token** → permission **Account › Radar › Read** → copy it.
    Worker → **Settings** → **Variables and Secrets** → **Add** → type **Secret**, name `RADAR_TOKEN`, paste. The token never goes in this repo.
-3. **D1 SQL database** (under Storage & databases) → **Create Database** → name `miap-memory`. Put its **Database ID** in `wrangler.jsonc`.
+3. **D1 SQL database** (under Storage & databases) → **Create Database** → name `miap-memory`. Its **Database ID** is in `wrangler.jsonc` (an identifier, not a secret).
 4. Worker → **Settings** → **Build** → **Connect** → GitHub → repo `friday-dashboard`, branch `main`, keep the deploy command `npx wrangler deploy` → **Connect**.
 5. **Login wall:** left menu **Zero Trust** → pick a team name → **Free** plan (asks for a card, charges nothing, up to 50 users).
    Then Worker → **Access** tab → **Protect this Worker behind Access** → **All traffic** → policy: **Emails** = your address

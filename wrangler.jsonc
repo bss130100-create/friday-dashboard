@@ -7,7 +7,7 @@
   // Every file in the repo is a static asset except what .assetsignore lists.
   "assets": { "directory": ".", "binding": "ASSETS" },
   "d1_databases": [
-    { "binding": "DB", "database_name": "miap-memory", "database_id": "PASTE-DATABASE-ID" }
+    { "binding": "DB", "database_name": "miap-memory", "database_id": "5a98a893-6cb8-47e8-acab-07cb72df4356" }
   ],
   "triggers": { "crons": ["0 * * * *"] },
   "observability": { "enabled": true }
