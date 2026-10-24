@@ -7,12 +7,13 @@ plus the few helpers the page needs, and it sits behind a **Cloudflare Access lo
 **Live (login):** https://friday-relay.mcioroianu2.workers.dev
 
 ## Panels and how they work
-Panels are grouped in five tabs: **Time** (chronometer, sun & moon), **Commute** (where I am, commute),
+Panels are grouped in five tabs: **Time** (AI briefing, chronometer, sun & moon), **Commute** (where I am, commute),
 **Weather** (atmosphere, air quality & pollen), **News** (newsfeed, topic of the week) and **Global events**
-(GNSS, cyber attacks, seismic, outages, orbital tracking, archive). The open tab is in the address (`#commute`), so a bookmark opens it.
+(roads & rail, GNSS, cyber attacks, seismic, outages, orbital tracking, archive). The open tab is in the address (`#commute`), so a bookmark opens it.
 
 | Panel | Source | Refresh | What happens |
 |---|---|---|---|
+| AI briefing | Workers AI (`@cf/meta/llama-3.1-8b-instruct-fp8-fast`) via the Worker | 1 h, or **Brief me** | The text the other panels show (commute, where I am, roads & rail, weather, air, sun, quakes, news, topic) goes to the Worker's `/briefing`; a small AI model turns it into at most 3 sentences, action first. Free plan: 10,000 neurons a day, one briefing costs about 5. Panels in error are left out. |
 | Chronometer | your device clock | 1 s | Local time, UTC, today's date and the **ISO week number** (weeks start Monday; week 1 holds the year's first Thursday). |
 | Topic of the week | `data/topic.json` in this repo | 1 h | This week's topic, a fact of the day (rotates daily from the `start` date) and a watch list. Ticks are saved in this browser only. A new topic = Claude edits `data/topic.json` and pushes. |
 | Commute · public transport | [Transitous](https://transitous.org) (free community journey planner, data from SNCB, STIB, De Lijn, TEC…) | 5 min | Four routes: Home → Work 1, Home → Work 2, Work 1 → Home, Work 2 → Home. Door to door with trains, buses, trams, metro and walking, live delays and cancellations, and "leave in N min". **Addresses are typed once under *setup* and saved in MIAP's private database (D1, behind the login), so every device you log in from has them. They are never in this public repo.** The Worker also checks the Access login token itself before reading or saving them. Transitous receives them to plan the trips. |
@@ -22,6 +23,7 @@ Panels are grouped in five tabs: **Time** (chronometer, sun & moon), **Commute**
 | Sun · Moon | Open-Meteo + local maths | 1 h (countdown every min) | Sunrise/sunset/daylight from Open-Meteo. The moon phase is computed: the moon repeats its phases every 29.53 days, so days since a known new moon give the phase. |
 | Orbital tracking | [CelesTrak](https://celestrak.org) TLEs | orbits 2 h, positions 2 s | Downloads each satellite's orbit as a *TLE* (two lines of numbers); the SGP4 model (`vendor/satellite.es.js`) predicts where the ISS and every GPS satellite is *now*. Shows the ISS height, speed and position, and how many GPS satellites are above you. Sky plot: centre = straight up, ring = horizon, top = north; hover a dot for its PRN. |
 | Newsfeed | Bing News RSS, via the Worker | 10 min | Type a place and press Enter: English articles about it from the last 24 h. Remembered in this browser. |
+| Roads & rail around you | [TomTom](https://developer.tomtom.com) traffic incidents via the Worker + SNCB disruptions via [iRail](https://api.irail.be) | 15 min | Roads: closures, accidents, jams and roadworks in a ~78 × 78 km box around you, worst first, with delay and length. TomTom's free plan is 2,500 calls a month, so the Worker caches each ~20 km cell for 30 min and only that rounded cell is sent. Rail: current disruptions and planned works whose title names a station within 30 km of you, plus how many others there are in Belgium. |
 | GNSS interference | [GPSJam](https://gpsjam.org), prepared daily by a GitHub Action | 1 h (data changes daily) | Airliners broadcast how accurate their GPS fix is. Where many aircraft report a bad fix, GPS is being jammed or spoofed. Red = >10% of aircraft affected. Hotspots are grouped into known zones (Baltic, Black Sea, Eastern Med, …). |
 | Cyber attack vectors | [Cloudflare Radar](https://radar.cloudflare.com), via the Worker | 30 min | Top country→country routes of HTTP attacks Cloudflare blocked in the last 24 h. "Origin" is where attack traffic came *from* (often hijacked machines), not necessarily where the attacker is. |
 | Seismic activity | [USGS](https://earthquake.usgs.gov) | 5 min | Magnitude 2.5+ quakes of the last 24 h, the biggest, and the nearest to you. |
@@ -71,6 +73,10 @@ and deploys by itself (Workers Builds), so nothing is ever pasted by hand.
 
 Builds and their logs: Worker → **Deployments**. The hourly job's runs and errors: Worker → **Settings** → **Trigger Events** → **View events**.
 When the login expires, panels say "login expired? reload the page": reloading shows the login screen.
+
+**Roads (one time, ~3 min):** free account at https://developer.tomtom.com (no card) → **Dashboard** → **Keys** → copy the default key →
+Worker → **Settings** → **Variables and Secrets** → **Add** → type **Secret**, name `TOMTOM_KEY`, paste → **Deploy**.
+Until then the roads half of *Roads & rail* says `TOMTOM_KEY secret is not set`. The AI briefing needs nothing: `wrangler.jsonc` binds Workers AI as `AI`.
 
 ### MIAP memory: trends
 The **Archive · trends** panel reads history the Worker saves into a free Cloudflare **D1** database

@@ -36,6 +36,7 @@ export async function fetchText(url) {
   return (await request(url)).text();
 }
 
-export async function putJson(url, value) {
-  return (await request(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) })).json();
+// PUT or POST a JSON body, get JSON back.
+export async function sendJson(url, method, value) {
+  return (await request(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) })).json();
 }

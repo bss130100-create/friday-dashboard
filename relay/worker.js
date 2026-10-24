@@ -10,6 +10,8 @@
 //                             (needs the secret RADAR_TOKEN, see README)
 //   GET /history?kind=gnss|quakes|attacks&days=90  ->  trends from MIAP's memory (D1 database)
 //   GET|PUT /settings/commute  ->  your commute addresses, kept in the D1 database (never in this public repo)
+//   GET /roads?lat=&lon=  ->  traffic incidents around you (TomTom, needs the secret TOMTOM_KEY), cached 30 min
+//   POST /briefing        ->  a 2-3 sentence AI briefing of what the panels show (Workers AI, bound as AI)
 //
 // Memory: once an hour (Cron Trigger) scheduled() saves snapshots into the D1 database bound
 // as DB: earthquakes (USGS), GNSS jamming per zone (data/gpsjam.json on the site) and the day's
@@ -43,7 +45,15 @@ const SCHEMA = [
   'CREATE TABLE IF NOT EXISTS gnss_daily (date TEXT NOT NULL, zone TEXT NOT NULL, high INTEGER NOT NULL, medium INTEGER NOT NULL, PRIMARY KEY (date, zone))',
   'CREATE TABLE IF NOT EXISTS attacks_daily (date TEXT NOT NULL, origin TEXT NOT NULL, origin_name TEXT, target TEXT NOT NULL, pct REAL NOT NULL, PRIMARY KEY (date, origin, target))',
   'CREATE TABLE IF NOT EXISTS settings (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS cache (key TEXT NOT NULL PRIMARY KEY, saved INTEGER NOT NULL, value TEXT NOT NULL)',
 ];
+
+// The tables, created on first use.
+async function openDb(env) {
+  const db = needDb(env);
+  await db.batch(SCHEMA.map((sql) => db.prepare(sql)));
+  return db;
+}
 
 // Rows go in as ONE JSON parameter that SQLite unpacks with json_each: one statement per job,
 // so the Worker stays far below its 10 ms CPU budget.
@@ -95,8 +105,7 @@ function needDb(env) {
 // One snapshot run. Each job runs even if another fails; any failure is re-thrown at the end
 // so it shows as an error in the Worker's logs.
 export async function snapshot(env, now = new Date()) {
-  const db = needDb(env);
-  await db.batch(SCHEMA.map((sql) => db.prepare(sql)));
+  const db = await openDb(env);
   const today = now.toISOString().slice(0, 10);
   const jobs = {
     quakes: async () => db.prepare(INSERT_QUAKES).bind(JSON.stringify(quakeRows(await getJson(QUAKES_URL)))).run(),
@@ -137,7 +146,7 @@ export function historyQuery(requestUrl) {
 }
 
 export async function history(env, { kind, days, near }, now = new Date()) {
-  const db = needDb(env);
+  const db = await openDb(env); // before the first snapshot: empty tables, not "no such table"
   const since = new Date(now - days * 86400000);
   const sinceDate = since.toISOString().slice(0, 10);
   if (kind === 'gnss') {
@@ -206,40 +215,131 @@ export async function verifyLogin(request, now = Date.now(), getKeys = () => get
   if (!valid) throw new LoginError('Access token signature is invalid');
 }
 
-// GET -> the saved JSON (or null), PUT -> save the request body (a JSON object).
+// GET -> the saved object (or null), PUT -> save the request body (a JSON object).
 export async function settings(env, request) {
-  const db = needDb(env);
-  await db.batch(SCHEMA.map((sql) => db.prepare(sql)));
-  if (request.method === 'GET') {
-    const row = await db.prepare("SELECT value FROM settings WHERE key = 'commute'").first();
-    return row?.value ?? 'null';
-  }
+  const db = await openDb(env);
+  if (request.method === 'GET') return readSetting(db, 'commute');
   if (request.method !== 'PUT') throw new RangeError(`${request.method} not allowed`);
   const text = await request.text();
   if (text.length > MAX_SETTING_CHARS) throw new RangeError(`settings too big (max ${MAX_SETTING_CHARS} characters)`);
   const value = JSON.parse(text);
   if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new RangeError('settings must be a JSON object');
   await db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('commute', ?)").bind(JSON.stringify(value)).run();
-  return JSON.stringify(value);
+  return value;
 }
+
+export async function readSetting(db, key) {
+  const row = await db.prepare('SELECT value FROM settings WHERE key = ?').bind(key).first();
+  return row?.value === undefined ? null : JSON.parse(row.value);
+}
+
+// ---------- roads: TomTom traffic incidents around you ----------
+// Free TomTom plan: 2,500 requests a MONTH. So the answer is cached 30 min per ~20 km grid cell
+// (at most ~48 calls a day even with MIAP open all day), and your position is rounded to that cell.
+
+const TOMTOM_URL = 'https://api.tomtom.com/maps/orbis/traffic/incidents/details';
+const TOMTOM_FIELDS = 'incidents(type,geometry(type,coordinates),properties(iconCategory,magnitudeOfDelay,events(description),startTime,endTime,from,to,lengthInMeters,delayInSeconds,roadNumbers))';
+const ROADS_CACHE_MS = 30 * 60 * 1000;
+const CELL_DEG = 0.2;
+
+export function roadsQuery(requestUrl) {
+  const url = new URL(requestUrl);
+  const lat = Number(url.searchParams.get('lat'));
+  const lon = Number(url.searchParams.get('lon'));
+  if (!url.searchParams.has('lat') || !(Math.abs(lat) <= 90 && Math.abs(lon) <= 180)) throw new RangeError('lat/lon missing or out of range');
+  const snap = (v) => Number((Math.round(v / CELL_DEG) * CELL_DEG).toFixed(1));
+  return { lat: snap(lat), lon: snap(lon) };
+}
+
+// About 78 x 78 km around the cell: under TomTom's 10,000 km² limit.
+export function roadsBox({ lat, lon }) {
+  return [lon - 0.55, lat - 0.35, lon + 0.55, lat + 0.35].map((v) => v.toFixed(3)).join(',');
+}
+
+const SEVERITY = { roadClosed: 0, accident: 1, jam: 2, laneClosed: 3, roadWorks: 4 };
+
+export function parseIncidents(json) {
+  if (!Array.isArray(json?.incidents)) throw new Error('TomTom: no incidents list');
+  return json.incidents
+    .map(({ geometry, properties: p }) => {
+      const first = geometry.type === 'Point' ? geometry.coordinates : geometry.coordinates[0];
+      return {
+        kind: p.iconCategory,
+        what: p.events?.map((e) => e.description).join(', ') || p.iconCategory,
+        roads: p.roadNumbers ?? [],
+        from: p.from ?? '',
+        to: p.to ?? '',
+        delayMin: Math.round((p.delayInSeconds ?? 0) / 60),
+        km: Math.round((p.lengthInMeters ?? 0) / 100) / 10,
+        lat: first[1],
+        lon: first[0],
+      };
+    })
+    .sort((a, b) => (SEVERITY[a.kind] ?? 9) - (SEVERITY[b.kind] ?? 9) || b.delayMin - a.delayMin);
+}
+
+export async function roads(env, cell, now = Date.now()) {
+  const db = await openDb(env);
+  const key = `roads:${cell.lat},${cell.lon}`;
+  const hit = await db.prepare('SELECT saved, value FROM cache WHERE key = ?').bind(key).first();
+  if (hit?.saved !== undefined && now - hit.saved < ROADS_CACHE_MS) return JSON.parse(hit.value);
+  if (!env.TOMTOM_KEY) throw new Error('TOMTOM_KEY secret is not set on this Worker (see README, Roads)');
+  const params = new URLSearchParams({ apiVersion: '2', bbox: roadsBox(cell), timeValidity: 'present' });
+  const answer = await getJson(`${TOMTOM_URL}?${params}`, { 'TomTom-Api-Key': env.TOMTOM_KEY, 'TomTom-Api-Version': '2', Attributes: TOMTOM_FIELDS, 'Accept-Language': 'en-GB' });
+  const value = { cell, saved: now, incidents: parseIncidents(answer) };
+  await db.prepare('INSERT OR REPLACE INTO cache (key, saved, value) VALUES (?, ?, ?)').bind(key, now, JSON.stringify(value)).run();
+  return value;
+}
+
+// ---------- AI briefing (Workers AI) ----------
+// The page sends what its panels show right now; a small model turns it into 2-3 sentences.
+// Free plan: 10,000 "neurons" a day; one briefing costs about 5.
+
+const BRIEF_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8-fast';
+const MAX_BRIEF_CHARS = 6000;
+const BRIEF_RULES = [
+  "You are MIAP, Mihai's personal assistant. From the dashboard readouts, write a briefing of at most 3 short sentences (60 words max).",
+  'Lead with what needs action now: when to leave, cancellations, disruptions, what to wear for the weather.',
+  'Then one notable world item if any. No greeting, no lists, no markdown. Use only facts from the readouts; never invent numbers.',
+].join(' ');
+
+export function briefingMessages(body) {
+  const panels = body?.panels;
+  if (typeof body?.now !== 'string' || typeof panels !== 'object' || panels === null) throw new RangeError('briefing needs { now, panels }');
+  const lines = Object.entries(panels).map(([name, text]) => {
+    if (typeof text !== 'string') throw new RangeError(`panel ${name} must be text`);
+    return `[${name}] ${text}`;
+  });
+  const readouts = `Local time: ${body.now}\n${lines.join('\n')}`;
+  if (readouts.length > MAX_BRIEF_CHARS) throw new RangeError(`briefing input too long (max ${MAX_BRIEF_CHARS} characters)`);
+  return [{ role: 'system', content: BRIEF_RULES }, { role: 'user', content: readouts }];
+}
+
+export async function briefing(env, request) {
+  if (request.method !== 'POST') throw new RangeError(`${request.method} not allowed`);
+  if (!env.AI) throw new Error('Workers AI is not bound to this Worker as "AI" (see wrangler.jsonc)');
+  const out = await env.AI.run(BRIEF_MODEL, { messages: briefingMessages(await request.json()), max_tokens: 160 });
+  if (typeof out?.response !== 'string' || !out.response.trim()) throw new Error('Workers AI returned no text');
+  return { text: out.response.trim() };
+}
+
+// Paths answered with JSON by this Worker. Errors: 403 login, 400 bad input, 500 anything else.
+const ROUTES = {
+  '/settings/commute': async (request, env) => { await verifyLogin(request); return settings(env, request); },
+  '/history': (request, env) => history(env, historyQuery(request.url)),
+  '/roads': (request, env) => roads(env, roadsQuery(request.url)),
+  '/briefing': (request, env) => briefing(env, request),
+};
 
 export default {
   async fetch(request, env) {
-    if (new URL(request.url).pathname === '/settings/commute') {
+    const route = ROUTES[new URL(request.url).pathname];
+    if (route) {
       try {
-        await verifyLogin(request);
-        return new Response(await settings(env, request), { headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify(await route(request, env)), { headers: { 'Content-Type': 'application/json' } });
       } catch (err) {
         const status = err instanceof LoginError ? 403 : err instanceof RangeError || err instanceof SyntaxError ? 400 : 500;
         return new Response(err.message, { status });
-      }
-    }
-    if (new URL(request.url).pathname === '/history') {
-      try {
-        const body = await history(env, historyQuery(request.url));
-        return new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
-      } catch (err) {
-        return new Response(err.message, { status: err instanceof RangeError ? 400 : 500 });
       }
     }
     let target;

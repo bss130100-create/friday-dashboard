@@ -44,6 +44,7 @@
     <a href="#global">Global events</a>
   </nav>
   <main>
+    <section data-tab="time" id="briefing"><h2>AI briefing</h2><button type="button" id="brief-me">Brief me</button><div class="body"><p class="dim">Gathering panels…</p></div><div class="status"></div></section>
     <section data-tab="time" id="clock"><h2>Chronometer</h2><div class="body"></div><div class="status"></div></section>
     <section data-tab="time" id="astro"><h2>Sun · Moon</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
     <section data-tab="commute" id="here"><h2>Where I am · way home</h2><div class="body"><p class="dim">Awaiting GPS fix…</p></div><div class="status"></div></section>
@@ -79,6 +80,7 @@
       <div class="body"></div><div class="status"></div>
     </section>
     <section data-tab="news" id="topic"><h2>Topic of the week</h2><div class="body"><p class="dim">Loading topic…</p></div><div class="status"></div></section>
+    <section data-tab="global" id="traffic" class="wide"><h2>Roads &amp; rail around you</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
     <section data-tab="global" id="gpsjam" class="wide"><h2>GNSS interference</h2><div class="body"><p class="dim">Loading GPSJam data…</p></div><div class="status"></div></section>
     <section data-tab="global" id="attacks" class="wide"><h2>Cyber attack vectors</h2><div class="body"><p class="dim">Querying Cloudflare Radar…</p></div><div class="status"></div></section>
     <section data-tab="global" id="quakes" class="wide"><h2>Seismic activity</h2><div class="body"><p class="dim">Querying USGS…</p></div><div class="status"></div></section>
@@ -86,7 +88,7 @@
     <section data-tab="global" id="sats"><h2>Orbital tracking</h2><div class="body"><p class="dim">Loading orbits…</p></div><div class="status"></div></section>
     <section data-tab="global" id="history" class="wide"><h2>Archive · trends</h2><div class="body"><p class="dim">Reading MIAP's memory…</p></div><div class="status"></div></section>
   </main>
-  <footer class="dim">Data: <a href="https://transitous.org/sources/">Transitous</a> (© OpenStreetMap contributors) · CelesTrak · Open-Meteo · CAMS · Bing News · GPSJam · Cloudflare Radar · USGS · IODA (Georgia Tech) · Natural Earth.
+  <footer class="dim">Data: TomTom (roads) · iRail (SNCB disruptions) · Workers AI (briefing) · <a href="https://transitous.org/sources/">Transitous</a> (© OpenStreetMap contributors) · CelesTrak · Open-Meteo · CAMS · Bing News · GPSJam · Cloudflare Radar · USGS · IODA (Georgia Tech) · Natural Earth.
     Your location goes to Open-Meteo (weather, air, sun) and Transitous (nearest address, way home), and is never stored. Commute addresses are kept in MIAP's private database and sent to Transitous for routing.
     Source &amp; contact: <a href="https://github.com/bss130100-create/friday-dashboard">github.com/bss130100-create/friday-dashboard</a>.</footer>
 </body>

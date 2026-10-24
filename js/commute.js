@@ -3,7 +3,7 @@
 // Your addresses are typed once in the setup form and saved in MIAP's private database (our Worker,
 // behind the Access login), so every device you log in from knows them. They are never in the
 // public repository. Transitous does receive them, to find stops and plan trips.
-import { fetchJson, putJson } from './http.js';
+import { fetchJson, sendJson } from './http.js';
 import { esc } from './ui.js';
 import { distanceKm } from './geo.js';
 
@@ -66,7 +66,7 @@ export async function readConfig() {
 }
 
 export async function saveConfig(config) {
-  return parseConfig(await putJson(SETTINGS_URL, parseConfig(config)));
+  return parseConfig(await sendJson(SETTINGS_URL, 'PUT', parseConfig(config)));
 }
 
 // The four routes, in the order they are shown.
