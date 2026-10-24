@@ -9,11 +9,17 @@ export const GPSJAM_DATA_URL = 'data/gpsjam.json';
 // Known hot zones, checked in order (first match wins). [name, latMin, latMax, lonMin, lonMax]
 export const REGIONS = [
   ['Baltic / Kaliningrad', 53, 61, 12, 30],
-  ['Black Sea / Ukraine', 41, 52, 27, 40],
-  ['Caucasus', 38, 44, 40, 50],
+  ['Finnmark / Kola', 66, 72, 20, 45],
+  ['Ukraine & neighbours', 43, 53, 20, 41],
+  ['Turkey / Anatolia', 36, 43, 26, 41],
+  ['Caucasus / Caspian', 38, 48, 41, 55],
   ['Eastern Mediterranean', 30, 37.5, 28, 37],
   ['Middle East / Gulf', 23, 38, 37, 62],
-  ['Western Russia', 52, 70, 30, 60],
+  ['Red Sea / Horn of Africa', 5, 23, 32, 52],
+  ['Pakistan / India border', 26, 38, 64, 80],
+  ['Myanmar', 10, 28, 92, 102],
+  ['Western Russia', 50, 66, 30, 60],
+  ['Siberia / Mongolia', 42, 60, 85, 120],
   ['Korean Peninsula', 33, 43, 124, 132],
 ];
 
@@ -51,6 +57,6 @@ export function renderGpsJam(j, you) {
       <div><span class="kpi">${j.cells.length - high}</span><span class="dim">medium</span></div>
       <div><span class="kpi">${esc(j.date)}</span><span class="dim">UTC day</span></div>
     </div>
-    <table class="small">${j.regions.slice(0, 6).map((r) => `<tr><td>${esc(r.name)}</td><td class="hot">${r.high}</td></tr>`).join('')}</table>
+    <table class="small">${j.regions.slice(0, 8).map((r) => `<tr><td>${esc(r.name)}</td><td class="hot">${r.high}</td></tr>`).join('')}</table>
     <p class="dim small">A cell is "high" when &gt;10% of aircraft there reported degraded GPS. Data: gpsjam.org.</p>`;
 }
