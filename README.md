@@ -20,6 +20,8 @@ Panels are grouped in five tabs: **Time** (AI briefing, chronometer, sun & moon)
 | Where I am · way home | your phone's GPS + Transitous | 2 min | Your precise position (GPS on a phone, Wi-Fi on a laptop) with its accuracy, the nearest street address, the distance to home, and the next trips home with "leave in N min". Needs the home address from Commute setup. |
 | Phone alerts | the Worker's cron + Transitous, iRail, USGS → Web Push | 5 min / 1 h | Pushes to your phone, once per event. Weekdays 06:00–09:30 (routes to work) and 15:30–19:30 (routes home), Brussels time: a trip leaving in the next hour is cancelled, runs 5+ min late, or a live SNCB disruption names one of its stations. Any time (hourly): an M5+ earthquake within 500 km of home in the last 2 h. See *Phone alerts* below. |
 | Atmosphere | [Open-Meteo](https://open-meteo.com) | 10 min | Current weather at your location. |
+| Temperature map · Wind map | [Open-Meteo](https://open-meteo.com) | 30 min | Current temperature (coloured 5 °C bands) and wind (arrow = where it blows to, number = km/h) on a 7 × 7 grid of points 20 km apart, ~120 km around you. All 49 points come in ONE request, which Open-Meteo counts as about one call of its free 10,000 a day. |
+| Rain radar | [RainViewer](https://www.rainviewer.com) | 10 min | The latest radar picture (at most 10 min old) over the same area. Free for personal use since 2026 only past radar, one colour scheme and detail up to zoom 7, so it looks soft when you zoom far in. |
 | Air quality · Pollen | Open-Meteo air quality (Copernicus CAMS model) | 30 min | European AQI (0-20 good … >100 extremely poor), particles, ozone, NO₂, and pollen. Pollen is only modelled for Europe. Pollen bands (<10 low, <50 moderate, else high, grains/m³) are a rough glance scale, not medical advice. |
 | Sun · Moon | Open-Meteo + local maths | 1 h (countdown every min) | Sunrise/sunset/daylight from Open-Meteo. The moon phase is computed: the moon repeats its phases every 29.53 days, so days since a known new moon give the phase. |
 | Orbital tracking | [CelesTrak](https://celestrak.org) TLEs | orbits 2 h, positions 2 s | Downloads each satellite's orbit as a *TLE* (two lines of numbers); the SGP4 model (`vendor/satellite.es.js`) predicts where the ISS and every GPS satellite is *now*. Shows the ISS height, speed and position, and how many GPS satellites are above you. Sky plot: centre = straight up, ring = horizon, top = north; hover a dot for its PRN. |
@@ -126,7 +128,7 @@ scripts/gpsjam.py     daily GPSJam converter (+ test_gpsjam.py)
 data/gpsjam.json      output of the daily job
 data/topic.json       topic of the week (facts + videos)
 vendor/satellite.es.js  satellite.js 6.0.2 (MIT), copied as-is
-vendor/leaflet.*      Leaflet 1.9.4 (BSD-2), copied as-is: draws the Roads & rail map (js/trafficmap.js)
+vendor/leaflet.*      Leaflet 1.9.4 (BSD-2), copied as-is: draws the maps (js/basemap.js; roads & rail in js/trafficmap.js, weather in js/weathermap.js)
 tests/                unit tests (node --test)
 ```
 Each data module has the same shape: `xxxUrl()` builds the request, `parseXxx()` turns raw JSON
@@ -146,7 +148,7 @@ Attacks need `RADAR_TOKEN`: put `RADAR_TOKEN=...` in a file named `.dev.vars` (n
 Open the live link in **Safari**, log in, then Share → **Add to Home Screen**. Allow location when asked.
 
 ## Credits
-Land shapes: Natural Earth (public domain). Roads & rail map: © OpenStreetMap contributors (tiles), Leaflet. Country centres: mledoze/countries (ODbL).
+Land shapes: Natural Earth (public domain). Maps: © OpenStreetMap contributors (tiles), Leaflet, RainViewer (radar). Country centres: mledoze/countries (ODbL).
 Data: Transitous (© OpenStreetMap contributors, [sources](https://transitous.org/sources/)), CelesTrak, Open-Meteo / Copernicus CAMS, Bing News, GPSJam, Cloudflare Radar, USGS, IODA (Georgia Tech).
 
 ## License

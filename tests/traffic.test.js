@@ -1,7 +1,8 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { placesIn, stretchEnds, railShapes, parseDisturbances, parseStations, stationNamesNear, mentions } from '../js/rail.js';
-import { roadColor, mapShapes, viewBounds } from '../js/trafficmap.js';
+import { roadColor, mapShapes } from '../js/trafficmap.js';
+import { viewBounds } from '../js/basemap.js';
 import { roadsUrl, renderRoads, renderRail, renderTraffic, loadTraffic } from '../js/traffic.js';
 import { readouts, isWeekend, localNow, loadBriefing } from '../js/briefing.js';
 
@@ -61,7 +62,7 @@ test('map: red = closed roads and live rail disruptions, orange = blockages, wor
     ['red', true, 'Louvain / Leuven - Ottignies: No trains'],
     ['red', true, 'Florenville - Virton: Delays and cancellations'], // the planned works are not drawn
   ]);
-  const [[s, w], [n, e]] = viewBounds(GRAND_PLACE);
+  const [[s, w], [n, e]] = viewBounds(GRAND_PLACE, 25);
   assert.ok(Math.abs((n - s) * 111.32 - 50) < 0.01); // 50 km tall
   assert.ok(Math.abs((e - w) * 111.32 * Math.cos((GRAND_PLACE.lat * Math.PI) / 180) - 50) < 0.01); // and wide
 });

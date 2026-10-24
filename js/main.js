@@ -16,7 +16,9 @@ import { loadTopic, readWatched, toggleWatched, renderTopic } from './topic.js';
 import { geocode, readConfig, saveConfig, loadCommute, loadHere } from './commute.js';
 import { tabFromHash, showTab } from './tabs.js';
 import { loadTraffic } from './traffic.js';
-import { drawTrafficMap, resizeTrafficMap } from './trafficmap.js';
+import { drawTrafficMap, TRAFFIC_HALF_KM } from './trafficmap.js';
+import { mapPanel, resizeMaps } from './basemap.js';
+import { WEATHER_HALF_KM, loadGrid, loadRadar, paintTemperature, paintWind, paintRain, gridSummary, radarSummary } from './weathermap.js';
 import { readouts, loadBriefing } from './briefing.js';
 import { supported, UNSUPPORTED, renderAlerts, alertState, loadPushKey, enableAlerts, sendTest } from './alerts.js';
 import { ISS_TLE_URL, GPS_TLE_URL, loadTle, parseTle, satState, visibleGps, renderSatellites } from './satellites.js';
@@ -27,7 +29,7 @@ const MINUTE = 60 * 1000;
 showTab(tabFromHash(window.location.hash));
 window.addEventListener('hashchange', () => {
   showTab(tabFromHash(window.location.hash));
-  resizeTrafficMap(); // a map drawn while its tab was hidden must re-measure itself
+  resizeMaps(); // a map drawn while its tab was hidden must re-measure itself
 });
 
 // Ask for location once; if it fails, the next panel refresh asks again.
@@ -56,12 +58,36 @@ runPanel('astro', async () => { astro = await loadAstro(await location()); showB
 setInterval(() => astro && showBody('astro', renderAstro(astro, new Date())), MINUTE); // keep "daylight left" ticking
 
 // --- roads & rail around you (TomTom via the Worker + SNCB disruptions via iRail)
+const trafficMap = mapPanel(document.getElementById('traffic-map'), TRAFFIC_HALF_KM);
 runPanel('traffic', async () => {
   const here = await location();
   const { html, shapes } = await loadTraffic(here, new Date());
   showBody('traffic', html);
-  await drawTrafficMap(document.getElementById('traffic-map'), here, shapes);
+  await drawTrafficMap(trafficMap, here, shapes);
 }, 15 * MINUTE);
+
+// --- weather maps: one Open-Meteo grid request feeds both the temperature and the wind map
+// the view is 10 km wider than the grid, so the edge values aren't cut off
+const tempMap = mapPanel(document.getElementById('tempmap-map'), WEATHER_HALF_KM + 10);
+const windMap = mapPanel(document.getElementById('windmap-map'), WEATHER_HALF_KM + 10);
+const rainMap = mapPanel(document.getElementById('rainmap-map'), WEATHER_HALF_KM + 10);
+runPanel('tempmap', async () => {
+  const here = await location();
+  const grid = await loadGrid(here).catch((err) => {
+    showError('windmap', err); // same data, same failure
+    throw err;
+  });
+  await tempMap.draw(here, paintTemperature(grid));
+  showBody('tempmap', gridSummary(grid, 'temp'));
+  await windMap.draw(here, paintWind(grid));
+  showBody('windmap', gridSummary(grid, 'wind'));
+}, 30 * MINUTE);
+runPanel('rainmap', async () => {
+  const here = await location();
+  const radar = await loadRadar();
+  await rainMap.draw(here, paintRain(radar));
+  showBody('rainmap', radarSummary(radar, new Date()));
+}, 10 * MINUTE);
 
 // --- AI briefing: built from what the other panels show, so it waits for them to load first
 const briefMe = async () => showBody('briefing', await loadBriefing(readouts(document, new Date()), new Date()));
