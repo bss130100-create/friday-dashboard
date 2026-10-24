@@ -15,6 +15,8 @@ import { renderHistory } from './history.js';
 import { loadTopic, readWatched, toggleWatched, renderTopic } from './topic.js';
 import { geocode, readConfig, saveConfig, loadCommute, loadHere } from './commute.js';
 import { tabFromHash, showTab } from './tabs.js';
+import { loadTraffic } from './traffic.js';
+import { readouts, loadBriefing } from './briefing.js';
 import { ISS_TLE_URL, GPS_TLE_URL, loadTle, parseTle, satState, visibleGps, renderSatellites } from './satellites.js';
 
 const MINUTE = 60 * 1000;
@@ -47,6 +49,17 @@ runPanel('air', async () => showBody('air', renderAir(await loadAir(await locati
 let astro = null;
 runPanel('astro', async () => { astro = await loadAstro(await location()); showBody('astro', renderAstro(astro, new Date())); }, 60 * MINUTE);
 setInterval(() => astro && showBody('astro', renderAstro(astro, new Date())), MINUTE); // keep "daylight left" ticking
+
+// --- roads & rail around you (TomTom via the Worker + SNCB disruptions via iRail)
+runPanel('traffic', async () => showBody('traffic', await loadTraffic(await location(), new Date())), 15 * MINUTE);
+
+// --- AI briefing: built from what the other panels show, so it waits for them to load first
+const briefMe = async () => showBody('briefing', await loadBriefing(readouts(document), new Date()));
+setTimeout(() => runPanel('briefing', briefMe, 60 * MINUTE), 20 * 1000);
+document.getElementById('brief-me').addEventListener('click', () => {
+  showBody('briefing', '<p class="dim">Thinking…</p>');
+  briefMe().catch((err) => showError('briefing', err));
+});
 
 // --- world panels (all zoomable)
 for (const id of ['quakes', 'outages', 'gpsjam', 'attacks']) makeZoomable(id);

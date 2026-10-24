@@ -3,7 +3,10 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import worker, { quakeRows, gnssRows, attackRows, snapshot, history, historyQuery, verifyLogin, settings } from '../relay/worker.js';
+import worker, {
+  quakeRows, gnssRows, attackRows, snapshot, history, historyQuery, verifyLogin, settings,
+  roadsQuery, roadsBox, parseIncidents, roads, briefingMessages, briefing,
+} from '../relay/worker.js';
 import { USGS_JSON, RADAR_JSON } from './fixtures.js';
 
 function fakeD1() {
@@ -136,9 +139,9 @@ test('verifyLogin accepts only a valid, unexpired token from our Access team', a
 test('settings: null until saved, then the saved object; bad input refused', async () => {
   const env = { DB: fakeD1() };
   const put = (body) => new Request('https://m.example/settings/commute', { method: 'PUT', body });
-  assert.equal(await settings(env, new Request('https://m.example/settings/commute')), 'null');
+  assert.equal(await settings(env, new Request('https://m.example/settings/commute')), null);
   await settings(env, put('{"home":{"name":"H","lat":1,"lon":2}}'));
-  assert.deepEqual(JSON.parse(await settings(env, new Request('https://m.example/settings/commute'))), { home: { name: 'H', lat: 1, lon: 2 } });
+  assert.deepEqual(await settings(env, new Request('https://m.example/settings/commute')), { home: { name: 'H', lat: 1, lon: 2 } });
   await assert.rejects(settings(env, put('[1]')), /JSON object/);
   await assert.rejects(settings(env, put('x'.repeat(5000))), /too big/);
   await assert.rejects(settings(env, new Request('https://m.example/settings/commute', { method: 'DELETE' })), /not allowed/);
@@ -148,4 +151,59 @@ test('/settings/commute without a login is refused with 403', async () => {
   const res = await worker.fetch(new Request('https://m.example/settings/commute'), { DB: fakeD1() });
   assert.equal(res.status, 403);
   assert.match(await res.text(), /no Access login/);
+});
+
+// --- roads (TomTom) and briefing (Workers AI)
+const TOMTOM = { incidents: [
+  { type: 'Feature', geometry: { type: 'LineString', coordinates: [[4.43, 50.92], [4.44, 50.93]] },
+    properties: { iconCategory: 'jam', magnitudeOfDelay: 'major', events: [{ description: 'Stationary traffic' }], from: 'Vilvoorde', to: 'Machelen', lengthInMeters: 3400, delayInSeconds: 840, roadNumbers: ['E19'] } },
+  { type: 'Feature', geometry: { type: 'Point', coordinates: [4.3, 50.79] },
+    properties: { iconCategory: 'roadClosed', magnitudeOfDelay: 'undefined', events: [{ description: 'Closed' }], from: 'Ruisbroek', to: 'Drogenbos', lengthInMeters: 1200, roadNumbers: ['R0'] } },
+] };
+
+test('roads: position snapped to a ~20 km cell, box under 10,000 km², closures first', () => {
+  assert.deepEqual(roadsQuery('https://m.example/roads?lat=50.8466&lon=4.3528'), { lat: 50.8, lon: 4.4 });
+  assert.throws(() => roadsQuery('https://m.example/roads'), /lat\/lon/);
+  assert.equal(roadsBox({ lat: 50.8, lon: 4.4 }), '3.850,50.450,4.950,51.150');
+  const list = parseIncidents(TOMTOM);
+  assert.deepEqual(list.map((i) => [i.kind, i.delayMin, i.km, i.lat]), [['roadClosed', 0, 1.2, 50.79], ['jam', 14, 3.4, 50.92]]);
+  assert.throws(() => parseIncidents({}), /no incidents/);
+});
+
+test('roads: asks TomTom once, then serves the cache for 30 min; no key is a clear error', async () => {
+  let calls = 0;
+  globalThis.fetch = async (url, init) => {
+    calls++;
+    assert.match(url, /^https:\/\/api\.tomtom\.com\/maps\/orbis\/traffic\/incidents\/details\?apiVersion=2&bbox=3\.850%2C50\.450/);
+    assert.equal(init.headers['TomTom-Api-Key'], 'k');
+    return Response.json(TOMTOM);
+  };
+  const env = { DB: fakeD1(), TOMTOM_KEY: 'k' };
+  const cell = { lat: 50.8, lon: 4.4 };
+  const t0 = Date.parse('2026-10-24T17:00:00Z');
+  assert.equal((await roads(env, cell, t0)).incidents.length, 2);
+  await roads(env, cell, t0 + 29 * 60000);
+  assert.equal(calls, 1);
+  await roads(env, cell, t0 + 31 * 60000);
+  assert.equal(calls, 2);
+  await assert.rejects(roads({ DB: fakeD1() }, cell, t0), /TOMTOM_KEY secret is not set/);
+});
+
+test('briefing: panels go to the model as readouts; bad input and missing AI are explained', async () => {
+  const body = { now: 'Saturday 19:30', panels: { Weather: '12 °C light rain' } };
+  const [system, user] = briefingMessages(body);
+  assert.match(system.content, /at most 3 short sentences/);
+  assert.equal(user.content, 'Local time: Saturday 19:30\n[Weather] 12 °C light rain');
+  assert.throws(() => briefingMessages({ panels: {} }), /needs \{ now, panels \}/);
+  assert.throws(() => briefingMessages({ now: 'x', panels: { a: 'y'.repeat(7000) } }), /too long/);
+  const post = () => new Request('https://m.example/briefing', { method: 'POST', body: JSON.stringify(body) });
+  let asked;
+  const env = { AI: { run: async (model, input) => { asked = { model, input }; return { response: ' Rain: take a coat. ' }; } } };
+  assert.deepEqual(await briefing(env, post()), { text: 'Rain: take a coat.' });
+  assert.equal(asked.model, '@cf/meta/llama-3.1-8b-instruct-fp8-fast');
+  assert.equal(asked.input.max_tokens, 160);
+  await assert.rejects(briefing({}, post()), /Workers AI is not bound/);
+  await assert.rejects(briefing({ AI: { run: async () => ({}) } }, post()), /no text/);
+  const res = await worker.fetch(new Request('https://m.example/briefing'), env);
+  assert.equal(res.status, 400);
 });
