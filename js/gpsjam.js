@@ -48,6 +48,7 @@ export function renderGpsJam(j, you) {
   const high = j.cells.filter((c) => c.level === 2).length;
   const map = worldMap({
     label: 'GPS interference map',
+    zoomable: true,
     you,
     dots: j.cells.map((c) => ({ lat: c.lat, lon: c.lon, r: c.level === 2 ? 1.1 : 0.7, cls: c.level === 2 ? 'hot' : 'warm' })),
   });

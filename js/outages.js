@@ -41,6 +41,7 @@ export function renderOutages(outages) {
   const located = outages.filter((o) => COUNTRIES[o.code]);
   const map = worldMap({
     label: 'internet outages map',
+    zoomable: true,
     dots: located.map((o) => ({ lat: COUNTRIES[o.code][0], lon: COUNTRIES[o.code][1], r: 2.5, cls: `${severity(o.score)} pulse`, title: o.name })),
   });
   return `${map}

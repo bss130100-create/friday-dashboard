@@ -82,34 +82,29 @@ export function visibleGps(gpsSats, date, observer) {
 }
 
 // Polar "sky plot": centre = straight up, edge = horizon, top = north.
+// Polar "sky plot": centre = straight overhead, outer ring = horizon, north at the top.
 function skyPlot(visible) {
   const R = 90;
   const dots = visible.map((s) => {
     const r = R * (1 - s.elevation / 90);
     const x = r * Math.sin(deg2rad(s.azimuth));
     const y = -r * Math.cos(deg2rad(s.azimuth));
-    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3"/><text x="${(x + 5).toFixed(1)}" y="${(y + 3).toFixed(1)}">${esc(s.prn)}</text>`;
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4"><title>${esc(s.prn)}: ${s.elevation.toFixed(0)}° up</title></circle>`;
   });
-  return `<svg class="sky" viewBox="-100 -100 200 200" role="img" aria-label="GPS sky plot">
-    <circle r="90" class="ring"/><circle r="60" class="ring"/><circle r="30" class="ring"/>
-    <line x1="-90" y1="0" x2="90" y2="0" class="ring"/><line x1="0" y1="-90" x2="0" y2="90" class="ring"/>
+  return `<svg class="sky" viewBox="-100 -100 200 200" role="img" aria-label="GPS satellites above you">
+    <circle r="90" class="ring"/><circle r="45" class="ring"/>
     <text x="-3" y="-92" class="lbl">N</text>${dots.join('')}</svg>`;
 }
 
+// Simple view: where the ISS is + how many GPS satellites you can "see" right now.
 export function renderSatellites(iss, gpsVisible, gpsTotal) {
-  const issVisible = iss.elevation > 0 ? 'ABOVE YOUR HORIZON' : 'below horizon';
+  const where = iss.elevation > 0 ? 'above your horizon now' : `${Math.round(iss.rangeKm).toLocaleString('en-US')} km from you`;
   return `
-    <h3>&gt; ISS (ZARYA)</h3>
-    <table>
-      <tr><td>LAT/LON</td><td>${iss.lat.toFixed(2)}°, ${iss.lon.toFixed(2)}°</td></tr>
-      <tr><td>ALT</td><td>${iss.altKm.toFixed(0)} km</td></tr>
-      <tr><td>SPEED</td><td>${iss.speedKmS.toFixed(2)} km/s (${(iss.speedKmS * 3600).toFixed(0)} km/h)</td></tr>
-      <tr><td>RANGE</td><td>${iss.rangeKm.toFixed(0)} km, el ${iss.elevation.toFixed(1)}° (${issVisible})</td></tr>
-    </table>
-    <h3>&gt; GPS: ${gpsVisible.length}/${gpsTotal} sats above you</h3>
-    <div class="sky-wrap">${skyPlot(gpsVisible)}
-    <table class="small">
-      <tr><th>PRN</th><th>EL</th><th>AZ</th><th>ALT km</th></tr>
-      ${gpsVisible.map((s) => `<tr><td>${esc(s.prn)}</td><td>${s.elevation.toFixed(0)}°</td><td>${s.azimuth.toFixed(0)}°</td><td>${s.altKm.toFixed(0)}</td></tr>`).join('')}
-    </table></div>`;
+    <h3>&gt; ISS</h3>
+    <div><span class="big">${iss.altKm.toFixed(0)} km</span> up, ${(iss.speedKmS * 3600).toFixed(0)} km/h</div>
+    <div class="dim">over ${iss.lat.toFixed(1)}°, ${iss.lon.toFixed(1)}°, ${where}</div>
+    <h3>&gt; GPS</h3>
+    <div class="orbit">${skyPlot(gpsVisible)}
+      <div><span class="big">${gpsVisible.length}</span> of ${gpsTotal} sats above you<br>
+      <span class="dim">centre = overhead, ring = horizon</span></div></div>`;
 }

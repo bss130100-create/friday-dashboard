@@ -19,17 +19,6 @@ export const WEATHER_JSON = {
   },
 };
 
-export const NVD_JSON = {
-  vulnerabilities: [
-    { cve: { id: 'CVE-2026-0001', published: '2026-10-20T10:00:00.000',
-      metrics: { cvssMetricV31: [{ cvssData: { baseScore: 9.8 } }] },
-      descriptions: [{ lang: 'en', value: 'Old one <script>alert(1)</script>' }] } },
-    { cve: { id: 'CVE-2026-0002', published: '2026-10-23T10:00:00.000',
-      metrics: { cvssMetricV30: [{ cvssData: { baseScore: 9.1 } }] },
-      descriptions: [{ lang: 'es', value: 'hola' }, { lang: 'en', value: 'New one' }] } },
-  ],
-};
-
 // Bing News RSS, trimmed (note: items are NOT in date order).
 export const BING_NEWS_RSS = `<?xml version="1.0" encoding="utf-8" ?><rss version="2.0" xmlns:News="https://www.bing.com/news/search?q=brussels&amp;format=rss"><channel><title>brussels - BingNews</title>
 <item><title>Brussels Shopkeepers Board Up Stores as Europe Braces for Protests</title><link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;aid=&amp;tid=abc&amp;url=https%3a%2f%2fwww.kurdistan24.net%2fen%2fstory%2f1&amp;c=1&amp;mkt=en-us</link><description>x</description><pubDate>Sat, 24 Oct 2026 11:43:00 GMT</pubDate><News:Source>Kurdistan24</News:Source></item>

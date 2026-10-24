@@ -99,9 +99,18 @@ td:first-child, th { color: var(--dim); }
 .fill.hot { background: var(--hot); box-shadow: 0 0 10px var(--hot); }
 
 /* ---------- maps ---------- */
-.worldmap { width: 100%; height: auto; display: block; margin: 4px 0; }
-.worldmap .land { fill: rgba(41, 217, 255, .10); stroke: rgba(41, 217, 255, .55); stroke-width: .25; }
-.worldmap .grid { stroke: rgba(41, 217, 255, .12); stroke-width: .3; stroke-dasharray: 1 2; }
+.map-wrap { position: relative; user-select: none; -webkit-user-select: none; }
+.worldmap { width: 100%; height: auto; display: block; margin: 4px 0; touch-action: pan-y; }
+.worldmap.zoomed { touch-action: none; cursor: grab; }
+.worldmap.zoomed .sweep { display: none; }
+/* non-scaling strokes: outlines stay hairline-thin when zoomed in */
+.worldmap .land { fill: rgba(41, 217, 255, .10); stroke: rgba(41, 217, 255, .55); stroke-width: .7px; vector-effect: non-scaling-stroke; }
+.worldmap .grid { stroke: rgba(41, 217, 255, .12); stroke-width: .8px; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke; }
+.zoom-ctl { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; align-items: center; z-index: 1; }
+.zoom-ctl button { width: 26px; height: 26px; padding: 0; background: rgba(2, 7, 13, .8); color: var(--cyan);
+  border: 1px solid var(--line); font: 15px var(--mono); cursor: pointer; }
+.zoom-ctl button:hover { border-color: var(--cyan); box-shadow: 0 0 8px var(--line); }
+.zoom-level { font: 11px var(--mono); color: var(--dim); min-width: 34px; text-align: right; }
 .worldmap circle { fill: var(--cyan); }
 .worldmap circle.hot { fill: var(--hot); }
 .worldmap circle.warm { fill: var(--warm); opacity: .85; }
@@ -111,13 +120,14 @@ td:first-child, th { color: var(--dim); }
 .worldmap .arc { fill: none; stroke: var(--hot); opacity: .75; stroke-dasharray: 3 2; animation: flow 1.2s linear infinite; }
 @keyframes flow { to { stroke-dashoffset: -5; } }
 .worldmap .you circle { fill: #fff; }
-.worldmap .you .ping { fill: none; stroke: #fff; stroke-width: .5; animation: pulse 2.5s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+.worldmap .you .ping { fill: none; stroke: #fff; stroke-width: 1px; vector-effect: non-scaling-stroke; animation: pulse 2.5s ease-out infinite; transform-box: fill-box; transform-origin: center; }
 .worldmap .sweep { fill: rgba(41, 217, 255, .12); animation: sweep 6s linear infinite; }
 @keyframes sweep { from { transform: translateX(0); } to { transform: translateX(358px); } }
 
 /* ---------- satellites sky plot ---------- */
-.sky-wrap { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
-.sky { width: 180px; height: 180px; flex: none; }
+.orbit { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.orbit .big { font: 600 22px var(--mono); color: var(--cyan); }
+.sky { width: 170px; height: 170px; flex: none; }
 .sky .ring { fill: none; stroke: var(--line); }
 .sky circle:not(.ring) { fill: var(--cyan); filter: drop-shadow(0 0 2px var(--cyan)); }
 .sky text { fill: var(--fg); font: 9px var(--mono); }

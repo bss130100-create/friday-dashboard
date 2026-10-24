@@ -1,6 +1,6 @@
 {
-  "name": "FRIDAY dashboard",
-  "short_name": "FRIDAY",
+  "name": "MIAP: Mihai's Intelligent Assist Platform",
+  "short_name": "MIAP",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
