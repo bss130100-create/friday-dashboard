@@ -2,6 +2,7 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   geocodeUrl, parseGeocode, geocode, parseConfig, saveConfig, readConfig, routes, planUrl, parsePlan, renderRoute, loadCommute,
+  reverseUrl, parseReverse, renderHere, loadHere,
 } from '../js/commute.js';
 
 // Trimmed real Transitous answers (2026-10-24), public places only.
@@ -93,4 +94,51 @@ test('loadCommute plans all four routes, one request at a time', async () => {
   const html = await loadCommute(CONFIG, new Date('2026-10-24T15:24:00Z'));
   assert.equal(asked.length, 4);
   assert.equal((html.match(/<h3>/g) ?? []).length, 4);
+});
+
+// Trimmed real reverse-geocode answer for the Grand-Place (public place).
+const REVERSE = [
+  { type: 'PLACE', name: "La Chaloupe d'Or", lat: 50.84673, lon: 4.35307, areas: [{ name: 'Bruxelles - Brussel', default: true }] },
+  { type: 'ADDRESS', name: 'Grand-Place - Grote Markt 26', lat: 50.84675, lon: 4.35303, areas: [{ name: 'Bruxelles - Brussel', default: true }] },
+];
+const GRAND_PLACE = { lat: 50.8466, lon: 4.3528, accuracy: 8.4 };
+const HOME = { name: 'Home St 1', lat: 50.8, lon: 4.3 };
+
+test('reverse geocode: nearest street address, with its town', () => {
+  assert.equal(reverseUrl(GRAND_PLACE), 'https://api.transitous.org/api/v1/reverse-geocode?place=50.84660%2C4.35280');
+  assert.equal(parseReverse(REVERSE), 'Grand-Place - Grote Markt 26, Bruxelles - Brussel');
+  assert.equal(parseReverse([]), 'no address nearby');
+  assert.throws(() => parseReverse({}), /Unexpected/);
+});
+
+test('where am I: address, GPS fix and the way home; at home no trip is planned', () => {
+  const now = new Date('2026-10-24T15:24:00Z');
+  const html = renderHere(GRAND_PLACE, 'Grand-Place 26', HOME, parsePlan(PLAN), now);
+  assert.match(html, /Grand-Place 26/);
+  assert.match(html, /50\.84660, 4\.35280 · ±8 m · 6\.\d km from home/);
+  assert.match(html, /Here → Home[\s\S]*leave in 12 min/);
+  assert.match(renderHere({ ...HOME, accuracy: 5 }, 'Home St 1', HOME, [], now), /You're home/);
+});
+
+test('Transitous requests from different panels never overlap', async () => {
+  let inFlight = 0;
+  let max = 0;
+  globalThis.fetch = async (url) => {
+    max = Math.max(max, ++inFlight);
+    await new Promise((r) => setTimeout(r, 5));
+    inFlight--;
+    return new Response(JSON.stringify(url.includes('reverse') ? REVERSE : PLAN));
+  };
+  const now = new Date('2026-10-24T15:24:00Z');
+  const [commute, here] = await Promise.all([loadCommute(CONFIG, now), loadHere(GRAND_PLACE, HOME, now)]);
+  assert.equal(max, 1, 'Transitous returns 429 for parallel requests');
+  assert.equal((commute.match(/<h3>/g) ?? []).length, 4);
+  assert.match(here, /Here → Home/);
+});
+
+test('one failed Transitous request does not block the next', async () => {
+  globalThis.fetch = async () => new Response('busy', { status: 429 });
+  await assert.rejects(loadHere(GRAND_PLACE, HOME, new Date()), /HTTP 429 from api\.transitous\.org/);
+  globalThis.fetch = async (url) => new Response(JSON.stringify(url.includes('reverse') ? REVERSE : PLAN));
+  assert.match(await loadHere(GRAND_PLACE, HOME, new Date('2026-10-24T15:24:00Z')), /Grand-Place - Grote Markt 26/);
 });

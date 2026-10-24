@@ -95,7 +95,9 @@ export function makeZoomable(sectionId) {
   const centre = () => [view.x + view.w / 2, view.y + view.h / 2];
 
   new MutationObserver(apply).observe(body, { childList: true });
-  window.addEventListener('resize', apply); // label sizes depend on the map's width on screen
+  // Label sizes depend on the map's width on screen: redo them when it changes, including when
+  // its tab opens (a hidden map has width 0, so its labels wait until then).
+  new ResizeObserver(apply).observe(body);
 
   body.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-zoom]');

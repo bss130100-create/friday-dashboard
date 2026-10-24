@@ -5,10 +5,20 @@
 // public repository. Transitous does receive them, to find stops and plan trips.
 import { fetchJson, putJson } from './http.js';
 import { esc } from './ui.js';
+import { distanceKm } from './geo.js';
 
 const API = 'https://api.transitous.org/api';
 const SETTINGS_URL = '/settings/commute';
 const ZONE = 'Europe/Brussels';
+
+// One request at a time, across ALL panels: Transitous answers parallel bursts with HTTP 429
+// (without a CORS header, so the browser only says "Failed to fetch").
+let queue = Promise.resolve();
+function transitous(url) {
+  const answer = queue.then(() => fetchJson(url));
+  queue = answer.catch(() => {}); // a failed request must not block the next one; its error still reaches the caller
+  return answer;
+}
 
 // --- addresses -> coordinates
 export function geocodeUrl(text) {
@@ -25,7 +35,18 @@ export function parseGeocode(json, typed) {
 
 export async function geocode(text) {
   if (text.trim().length < 3) throw new Error('Type a full address');
-  return parseGeocode(await fetchJson(geocodeUrl(text.trim())), text);
+  return parseGeocode(await transitous(geocodeUrl(text.trim())), text);
+}
+
+// --- coordinates -> nearest address
+export function reverseUrl(here) {
+  return `${API}/v1/reverse-geocode?${new URLSearchParams({ place: `${here.lat.toFixed(5)},${here.lon.toFixed(5)}` })}`;
+}
+
+export function parseReverse(json) {
+  if (!Array.isArray(json)) throw new Error('Unexpected Transitous reverse-geocode response');
+  const hit = json.find((h) => h.type === 'ADDRESS') ?? json[0];
+  return hit ? parseGeocode([hit], '').name : 'no address nearby';
 }
 
 // --- settings: { home: place, works: [{ label, place }, { label, place }] }, place = { name, lat, lon }
@@ -112,10 +133,24 @@ export function renderRoute(label, trips, now) {
   return `<h3>&gt; ${esc(label)}</h3>${head}<ul class="trips">${rows.join('')}</ul>`;
 }
 
-// One request at a time: Transitous answers parallel bursts with HTTP 429 (without a CORS
-// header, so the browser only says "Failed to fetch").
 export async function loadCommute(config, now) {
   const parts = [];
-  for (const r of routes(config)) parts.push(renderRoute(r.label, parsePlan(await fetchJson(planUrl(r.from, r.to))), now));
+  for (const r of routes(config)) parts.push(renderRoute(r.label, parsePlan(await transitous(planUrl(r.from, r.to))), now));
   return parts.join('');
+}
+
+// --- "where am I": your phone's GPS fix, the nearest address and the way home from there.
+// The position goes to Transitous for the address and the trip, and is never stored.
+export function renderHere(here, address, home, trips, now) {
+  const km = distanceKm(here.lat, here.lon, home.lat, home.lon);
+  const fix = `${here.lat.toFixed(5)}, ${here.lon.toFixed(5)} · ±${Math.round(here.accuracy)} m`;
+  const top = `<div class="kpi-sm">${esc(address)}</div><div class="dim small">${fix} · ${km.toFixed(1)} km from home</div>`;
+  if (km < 0.2) return `${top}<p class="leave">You're home.</p>`;
+  return top + renderRoute('Here → Home', trips, now);
+}
+
+export async function loadHere(here, home, now) {
+  const address = parseReverse(await transitous(reverseUrl(here)));
+  const trips = distanceKm(here.lat, here.lon, home.lat, home.lon) < 0.2 ? [] : parsePlan(await transitous(planUrl(here, home)));
+  return renderHere(here, address, home, trips, now);
 }

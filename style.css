@@ -1,9 +1,9 @@
 /* JARVIS / FRIDAY style HUD: cyan hologram on deep navy. */
 :root {
   --bg: #02070d;
-  --fg: #bff6ff;
+  --fg: #e8fcff;
   --cyan: #29d9ff;
-  --dim: #5f9fb3;
+  --dim: #a8d8e6; /* 11:1 on the panels; was #5f9fb3 (6:1), too faint */
   --line: rgba(41, 217, 255, .28);
   --panel: rgba(8, 36, 54, .42);
   --warm: #ffb347;
@@ -16,7 +16,7 @@
 * { box-sizing: border-box; }
 html { background: var(--bg); }
 body {
-  margin: 0; color: var(--fg); font: 500 15px/1.4 var(--body); letter-spacing: .02em;
+  margin: 0; color: var(--fg); font: 600 15px/1.4 var(--body); letter-spacing: .02em;
   padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
   background:
     radial-gradient(ellipse at 50% -10%, rgba(41, 217, 255, .18), transparent 60%),
@@ -48,6 +48,15 @@ h1 { margin: 0; font: 700 26px/1 var(--head); letter-spacing: .3em; color: var(-
 .sub { font-size: 11px; letter-spacing: .25em; text-transform: uppercase; color: var(--dim); margin-top: 4px; }
 .systems { margin-top: 6px; font: 12px var(--head); letter-spacing: .2em; color: var(--cool); }
 
+/* ---------- sub-menus ---------- */
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+nav.tabs a {
+  padding: 7px 14px; border: 1px solid var(--line); background: var(--panel); color: var(--dim);
+  font: 700 12px var(--head); letter-spacing: .18em; text-transform: uppercase;
+}
+nav.tabs a:hover { text-decoration: none; border-color: var(--cyan); color: var(--fg); }
+nav.tabs a.on { color: var(--bg); background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 12px rgba(41, 217, 255, .5); }
+
 /* ---------- panels ---------- */
 main { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
 @media (min-width: 720px) { section.wide { grid-column: span 2; } }
@@ -76,7 +85,7 @@ h3 { margin: 12px 0 4px; font: 600 11px var(--head); letter-spacing: .2em; color
 .big { font: 40px/1.05 var(--mono); color: #eaffff; text-shadow: 0 0 14px rgba(41, 217, 255, .7); }
 .unit { font-size: 15px; color: var(--dim); margin-left: 4px; }
 .err { color: var(--hot); font-family: var(--mono); }
-.status { margin-top: 8px; font: 11px var(--mono); color: var(--dim); text-align: right; opacity: .8; }
+.status { margin-top: 8px; font: 11px var(--mono); color: var(--dim); text-align: right; }
 table { border-collapse: collapse; font-family: var(--mono); font-size: 14px; }
 td, th { padding: 2px 14px 2px 0; text-align: left; font-weight: normal; vertical-align: top; }
 td:first-child, th { color: var(--dim); }
@@ -106,7 +115,7 @@ td:first-child, th { color: var(--dim); }
 /* non-scaling strokes: outlines stay hairline-thin when zoomed in */
 .worldmap .land { fill: rgba(41, 217, 255, .10); stroke: rgba(41, 217, 255, .55); stroke-width: .7px; vector-effect: non-scaling-stroke; }
 .worldmap .borders { fill: none; stroke: rgba(41, 217, 255, .35); stroke-width: .5px; vector-effect: non-scaling-stroke; }
-.worldmap .labels text { display: none; letter-spacing: normal; fill: rgba(191, 246, 255, .75); font-family: var(--mono); text-anchor: middle; dominant-baseline: middle;
+.worldmap .labels text { display: none; letter-spacing: normal; fill: var(--fg); font-family: var(--mono); text-anchor: middle; dominant-baseline: middle;
   pointer-events: none; paint-order: stroke; stroke: rgba(2, 7, 13, .85); stroke-width: 2px; vector-effect: non-scaling-stroke; }
 .worldmap .labels text.show { display: inline; }
 .worldmap .grid { stroke: rgba(41, 217, 255, .12); stroke-width: .8px; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke; }

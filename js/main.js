@@ -13,10 +13,15 @@ import { loadAttacks, renderAttacks } from './attacks.js';
 import { makeZoomable } from './zoom.js';
 import { renderHistory } from './history.js';
 import { loadTopic, readWatched, toggleWatched, renderTopic } from './topic.js';
-import { geocode, readConfig, saveConfig, loadCommute } from './commute.js';
+import { geocode, readConfig, saveConfig, loadCommute, loadHere } from './commute.js';
+import { tabFromHash, showTab } from './tabs.js';
 import { ISS_TLE_URL, GPS_TLE_URL, loadTle, parseTle, satState, visibleGps, renderSatellites } from './satellites.js';
 
 const MINUTE = 60 * 1000;
+
+// --- sub-menus (tabs): the open one is in the address, e.g. .../#commute
+showTab(tabFromHash(window.location.hash));
+window.addEventListener('hashchange', () => showTab(tabFromHash(window.location.hash)));
 
 // Ask for location once; if it fails, the next panel refresh asks again.
 let locationPromise = null;
@@ -123,6 +128,16 @@ document.getElementById('topic').addEventListener('change', (event) => {
     showError('topic', err);
   }
 });
+
+// --- where I am: precise GPS fix (phone) + the way home from here
+runPanel('here', async () => {
+  const config = await readConfig();
+  if (!config) {
+    showBody('here', '<p class="dim">Save your home address in Commute setup first.</p>');
+    return;
+  }
+  showBody('here', await loadHere(await getLocation({ precise: true }), config.home, new Date()));
+}, 2 * MINUTE);
 
 // --- commute: addresses typed once in the setup form, saved in MIAP's private database
 const setup = document.getElementById('commute-setup');
