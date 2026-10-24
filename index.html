@@ -39,27 +39,24 @@
     <section id="clock"><h2>Chronometer</h2><div class="body"></div><div class="status"></div></section>
     <section id="topic"><h2>Topic of the week</h2><div class="body"><p class="dim">Loading topic…</p></div><div class="status"></div></section>
     <section id="commute">
-      <h2>Commute · trains</h2>
+      <h2>Commute · public transport</h2>
       <details id="commute-setup">
         <summary>setup</summary>
         <form id="commute-form" autocomplete="off">
-          <p class="dim small">Saved only in this browser. Pick stations from the suggestions.</p>
-          <label>Home station <input name="home" list="stations" required></label>
-          <label>Minutes home &rarr; station <input name="homeMin" type="number" min="0" max="120" required></label>
-          <fieldset><legend>Workplace 1</legend>
+          <p class="dim small">Saved only in this browser. Trains, buses, trams and metro, door to door.</p>
+          <label>Home address <input name="home" required></label>
+          <fieldset><legend>Work 1</legend>
             <label>Name <input name="label1" required></label>
-            <label>Station <input name="station1" list="stations" required></label>
-            <label>Minutes station &rarr; work <input name="min1" type="number" min="0" max="120" required></label>
+            <label>Address <input name="addr1" required></label>
           </fieldset>
-          <fieldset><legend>Workplace 2 (optional)</legend>
-            <label>Name <input name="label2"></label>
-            <label>Station <input name="station2" list="stations"></label>
-            <label>Minutes station &rarr; work <input name="min2" type="number" min="0" max="120"></label>
+          <fieldset><legend>Work 2</legend>
+            <label>Name <input name="label2" required></label>
+            <label>Address <input name="addr2" required></label>
           </fieldset>
           <button type="submit">Save</button>
           <p class="err" id="commute-form-error"></p>
+          <p class="dim small" id="commute-found"></p>
         </form>
-        <datalist id="stations"></datalist>
       </details>
       <div class="body"></div><div class="status"></div>
     </section>
@@ -79,7 +76,8 @@
     <section id="quakes" class="wide"><h2>Seismic activity</h2><div class="body"><p class="dim">Querying USGS…</p></div><div class="status"></div></section>
     <section id="outages"><h2>Internet outages</h2><div class="body"><p class="dim">Querying IODA…</p></div><div class="status"></div></section>
   </main>
-  <footer class="dim">Data: iRail · CelesTrak · Open-Meteo · CAMS · Bing News · GPSJam · Cloudflare Radar · USGS · IODA (Georgia Tech) · Natural Earth.
-    Your location only goes to Open-Meteo (weather, air, sun). Commute stations stay in this browser.</footer>
+  <footer class="dim">Data: <a href="https://transitous.org/sources/">Transitous</a> (© OpenStreetMap contributors) · CelesTrak · Open-Meteo · CAMS · Bing News · GPSJam · Cloudflare Radar · USGS · IODA (Georgia Tech) · Natural Earth.
+    Your location only goes to Open-Meteo (weather, air, sun). Commute addresses are stored only in this browser and sent to Transitous for routing.
+    Source &amp; contact: <a href="https://github.com/bss130100-create/friday-dashboard">github.com/bss130100-create/friday-dashboard</a>.</footer>
 </body>
 </html>

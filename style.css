@@ -105,6 +105,7 @@ td:first-child, th { color: var(--dim); }
 .worldmap.zoomed .sweep { display: none; }
 /* non-scaling strokes: outlines stay hairline-thin when zoomed in */
 .worldmap .land { fill: rgba(41, 217, 255, .10); stroke: rgba(41, 217, 255, .55); stroke-width: .7px; vector-effect: non-scaling-stroke; }
+.worldmap .borders { fill: none; stroke: rgba(41, 217, 255, .35); stroke-width: .5px; vector-effect: non-scaling-stroke; }
 .worldmap .grid { stroke: rgba(41, 217, 255, .12); stroke-width: .8px; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke; }
 .zoom-ctl { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; align-items: center; z-index: 1; }
 .zoom-ctl button { width: 26px; height: 26px; padding: 0; background: rgba(2, 7, 13, .8); color: var(--cyan);
@@ -165,6 +166,10 @@ button:hover { border-color: var(--cyan); }
 #commute-form fieldset { border: 1px solid var(--line); margin: 8px 0; padding: 4px 10px; }
 #commute-form legend { font-size: 11px; color: var(--dim); }
 .leave { font: 600 20px var(--mono); color: var(--cyan); }
+.trips { list-style: none; padding: 0; margin: 4px 0 0; font-size: 13px; }
+.trips li { margin: 5px 0; }
+.trips .t { font-family: var(--mono); }
+.trips .legs { color: var(--dim); font-size: 12px; }
 .leave.hot { color: var(--hot); } .leave.warm { color: var(--warm); }
 footer { margin-top: 18px; font-size: 12px; }
 

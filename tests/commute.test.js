@@ -1,27 +1,28 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseStations, findStation, parseConfig, saveConfig, readConfig, connectionsUrl,
-  parseConnections, goingToWork, doorToDoor, renderTrip, loadCommute,
+  geocodeUrl, parseGeocode, geocode, parseConfig, saveConfig, readConfig, routes, planUrl, parsePlan, renderRoute, loadCommute,
 } from '../js/commute.js';
 
-// Trimmed real iRail answers (2026-10-24).
-const STATIONS = { station: [
-  { id: 'BE.NMBS.008814118', name: 'Vorst-Oost/Forest-Est', standardname: 'Vorst-Oost/Forest-Est' },
-  { id: 'BE.NMBS.008883808', name: 'Tubize', standardname: 'Tubize' },
-  { id: 'BE.NMBS.008814001', name: 'Brussels-South/Brussels-Midi', standardname: 'Brussel-Zuid/Bruxelles-Midi' },
+// Trimmed real Transitous answers (2026-10-24), public places only.
+const GEOCODE = [
+  { type: 'STOP', name: 'Tubize, Gare', lat: 50.69171, lon: 4.20573, areas: [{ name: 'Tubize', default: true }] },
+  { type: 'PLACE', name: 'Gare de Tubize', lat: 50.69197, lon: 4.205615, areas: [] },
+];
+const leg = (mode, start, end, extra = {}) => ({ mode, startTime: start, endTime: end, scheduledStartTime: start, ...extra });
+const PLAN = { itineraries: [
+  { startTime: '2026-10-24T15:36:00Z', endTime: '2026-10-24T16:01:00Z', legs: [
+    leg('WALK', '2026-10-24T15:36:00Z', '2026-10-24T15:37:00Z'),
+    leg('SUBURBAN', '2026-10-24T15:37:00Z', '2026-10-24T16:00:00Z', { routeShortName: 'S2', scheduledStartTime: '2026-10-24T15:34:00Z' }),
+    leg('WALK', '2026-10-24T16:00:00Z', '2026-10-24T16:01:00Z'),
+  ] },
+  { startTime: '2026-10-24T15:50:00Z', endTime: '2026-10-24T16:40:00Z', legs: [
+    leg('BUS', '2026-10-24T15:50:00Z', '2026-10-24T16:10:00Z', { routeShortName: '820', cancelled: true }),
+    leg('TRAM', '2026-10-24T16:15:00Z', '2026-10-24T16:40:00Z', { routeShortName: '82' }),
+  ] },
 ] };
-const t = (iso) => String(Date.parse(iso) / 1000);
-const CONNECTIONS = { connection: [
-  { departure: { time: t('2026-10-24T05:12:00Z'), delay: '180', platform: '2', canceled: '0' },
-    arrival: { time: t('2026-10-24T05:48:00Z'), delay: '180', canceled: '0' }, vias: { number: '1' } },
-  { departure: { time: t('2026-10-24T05:42:00Z'), delay: '0', platform: '2', canceled: '1' },
-    arrival: { time: t('2026-10-24T06:18:00Z'), delay: '0', canceled: '1' } },
-] };
-const CONFIG = {
-  home: { id: 'BE.NMBS.008814118', name: 'Vorst-Oost/Forest-Est' }, homeMin: 10,
-  works: [{ label: 'Office', station: { id: 'BE.NMBS.008883808', name: 'Tubize' }, min: 15 }],
-};
+const place = (name) => ({ name, lat: 50.8, lon: 4.3 });
+const CONFIG = { home: place('Home St 1'), works: [{ label: 'Office A', place: place('A') }, { label: 'Office B', place: place('B') }] };
 
 function fakeStorage() {
   const data = new Map();
@@ -29,55 +30,54 @@ function fakeStorage() {
 }
 afterEach(() => { delete globalThis.localStorage; delete globalThis.fetch; });
 
-test('stations: typed name (either language form) maps to the iRail id', () => {
-  const st = parseStations(STATIONS);
-  assert.deepEqual(findStation(st, ' tubize '), { id: 'BE.NMBS.008883808', name: 'Tubize' });
-  assert.equal(findStation(st, 'Brussel-Zuid/Bruxelles-Midi').id, 'BE.NMBS.008814001');
-  assert.throws(() => findStation(st, 'Atlantis'), /Unknown station "Atlantis"/);
-  assert.throws(() => parseStations({}), /Unexpected/);
+test('geocode: first hit with its town; nothing found fails loudly', async () => {
+  assert.equal(geocodeUrl('Gare de Tubize'), 'https://api.transitous.org/api/v1/geocode?text=Gare+de+Tubize&language=en');
+  assert.deepEqual(parseGeocode(GEOCODE, 'x'), { name: 'Tubize, Gare', lat: 50.69171, lon: 4.20573 });
+  assert.throws(() => parseGeocode([], 'Nowhere 1'), /Address not found: "Nowhere 1"/);
+  assert.throws(() => parseGeocode({ error: 1 }, 'x'), /Unexpected/);
+  await assert.rejects(geocode('ab'), /full address/);
 });
 
-test('config: validated, saved and read back', () => {
+test('config: needs home + exactly two workplaces; saved and read back', () => {
   globalThis.localStorage = fakeStorage();
   assert.equal(readConfig(), null);
   saveConfig(CONFIG);
   assert.deepEqual(readConfig(), CONFIG);
-  assert.throws(() => parseConfig({ ...CONFIG, homeMin: -5 }), /home station or minutes/);
-  assert.throws(() => parseConfig({ ...CONFIG, works: [] }), /at least one workplace/);
+  assert.throws(() => parseConfig({ ...CONFIG, home: { name: 'x' } }), /home address/);
+  assert.throws(() => parseConfig({ ...CONFIG, works: [CONFIG.works[0]] }), /both workplaces/);
 });
 
-test('connections: delay added, cancelled flagged, url uses ids', () => {
-  assert.equal(connectionsUrl('A', 'B'), 'https://api.irail.be/v1/connections/?from=A&to=B&format=json&lang=en&results=3&alerts=false');
-  const [first, second] = parseConnections(CONNECTIONS);
-  assert.equal(first.depart.toISOString(), '2026-10-24T05:15:00.000Z');
-  assert.equal(first.departDelayMin, 3);
-  assert.equal(first.changes, 1);
-  assert.equal(second.canceled, true);
-  assert.equal(second.changes, 0);
-  assert.throws(() => parseConnections({ error: 'x' }), /Unexpected/);
+test('four routes in the requested order', () => {
+  assert.deepEqual(routes(CONFIG).map((r) => r.label), ['Home → Office A', 'Home → Office B', 'Office A → Home', 'Office B → Home']);
+  assert.equal(routes(CONFIG)[2].to.name, 'Home St 1');
 });
 
-test('direction flips at 13:00 Brussels time', () => {
-  assert.equal(goingToWork(new Date('2026-10-24T10:59:00Z')), true); // 12:59 CEST
-  assert.equal(goingToWork(new Date('2026-10-24T11:00:00Z')), false); // 13:00 CEST
+test('plan: delays, cancellations and leg names', () => {
+  assert.equal(planUrl({ lat: 50.8357, lon: 4.3365 }, { lat: 50.6917, lon: 4.2057 }),
+    'https://api.transitous.org/api/v5/plan?fromPlace=50.83570%2C4.33650&toPlace=50.69170%2C4.20570&numItineraries=3');
+  const [a, b] = parsePlan(PLAN);
+  assert.equal(a.durationMin, 25);
+  assert.equal(a.delayMin, 3);
+  assert.deepEqual(a.legs, ["walk 1'", 'train S2', "walk 1'"]);
+  assert.equal(b.cancelled, true);
+  assert.deepEqual(b.legs, ['bus 820', 'tram 82']);
+  assert.throws(() => parsePlan({}), /Unexpected/);
 });
 
-test('door to door = walk + train + last leg; next trip says when to leave', () => {
-  const [first] = parseConnections(CONNECTIONS);
-  const d = doorToDoor(first, 10, 15);
-  assert.equal(d.leave.toISOString(), '2026-10-24T05:05:00.000Z');
-  assert.equal(d.totalMin, 61);
-  const html = renderTrip('HOME → Office', parseConnections(CONNECTIONS), 10, 15, new Date('2026-10-24T04:53:00Z'));
+test('render: countdown to the next running trip, in Brussels time', () => {
+  const trips = parsePlan(PLAN);
+  const html = renderRoute('Home → Office A', trips, new Date('2026-10-24T15:24:00Z'));
   assert.match(html, /leave in 12 min/);
-  assert.match(html, /07:15 <span class="warm">\+3<\/span> pl 2/); // shown in Brussels time
+  assert.match(html, /17:36 <span class="warm">\+3<\/span> → 18:01/);
   assert.match(html, /CANCELLED/);
-  assert.match(renderTrip('x', parseConnections(CONNECTIONS), 10, 15, new Date('2026-10-24T05:04:30Z')), /LEAVE NOW/);
+  assert.match(renderRoute('x', trips, new Date('2026-10-24T15:35:30Z')), /LEAVE NOW/);
+  assert.match(renderRoute('x', [trips[1]], new Date('2026-10-24T15:00:00Z')), /no trip found/);
 });
 
-test('loadCommute asks iRail home -> work in the morning', async () => {
+test('loadCommute plans all four routes', async () => {
   const asked = [];
-  globalThis.fetch = async (url) => { asked.push(url); return new Response(JSON.stringify(CONNECTIONS)); };
-  const html = await loadCommute(CONFIG, new Date('2026-10-24T04:53:00Z'));
-  assert.match(asked[0], /from=BE\.NMBS\.008814118&to=BE\.NMBS\.008883808/);
-  assert.match(html, /HOME → Office/);
+  globalThis.fetch = async (url) => { asked.push(url); return new Response(JSON.stringify(PLAN)); };
+  const html = await loadCommute(CONFIG, new Date('2026-10-24T15:24:00Z'));
+  assert.equal(asked.length, 4);
+  assert.equal((html.match(/<h3>/g) ?? []).length, 4);
 });

@@ -1,6 +1,7 @@
-// Shared world map used by the earthquake, jamming, outage and attack panels.
+// Shared world map (land + country borders) used by the earthquake, jamming, outage and attack panels.
 // Equirectangular projection: longitude -> x, latitude -> y (viewBox 0 0 360 180).
 import { LAND_PATH } from './worldmap-data.js';
+import { BORDERS_PATH } from './borders-data.js';
 import { esc } from './ui.js';
 
 export function project(lat, lon) {
@@ -34,13 +35,13 @@ const ZOOM_CONTROLS = `<div class="zoom-ctl">
 // zoomable: adds +/−/reset buttons; the panel must also call makeZoomable() (zoom.js).
 export function worldMap({ dots = [], arcs = [], you = null, label = 'world map', zoomable = false }) {
   const dotSvg = dots.map((d) => dot(...project(d.lat, d.lon), d.r ?? 1.5, d.cls ?? '', d.title));
-  const arcSvg = arcs.map((a) => `<path d="${arcPath(a.from, a.to)}" class="arc ${a.cls ?? ''}" style="stroke-width:${a.width ?? 0.6}"/>`);
+  const arcSvg = arcs.map((a) => `<path d="${arcPath(a.from, a.to)}" class="arc ${a.cls ?? ''}" data-w="${a.width ?? 0.6}" style="stroke-width:${a.width ?? 0.6}"/>`);
   const youSvg = you ? (() => {
     const [x, y] = project(you.lat, you.lon);
     return `<g class="you">${dot(x, y, 2.5, '', 'you')}${dot(x, y, 5, 'ping')}</g>`;
   })() : '';
   return `<div class="map-wrap">${zoomable ? ZOOM_CONTROLS : ''}<svg class="worldmap" viewBox="0 0 360 180" role="img" aria-label="${esc(label)}">
-    <path d="${LAND_PATH}" class="land"/>
+    <path d="${LAND_PATH}" class="land"/><path d="${BORDERS_PATH}" class="borders"/>
     <line x1="0" y1="90" x2="360" y2="90" class="grid"/><line x1="180" y1="0" x2="180" y2="180" class="grid"/>
     ${arcSvg.join('')}${dotSvg.join('')}${youSvg}
     <rect x="0" y="0" width="2" height="180" class="sweep"/>

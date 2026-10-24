@@ -10,9 +10,9 @@ Plain HTML + CSS + JavaScript: no framework, no build step. GitHub Pages serves 
 
 | Panel | Source | Refresh | What happens |
 |---|---|---|---|
-| Chronometer | your device clock | 1 s | Local, UTC and **GPS time**. GPS time started 1980-01-06 and never adds leap seconds, so today it runs **18 s ahead of UTC**. Also the GPS week number and its old 10-bit form (it rolled over to 0 in 1999 and 2019, which broke old receivers). |
+| Chronometer | your device clock | 1 s | Local time, UTC, today's date and the **ISO week number** (weeks start Monday; week 1 holds the year's first Thursday). |
 | Topic of the week | `data/topic.json` in this repo | 1 h | This week's topic, a fact of the day (rotates daily from the `start` date) and a watch list. Ticks are saved in this browser only. A new topic = Claude edits `data/topic.json` and pushes. |
-| Commute · trains | [iRail](https://docs.irail.be) (SNCB/NMBS trains) | 2 min | Live trains between your home station and each workplace station, with delays and cancellations. Before 13:00 it shows home → work, after that work → home. iRail only knows trains, so the walk/tram/bus at each end is a fixed number of minutes you enter. **Your stations are typed once under *setup* and saved only in this browser, never in this public repo.** |
+| Commute · public transport | [Transitous](https://transitous.org) (free community journey planner, data from SNCB, STIB, De Lijn, TEC…) | 3 min | Four routes: Home → Work 1, Home → Work 2, Work 1 → Home, Work 2 → Home. Door to door with trains, buses, trams, metro and walking, live delays and cancellations, and "leave in N min". **Addresses are typed once under *setup* and saved only in this browser, never in this public repo.** Transitous receives them to plan the trips. |
 | Atmosphere | [Open-Meteo](https://open-meteo.com) | 10 min | Current weather at your location. |
 | Air quality · Pollen | Open-Meteo air quality (Copernicus CAMS model) | 30 min | European AQI (0-20 good … >100 extremely poor), particles, ozone, NO₂, and pollen. Pollen is only modelled for Europe. Pollen bands (<10 low, <50 moderate, else high, grains/m³) are a rough glance scale, not medical advice. |
 | Sun · Moon | Open-Meteo + local maths | 1 h (countdown every min) | Sunrise/sunset/daylight from Open-Meteo. The moon phase is computed: the moon repeats its phases every 29.53 days, so days since a known new moon give the phase. |
@@ -23,7 +23,9 @@ Plain HTML + CSS + JavaScript: no framework, no build step. GitHub Pages serves 
 | Seismic activity | [USGS](https://earthquake.usgs.gov) | 5 min | Magnitude 2.5+ quakes of the last 24 h, the biggest, and the nearest to you. |
 | Internet outages | [IODA](https://ioda.inetintel.cc.gatech.edu) (Georgia Tech) | 15 min | Countries where internet reachability dropped in the last 24 h, and which signal saw it (BGP routes, active probing, Google traffic). |
 
-**Zoom (seismic, outages, GNSS maps):** the + / − / ⟲ buttons, double-click, pinch on the phone, or pinch / Ctrl+scroll on a laptop. Drag to move around when zoomed. The zoom stays when the data refreshes.
+All maps show land and country borders (Natural Earth 1:110m).
+
+**Zoom (all four maps):** the + / − / ⟲ buttons, double-click, pinch on the phone, or pinch / Ctrl+scroll on a laptop. Drag to move around when zoomed. The zoom stays when the data refreshes.
 
 The header shows **ALL SYSTEMS NOMINAL**, or how many panels are online when some fail.
 Your location (browser permission) only goes to Open-Meteo.
@@ -35,7 +37,7 @@ and `runPanel()` in `js/ui.js` catches it and prints it in that panel. Details a
 
 ## CORS, and why some data goes through helpers
 Browsers only let our page read another site's answer if that site sends the header
-`Access-Control-Allow-Origin` (the **CORS** rule). CelesTrak, Open-Meteo, iRail, USGS and IODA send it.
+`Access-Control-Allow-Origin` (the **CORS** rule). CelesTrak, Open-Meteo, Transitous, USGS and IODA send it.
 Three sources don't, so they go through a helper:
 
 | Source | Helper | Why this helper |
@@ -73,7 +75,7 @@ js/main.js            wires each panel to its loader and refresh timer
 js/http.js            fetch wrapper that throws on errors
 js/ui.js              render helpers, runPanel() error handling, systems status
 js/config.js          your relay address
-js/worldmap.js        shared SVG world map (dots + attack arcs); land shapes in worldmap-data.js
+js/worldmap.js        shared SVG world map (dots + attack arcs); land shapes in worldmap-data.js, borders in borders-data.js
 js/zoom.js            zoom and drag for the maps
 js/countries-data.js  country centre points for the maps
 js/<panel>.js         one file per data source: clock, satellites, weather, airquality, astro,
@@ -103,4 +105,4 @@ Open the live link in **Safari** → Share → **Add to Home Screen**. Allow loc
 
 ## Credits
 Land shapes: Natural Earth (public domain). Country centres: mledoze/countries (ODbL).
-Data: iRail, CelesTrak, Open-Meteo / Copernicus CAMS, Bing News, GPSJam, Cloudflare Radar, USGS, IODA (Georgia Tech).
+Data: Transitous (© OpenStreetMap contributors, [sources](https://transitous.org/sources/)), CelesTrak, Open-Meteo / Copernicus CAMS, Bing News, GPSJam, Cloudflare Radar, USGS, IODA (Georgia Tech).

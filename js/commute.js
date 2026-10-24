@@ -1,35 +1,38 @@
-// Commute panel: live Belgian train times from iRail (free, no key, CORS allowed).
-// iRail only knows trains (SNCB/NMBS), so the walk/tram/bus at each end is a fixed number of
-// minutes you enter yourself. Your stations and places are stored only in this browser,
-// never in the (public) repository.
+// Commute panel: door-to-door public transport (trains, buses, trams, metro) from Transitous,
+// a free community-run journey planner for Europe (https://transitous.org, no key, CORS allowed).
+// Your addresses are typed once in the setup form and kept only in this browser (localStorage),
+// never in the public repository. Transitous does receive them, to find stops and plan trips.
 import { fetchJson } from './http.js';
 import { esc } from './ui.js';
 
-export const STATIONS_URL = 'https://api.irail.be/v1/stations/?format=json&lang=en';
-const CONFIG_KEY = 'commute';
+const API = 'https://api.transitous.org/api';
+const CONFIG_KEY = 'commuteRoutes';
 const ZONE = 'Europe/Brussels';
 
-// --- stations (for the autocomplete and to turn a typed name into an iRail id)
-export function parseStations(json) {
-  if (!Array.isArray(json?.station)) throw new Error('Unexpected iRail stations response');
-  return json.station.map((s) => ({ id: s.id, name: s.name, alt: s.standardname }));
+// --- addresses -> coordinates
+export function geocodeUrl(text) {
+  return `${API}/v1/geocode?${new URLSearchParams({ text, language: 'en' })}`;
 }
 
-export function findStation(stations, typed) {
-  const want = typed.trim().toLowerCase();
-  const hit = stations.find((s) => s.name.toLowerCase() === want || s.alt.toLowerCase() === want);
-  if (!hit) throw new Error(`Unknown station "${typed}": pick one from the suggestions`);
-  return { id: hit.id, name: hit.name };
+export function parseGeocode(json, typed) {
+  if (!Array.isArray(json)) throw new Error('Unexpected Transitous geocode response');
+  const hit = json[0];
+  if (!hit) throw new Error(`Address not found: "${typed}"`);
+  const area = hit.areas?.find((a) => a.default)?.name;
+  return { name: area && !hit.name.includes(area) ? `${hit.name}, ${area}` : hit.name, lat: hit.lat, lon: hit.lon };
 }
 
-// --- settings: { home: {id, name}, homeMin, works: [{ label, station: {id, name}, min }] }
+export async function geocode(text) {
+  if (text.trim().length < 3) throw new Error('Type a full address');
+  return parseGeocode(await fetchJson(geocodeUrl(text.trim())), text);
+}
+
+// --- settings: { home: place, works: [{ label, place }, { label, place }] }, place = { name, lat, lon }
 export function parseConfig(c) {
-  const isStation = (s) => typeof s?.id === 'string' && typeof s?.name === 'string';
-  const isMin = (m) => Number.isInteger(m) && m >= 0 && m <= 120;
-  if (!isStation(c?.home) || !isMin(c?.homeMin)) throw new Error('Commute setup: home station or minutes missing');
-  if (!Array.isArray(c.works) || c.works.length === 0) throw new Error('Commute setup: add at least one workplace');
-  for (const w of c.works) {
-    if (!w.label || !isStation(w.station) || !isMin(w.min)) throw new Error('Commute setup: each workplace needs a name, station and minutes');
+  const isPlace = (p) => typeof p?.name === 'string' && Number.isFinite(p?.lat) && Number.isFinite(p?.lon);
+  if (!isPlace(c?.home)) throw new Error('Commute setup: home address missing');
+  if (!Array.isArray(c.works) || c.works.length !== 2 || c.works.some((w) => !w.label || !isPlace(w.place))) {
+    throw new Error('Commute setup: both workplaces need a name and an address');
   }
   return c;
 }
@@ -43,74 +46,71 @@ export function saveConfig(config) {
   localStorage.setItem(CONFIG_KEY, JSON.stringify(parseConfig(config)));
 }
 
-// --- trains
-export function connectionsUrl(fromId, toId) {
-  const params = new URLSearchParams({ from: fromId, to: toId, format: 'json', lang: 'en', results: '3', alerts: 'false' });
-  return `https://api.irail.be/v1/connections/?${params}`;
+// The four routes, in the order they are shown.
+export function routes(config) {
+  const [w1, w2] = config.works;
+  return [
+    { label: `Home → ${w1.label}`, from: config.home, to: w1.place },
+    { label: `Home → ${w2.label}`, from: config.home, to: w2.place },
+    { label: `${w1.label} → Home`, from: w1.place, to: config.home },
+    { label: `${w2.label} → Home`, from: w2.place, to: config.home },
+  ];
 }
 
-// iRail gives unix seconds as strings; "time" is the scheduled time, "delay" comes on top.
-export function parseConnections(json) {
-  if (!Array.isArray(json?.connection)) throw new Error('Unexpected iRail connections response');
-  return json.connection.map((c) => {
-    const at = (end) => new Date((Number(end.time) + Number(end.delay)) * 1000);
+// --- trips
+export function planUrl(from, to) {
+  const at = (p) => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`;
+  return `${API}/v5/plan?${new URLSearchParams({ fromPlace: at(from), toPlace: at(to), numItineraries: '3' })}`;
+}
+
+const RAIL = new Set(['RAIL', 'REGIONAL_RAIL', 'REGIONAL_FAST_RAIL', 'SUBURBAN', 'LONG_DISTANCE', 'HIGHSPEED_RAIL', 'NIGHT_RAIL']);
+const minutes = (ms) => Math.round(ms / 60000);
+
+function legLabel(leg) {
+  if (leg.mode === 'WALK') return `walk ${minutes(new Date(leg.endTime) - new Date(leg.startTime))}'`;
+  const kind = RAIL.has(leg.mode) ? 'train' : leg.mode === 'SUBWAY' || leg.mode === 'METRO' ? 'metro' : leg.mode.toLowerCase();
+  return `${kind} ${leg.routeShortName ?? ''}`.trim();
+}
+
+// Live data: a transit leg's startTime includes its delay, scheduledStartTime does not.
+export function parsePlan(json) {
+  if (!Array.isArray(json?.itineraries)) throw new Error('Unexpected Transitous plan response');
+  return json.itineraries.map((it) => {
+    const transit = it.legs.filter((l) => l.mode !== 'WALK');
+    const first = transit[0];
     return {
-      depart: at(c.departure),
-      departDelayMin: Math.round(Number(c.departure.delay) / 60),
-      arrive: at(c.arrival),
-      platform: c.departure.platform,
-      changes: Number(c.vias?.number ?? 0),
-      canceled: c.departure.canceled === '1' || c.arrival.canceled === '1',
+      start: new Date(it.startTime),
+      end: new Date(it.endTime),
+      durationMin: minutes(new Date(it.endTime) - new Date(it.startTime)),
+      delayMin: first ? Math.max(0, minutes(new Date(first.startTime) - new Date(first.scheduledStartTime))) : 0,
+      cancelled: it.legs.some((l) => l.cancelled === true || l.from?.cancelled === true),
+      legs: it.legs.map(legLabel),
     };
   });
 }
 
-// Morning (before 13:00 in Brussels): home -> work. Afternoon: work -> home.
-export function goingToWork(now) {
-  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: ZONE, hour: 'numeric', hourCycle: 'h23' }).format(now));
-  return hour < 13;
-}
-
 const hhmm = (d) => new Intl.DateTimeFormat('en-GB', { timeZone: ZONE, hour: '2-digit', minute: '2-digit' }).format(d);
-const plusMin = (d, m) => new Date(d.getTime() + m * 60000);
 
-// One trip: leave the door `beforeMin` before the train, reach the door `afterMin` after it.
-export function doorToDoor(conn, beforeMin, afterMin) {
-  const leave = plusMin(conn.depart, -beforeMin);
-  const reach = plusMin(conn.arrive, afterMin);
-  return { leave, reach, totalMin: Math.round((reach - leave) / 60000) };
-}
-
-export function renderTrip(label, conns, beforeMin, afterMin, now) {
-  const next = conns.filter((c) => !c.canceled && doorToDoor(c, beforeMin, afterMin).leave >= now);
-  const head = next[0]
+export function renderRoute(label, trips, now) {
+  const next = trips.find((t) => !t.cancelled && t.start >= now - 60000);
+  const head = next
     ? (() => {
-        const t = doorToDoor(next[0], beforeMin, afterMin);
-        const inMin = Math.round((t.leave - now) / 60000);
+        const inMin = minutes(next.start - now);
         const cls = inMin <= 5 ? 'hot' : inMin <= 15 ? 'warm' : '';
         return `<div><span class="leave ${cls}">${inMin <= 1 ? 'LEAVE NOW' : `leave in ${inMin} min`}</span>
-          <span class="dim">· door to door ${t.totalMin} min, there at ${hhmm(t.reach)}</span></div>`;
+          <span class="dim">· ${next.durationMin} min, there at ${hhmm(next.end)}</span></div>`;
       })()
-    : '<div class="dim">no reachable train in the next results</div>';
-  const rows = conns.map((c) => {
-    const t = doorToDoor(c, beforeMin, afterMin);
-    const delay = c.departDelayMin > 0 ? ` <span class="warm">+${c.departDelayMin}</span>` : '';
-    const status = c.canceled ? '<span class="hot">CANCELLED</span>' : `${c.changes} change${c.changes === 1 ? '' : 's'}`;
-    return `<tr${c.canceled ? ' class="dim"' : ''}><td>${hhmm(t.leave)}</td><td>${hhmm(c.depart)}${delay} pl ${esc(c.platform)}</td><td>${hhmm(t.reach)}</td><td>${status}</td></tr>`;
+    : '<div class="dim">no trip found right now</div>';
+  const rows = trips.map((t) => {
+    const delay = t.delayMin > 0 ? ` <span class="warm">+${t.delayMin}</span>` : '';
+    const status = t.cancelled ? ' <span class="hot">CANCELLED</span>' : '';
+    return `<li${t.cancelled ? ' class="dim"' : ''}><span class="t">${hhmm(t.start)}${delay} → ${hhmm(t.end)}</span>
+      <span class="dim">${t.durationMin}'</span>${status}<br><span class="legs">${t.legs.map(esc).join(' › ')}</span></li>`;
   });
-  return `<h3>&gt; ${esc(label)}</h3>${head}
-    <table class="small"><tr><th>LEAVE</th><th>TRAIN</th><th>ARRIVE</th><th></th></tr>${rows.join('')}</table>`;
+  return `<h3>&gt; ${esc(label)}</h3>${head}<ul class="trips">${rows.join('')}</ul>`;
 }
 
-// Fetch and render every workplace, in the direction that fits the time of day.
 export async function loadCommute(config, now) {
-  const toWork = goingToWork(now);
-  const parts = await Promise.all(config.works.map(async (w) => {
-    const [from, to] = toWork ? [config.home, w.station] : [w.station, config.home];
-    const conns = parseConnections(await fetchJson(connectionsUrl(from.id, to.id)));
-    const [before, after] = toWork ? [config.homeMin, w.min] : [w.min, config.homeMin];
-    const label = toWork ? `HOME → ${w.label}` : `${w.label} → HOME`;
-    return renderTrip(label, conns, before, after, now);
-  }));
+  const parts = await Promise.all(routes(config).map(async (r) => renderRoute(r.label, parsePlan(await fetchJson(planUrl(r.from, r.to))), now)));
   return parts.join('');
 }
