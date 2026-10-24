@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>FRIDAY // dashboard</title>
-  <meta name="description" content="Live terminal-style dashboard: clock + GPS time, satellites, weather, CVEs, news.">
-  <meta name="theme-color" content="#000000">
-  <!-- iPhone "Add to Home Screen": full-screen app with black status bar -->
+  <title>F.R.I.D.A.Y.</title>
+  <meta name="description" content="Live HUD dashboard: time, satellites, GPS jamming, weather, air, sky, news, cyber threats, quakes, outages.">
+  <meta name="theme-color" content="#02070d">
+  <!-- iPhone "Add to Home Screen": full-screen app with dark status bar -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,26 +14,47 @@
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600&family=Share+Tech+Mono&display=swap">
   <link rel="stylesheet" href="style.css">
   <script type="module" src="js/main.js"></script>
 </head>
 <body>
-  <header>
-    <pre class="banner">FRIDAY://dashboard <span class="dim">v1.0 · live feeds</span><span class="cursor">_</span></pre>
+  <header class="hud-header">
+    <svg class="reactor" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="46" class="r1"/>
+      <circle cx="50" cy="50" r="38" class="r2"/>
+      <circle cx="50" cy="50" r="30" class="r3"/>
+      <circle cx="50" cy="50" r="20" class="r4"/>
+      <circle cx="50" cy="50" r="11" class="core"/>
+    </svg>
+    <div>
+      <h1>F.R.I.D.A.Y.</h1>
+      <div class="sub">Female Replacement Intelligent Digital Assistant Youth</div>
+      <div id="systems" class="systems">INITIALISING…</div>
+    </div>
   </header>
   <main>
-    <section id="clock"><h2>[ TIME ]</h2><div class="body"></div><div class="status"></div></section>
-    <section id="sats"><h2>[ SAT-TRACK ]</h2><div class="body"><p class="dim">Loading orbits &amp; waiting for location<span class="cursor">_</span></p></div><div class="status"></div></section>
-    <section id="weather"><h2>[ WX ]</h2><div class="body"><p class="dim">Waiting for location<span class="cursor">_</span></p></div><div class="status"></div></section>
+    <section id="clock"><h2>Chronometer</h2><div class="body"></div><div class="status"></div></section>
+    <section id="weather"><h2>Atmosphere</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
+    <section id="air"><h2>Air quality · Pollen</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
+    <section id="astro"><h2>Sun · Moon</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
+    <section id="sats"><h2>Orbital tracking</h2><div class="body"><p class="dim">Loading orbits…</p></div><div class="status"></div></section>
     <section id="news">
-      <h2>[ NEWSFEED ]</h2>
+      <h2>Newsfeed</h2>
       <form id="news-form" autocomplete="off">
-        <label>&gt; <input name="place" placeholder="city / region / country" enterkeyhint="search" aria-label="Place for news"></label>
+        <label>&rsaquo; <input name="place" placeholder="city / region / country" enterkeyhint="search" aria-label="Place for news"></label>
       </form>
       <div class="body"></div><div class="status"></div>
     </section>
-    <section id="cves"><h2>[ CVE-CRITICAL ]</h2><div class="body"><p class="dim">Querying NVD<span class="cursor">_</span></p></div><div class="status"></div></section>
+    <section id="gpsjam" class="wide"><h2>GNSS interference</h2><div class="body"><p class="dim">Loading GPSJam data…</p></div><div class="status"></div></section>
+    <section id="attacks" class="wide"><h2>Cyber attack vectors</h2><div class="body"><p class="dim">Querying Cloudflare Radar…</p></div><div class="status"></div></section>
+    <section id="quakes" class="wide"><h2>Seismic activity</h2><div class="body"><p class="dim">Querying USGS…</p></div><div class="status"></div></section>
+    <section id="outages"><h2>Internet outages</h2><div class="body"><p class="dim">Querying IODA…</p></div><div class="status"></div></section>
+    <section id="cves"><h2>Critical CVEs</h2><div class="body"><p class="dim">Querying NVD…</p></div><div class="status"></div></section>
   </main>
-  <footer class="dim">Data: CelesTrak · Open-Meteo · NVD · Google News. Location never leaves your browser except as rounded coordinates sent to Open-Meteo.</footer>
+  <footer class="dim">Data: CelesTrak · Open-Meteo · CAMS · NVD · Google News · GPSJam · Cloudflare Radar · USGS · IODA (Georgia Tech) · Natural Earth.
+    Your location only goes to Open-Meteo (weather, air, sun).</footer>
 </body>
 </html>

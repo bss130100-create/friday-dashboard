@@ -1,7 +1,7 @@
 // News panel: latest English Google News headlines about a place you type.
 // Google News sends no CORS header, so we go through our own relay (relay/worker.js).
 import { fetchText } from './http.js';
-import { esc } from './ui.js';
+import { esc, ago } from './ui.js';
 import { RELAY_URL } from './config.js';
 
 export function newsUrl(place, relayUrl = RELAY_URL) {
@@ -48,11 +48,6 @@ export function parseRss(text) {
     })
     .filter((a) => a.url.startsWith('https://')) // only real web links, never "javascript:" etc.
     .sort((a, b) => b.published - a.published);
-}
-
-export function ago(date, now) {
-  const minutes = Math.max(0, Math.round((now - date) / 60000));
-  return minutes < 60 ? `${minutes}m ago` : `${Math.floor(minutes / 60)}h ago`;
 }
 
 export async function loadNews(place) {

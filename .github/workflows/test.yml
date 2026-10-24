@@ -11,3 +11,9 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install h3==4.*
+      - run: python -m unittest -v test_gpsjam
+        working-directory: scripts

@@ -14,8 +14,7 @@ test('parseWeather extracts the displayed values', () => {
   assert.equal(w.tempC, 14.1);
   assert.equal(w.sky, 'OVERCAST');
   assert.equal(w.windFrom, 'W');
-  assert.equal(w.sunrise, '07:54');
-  assert.match(renderWeather(w), /14\.1°C/);
+  assert.match(renderWeather(w), /14\.1<span class="unit">°C/);
 });
 
 test('parseWeather throws on an unexpected response', () => {
