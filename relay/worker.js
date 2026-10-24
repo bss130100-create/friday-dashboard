@@ -3,7 +3,7 @@
 // may not read them directly. This relay forwards to a few FIXED upstreams only,
 // so it cannot be abused as an open proxy.
 //
-//   GET /news?q=brussels  ->  Bing News RSS search, English (US market)
+//   GET /news?q=brussels  ->  Bing News RSS search, English (US market), past 24 h
 //                            (Google News answers Cloudflare's servers with 503 "Sorry...", so Bing it is)
 //   GET /attacks          ->  Cloudflare Radar: top attack origin -> target country pairs, last 24 h
 //                             (needs the secret RADAR_TOKEN, see README)
@@ -18,7 +18,8 @@ export function upstreamRequest(requestUrl, env) {
   if (url.pathname === '/news') {
     const q = (url.searchParams.get('q') ?? '').trim();
     if (q.length < 2 || q.length > 80) throw new RangeError('q must be 2-80 characters');
-    const params = new URLSearchParams({ q, format: 'rss', setlang: 'en-US', mkt: 'en-US' });
+    // qft=interval="7" is Bing's "past 24 hours" filter; without it Bing returns week-old or older articles.
+    const params = new URLSearchParams({ q, format: 'rss', setlang: 'en-US', mkt: 'en-US', qft: 'interval="7"' });
     return { url: `https://www.bing.com/news/search?${params}`, headers: { 'User-Agent': 'friday-dashboard-relay' } };
   }
   if (url.pathname === '/attacks') {
