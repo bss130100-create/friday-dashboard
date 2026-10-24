@@ -49,9 +49,9 @@ h1 { margin: 0; font: 700 26px/1 var(--head); letter-spacing: .3em; color: var(-
 .sub { font-size: 11px; letter-spacing: .25em; text-transform: uppercase; color: var(--dim); margin-top: 4px; }
 .systems { margin-top: 6px; font: 12px var(--head); letter-spacing: .2em; color: var(--cool); }
 
-/* iPhone: room above the title (two grid squares) so iOS 26's glass status bar doesn't distort it */
+/* iPhone: room above the title (one grid square) so iOS 26's glass status bar doesn't distort it */
 @media (max-width: 720px) {
-  body { padding-top: calc(max(16px, env(safe-area-inset-top)) + 80px); }
+  body { padding-top: calc(max(16px, env(safe-area-inset-top)) + 40px); }
 }
 
 /* ---------- sub-menus ---------- */
