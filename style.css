@@ -64,7 +64,8 @@ nav.tabs a:hover { text-decoration: none; border-color: var(--cyan); color: var(
 nav.tabs a.on { color: var(--bg); background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 6px rgba(41, 217, 255, .4); }
 
 /* ---------- panels ---------- */
-main { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+/* align-items: start = each panel is only as tall as its content, not as tall as its row */
+main { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); align-items: start; }
 @media (min-width: 720px) { section.wide { grid-column: span 2; } }
 section {
   position: relative; min-width: 0; padding: 14px 16px 10px;
