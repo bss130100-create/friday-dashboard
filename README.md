@@ -59,7 +59,8 @@ and deploys by itself (Workers Builds), so nothing is ever pasted by hand.
 2. [API Tokens](https://dash.cloudflare.com/profile/api-tokens) → **Create Token** → **Custom token** → permission **Account › Radar › Read** → copy it.
    Worker → **Settings** → **Variables and Secrets** → **Add** → type **Secret**, name `RADAR_TOKEN`, paste. The token never goes in this repo.
 3. **D1 SQL database** (under Storage & databases) → **Create Database** → name `miap-memory`. Its **Database ID** is in `wrangler.jsonc` (an identifier, not a secret).
-4. Worker → **Settings** → **Build** → **Connect** → GitHub → repo `friday-dashboard`, branch `main`, keep the deploy command `npx wrangler deploy` → **Connect**.
+4. Worker → **Settings** → **Build** → **Connect** → GitHub → repo `friday-dashboard`, branch `main`, keep the deploy command `npx wrangler deploy`, untick **Enable Preview builds** → **Connect**.
+   The first build starts with the next commit pushed to main.
 5. **Login wall:** left menu **Zero Trust** → pick a team name → **Free** plan (asks for a card, charges nothing, up to 50 users).
    Then Worker → **Access** tab → **Protect this Worker behind Access** → **All traffic** → policy: **Emails** = your address
    → session duration **1 month** → **Apply Access**. You log in with a code sent to that email.
