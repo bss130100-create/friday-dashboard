@@ -106,3 +106,6 @@ Open the live link in **Safari** → Share → **Add to Home Screen**. Allow loc
 ## Credits
 Land shapes: Natural Earth (public domain). Country centres: mledoze/countries (ODbL).
 Data: Transitous (© OpenStreetMap contributors, [sources](https://transitous.org/sources/)), CelesTrak, Open-Meteo / Copernicus CAMS, Bing News, GPSJam, Cloudflare Radar, USGS, IODA (Georgia Tech).
+
+## License
+MIT, see [LICENSE](LICENSE). `vendor/satellite.es.js` keeps its own MIT license; map data is public domain (Natural Earth).
