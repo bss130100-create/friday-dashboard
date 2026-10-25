@@ -1,0 +1,18 @@
+name: api-check
+on: push
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          check() { echo "=== $1"; curl -s -m 30 -D - -H 'Origin: https://friday-relay.mcioroianu2.workers.dev' "$1" -o body.txt | grep -i -E '^(HTTP|access-control|content-type)'; head -c ${2:-1500} body.txt; echo; }
+          check "https://openholidaysapi.org/Subdivisions?countryIsoCode=BE&languageIsoCode=EN" 3000
+          check "https://openholidaysapi.org/Groups?countryIsoCode=BE&languageIsoCode=EN" 2000
+          check "https://openholidaysapi.org/PublicHolidays?countryIsoCode=BE&validFrom=2026-10-01&validTo=2027-12-31&languageIsoCode=EN" 6000
+          check "https://openholidaysapi.org/SchoolHolidays?countryIsoCode=BE&validFrom=2026-10-01&validTo=2027-12-31&languageIsoCode=EN" 8000
+          check "https://api.energy-charts.info/price?bzn=BE" 1200
+          check "https://api.energy-charts.info/price?bzn=BE&start=2026-10-25&end=2026-10-26" 1500
+          check "https://opendata.elia.be/api/explore/v2.1/catalog/datasets/ods191/records?limit=3&order_by=datetime%20desc" 2500
+          check "https://opendata.elia.be/api/explore/v2.1/catalog/datasets/ods191" 3000
+          check "https://opendata.elia.be/api/explore/v2.1/catalog/datasets?where=search(%22co2%22)&limit=20&select=dataset_id,metas.default.title" 4000
+          check "https://opendata.elia.be/api/explore/v2.1/catalog/datasets?where=search(%22forecast%22)&limit=40&select=dataset_id,metas.default.title" 6000
