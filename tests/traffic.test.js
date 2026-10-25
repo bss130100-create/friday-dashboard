@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { placesIn, stretchEnds, railShapes, parseDisturbances, parseStations, stationNamesNear, mentions } from '../js/rail.js';
 import { roadColor, mapShapes } from '../js/trafficmap.js';
 import { viewBounds } from '../js/basemap.js';
-import { roadsUrl, renderRoads, renderRail, renderTraffic, loadTraffic } from '../js/traffic.js';
+import { roadsUrl, renderRoads, renderRail, renderTraffic, loadTraffic, loadRail, moreByKind } from '../js/traffic.js';
 import { readouts, isWeekend, localNow, loadBriefing } from '../js/briefing.js';
 
 afterEach(() => { delete globalThis.fetch; });
@@ -85,7 +85,28 @@ test('roads and rail fail independently; both failing is a panel error', async (
   const html = renderTraffic({ status: 'rejected', reason: new Error('TOMTOM_KEY secret is not set') }, { status: 'fulfilled', value: { near: [], elsewhere: 3 } }, NOW);
   assert.match(html, /ERROR: TOMTOM_KEY secret is not set[\s\S]*3 more elsewhere/);
   globalThis.fetch = async () => new Response('down', { status: 503 });
-  await assert.rejects(loadTraffic(GRAND_PLACE, NOW), /roads: HTTP 503 from \/roads[\s\S]*rail: HTTP 503 from api\.irail\.be/);
+  await assert.rejects(loadTraffic(GRAND_PLACE, NOW, 0), /roads: HTTP 503 from \/roads[\s\S]*rail: iRail \(Belgian rail data\) not responding, tried twice: HTTP 503 from api\.irail\.be/);
+});
+
+test('rail: one timeout is retried, two show a clear error', async () => {
+  let calls = 0;
+  globalThis.fetch = async (url) => {
+    if (url.includes('disturbances') && ++calls === 1) return new Response('gateway timeout', { status: 504 });
+    if (url.includes('disturbances')) return Response.json(DISTURBANCES);
+    return Response.json(STATIONS);
+  };
+  const rail = await loadRail(GRAND_PLACE, 0);
+  assert.equal(calls, 2);
+  assert.equal(rail.near.length, 2); // Leuven and Brussels-Midi lines
+  globalThis.fetch = async () => new Response('gateway timeout', { status: 504 });
+  await assert.rejects(loadRail(GRAND_PLACE, 0), /not responding, tried twice: HTTP 504 from api\.irail\.be\. Retrying at the next refresh/);
+});
+
+test('roads: the incidents left out are counted by kind, biggest first', () => {
+  const rest = [{ kind: 'roadWorks' }, { kind: 'roadClosed' }, { kind: 'roadWorks' }, { kind: 'jam' }, { kind: 'roadWorks' }];
+  assert.equal(moreByKind(rest), '+5 more: 3 works, 1 closed, 1 jam');
+  const many = Array.from({ length: 10 }, () => ({ kind: 'jam', what: 'x', roads: [], delayMin: 0, km: 0 }));
+  assert.match(renderRoads(many), /\+2 more: 2 jam/);
 });
 
 test('loadTraffic: roads from our Worker, rail from iRail', async () => {
