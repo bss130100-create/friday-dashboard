@@ -7,7 +7,7 @@ plus the few helpers the page needs, and it sits behind a **Cloudflare Access lo
 **Live (login):** https://friday-relay.mcioroianu2.workers.dev
 
 ## Panels and how they work
-Panels are grouped in five tabs: **Time** (AI briefing, chronometer, sun & moon), **Commute** (where I am, commute),
+Panels are grouped in five tabs: **Time** (AI briefing, chronometer, days off, electricity, sun & moon), **Commute** (where I am, commute),
 **Weather** (atmosphere, air quality & pollen), **News** (newsfeed, topic of the week) and **Global events**
 (roads & rail, GNSS, cyber attacks, seismic, outages, orbital tracking, archive). The open tab is in the address (`#commute`), so a bookmark opens it.
 
@@ -15,6 +15,8 @@ Panels are grouped in five tabs: **Time** (AI briefing, chronometer, sun & moon)
 |---|---|---|---|
 | AI briefing | Workers AI (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`) via the Worker | 1 h, or **Brief me** | The text the other panels show (commute, where I am, roads & rail, weather, air, sun, quakes, news, topic) goes to the Worker's `/briefing`; Llama 3.3 70B turns it into at most 3 sentences, action first, aware of the day and time (to work on weekday mornings, home in the evening, nothing about work at weekends). Panels in error are left out, and so is the work commute on Saturday and Sunday. Free plan: 10,000 neurons a day, one briefing costs about 75. |
 | Chronometer | your device clock | 1 s | Local time, UTC, today's date and the **ISO week number** (weeks start Monday; week 1 holds the year's first Thursday). |
+| Days off | [OpenHolidays API](https://www.openholidaysapi.org) (free, no key) | 6 h | Days to the next Belgian public holiday, the next long weekend, the French- and Dutch-speaking school holidays (both run in Brussels), and every public holiday of the next 12 months with what it means for a Mon–Fri week: long weekend, one day of leave for a 4-day weekend (bridge day), midweek, or a weekend day (Belgian law then gives a replacement day). Easter and Pentecost Sunday are left out: they are not among Belgium's 10 paid holidays. |
+| Electricity · Belgium | Sibelga rate periods + [Energy-Charts](https://www.energy-charts.info) (Fraunhofer ISE, CC BY 4.0) via the Worker + OpenHolidays | 15 min (Worker caches 30 min) | Made for a fixed-price contract with a day/night (bi-horaire) meter in Brussels: whether the cheap night rate is on now and when it changes (night = 22:00–07:00 on weekdays, all day on weekends and public holidays, per Brugel), plus the forecast renewable share of Belgian demand per hour (bars; over 100% = Belgium exports the surplus) and the greenest 3-hour window. |
 | Topic of the week | `data/topic.json` in this repo | 1 h | This week's topic, a fact of the day (rotates daily from the `start` date) and a watch list. Ticks are saved in this browser only. A new topic = Claude edits `data/topic.json` and pushes. |
 | Commute · public transport | [Transitous](https://transitous.org) (free community journey planner, data from SNCB, STIB, De Lijn, TEC…) | 5 min | Four routes: Home → Work 1, Home → Work 2, Work 1 → Home, Work 2 → Home. Door to door with trains, buses, trams, metro and walking, live delays and cancellations, and "leave in N min". **Addresses are typed once under *setup* and saved in MIAP's private database (D1, behind the login), so every device you log in from has them. They are never in this public repo.** The Worker also checks the Access login token itself before reading or saving them. Transitous receives them to plan the trips. |
 | Where I am · way home | your phone's GPS + Transitous | 2 min | Your precise position (GPS on a phone, Wi-Fi on a laptop) with its accuracy, the nearest street address, the distance to home, and the next trips home with "leave in N min". Needs the home address from Commute setup. |
@@ -48,11 +50,12 @@ and `runPanel()` in `js/ui.js` catches it and prints it in that panel. Details a
 ## CORS, and why some data goes through helpers
 Browsers only let our page read another site's answer if that site sends the header
 `Access-Control-Allow-Origin` (the **CORS** rule). CelesTrak, Open-Meteo, Transitous, USGS and IODA send it.
-Three sources don't, so they go through a helper:
+Four sources don't, so they go through a helper:
 
 | Source | Helper | Why this helper |
 |---|---|---|
 | Bing News | the Worker | live search on whatever place you type (Google News was tried, but it answers Cloudflare servers with 503 "Sorry...") |
+| Energy-Charts | the Worker | its answers only allow its own site (CORS); the Worker also caches them 30 min in D1 |
 | Cloudflare Radar | the Worker | also needs a secret API token, which must never be in this public repo |
 | GPSJam | GitHub Action, daily | data changes once a day, and its hexagon IDs need the `h3` library to become lat/lon |
 
@@ -131,8 +134,8 @@ js/zoom.js            zoom and drag for the maps
 js/history.js         trends panel (reads /history); js/charts.js tiny SVG charts
 js/countries-data.js  country centre points for the maps; js/labels-data.js country names
 js/<panel>.js         one file per data source: clock, satellites, weather, airquality, astro,
-                      news, gpsjam, attacks, quakes, outages, topic, commute (+ geo, location helpers)
-relay/worker.js       the Cloudflare Worker: helpers (news, attacks), memory, settings, roads, briefing, push endpoints + cron
+                      news, gpsjam, attacks, quakes, outages, topic, commute, daysoff, power (+ geo, location helpers)
+relay/worker.js       the Cloudflare Worker: helpers (news, attacks, power), memory, settings, roads, briefing, push endpoints + cron
 relay/alerts.js       when to push (commute windows, delays, cancellations, rail disruptions, earthquakes)
 relay/push.js         Web Push sender (VAPID + encryption, no library)
 sw.js                 service worker: shows the alerts on the phone; js/alerts.js = the Enable alerts panel
@@ -162,7 +165,7 @@ Open the live link in **Safari**, log in, then Share → **Add to Home Screen**.
 
 ## Credits
 Land shapes: Natural Earth (public domain). Maps: © OpenStreetMap contributors (tiles), Leaflet, RainViewer (radar). Country centres: mledoze/countries (ODbL).
-Data: Transitous (© OpenStreetMap contributors, [sources](https://transitous.org/sources/)), CelesTrak, Open-Meteo / Copernicus CAMS, Bing News, GPSJam, Cloudflare Radar, USGS, IODA (Georgia Tech).
+Data: OpenHolidays, Energy-Charts (Fraunhofer ISE, CC BY 4.0), Transitous (© OpenStreetMap contributors, [sources](https://transitous.org/sources/)), CelesTrak, Open-Meteo / Copernicus CAMS, Bing News, GPSJam, Cloudflare Radar, USGS, IODA (Georgia Tech).
 
 ## License
 MIT, see [LICENSE](LICENSE). `vendor/satellite.es.js` keeps its own MIT license; map data is public domain (Natural Earth).

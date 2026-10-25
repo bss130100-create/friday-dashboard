@@ -62,3 +62,28 @@ export const RADAR_JSON = {
     { originCountryAlpha2: 'CN', originCountryName: 'China', targetCountryAlpha2: 'US', targetCountryName: 'United States', value: '2.5' },
   ] },
 };
+
+// OpenHolidays, 2026-10-25, trimmed (Belgium).
+const oh = (startDate, endDate, name, groups) => ({ startDate, endDate, name: [{ language: 'EN', text: name }], ...(groups && { groups: groups.map((code) => ({ code })) }) });
+export const PUBLIC_HOLIDAYS_JSON = [
+  oh('2026-11-01', '2026-11-01', 'All Saints Day'),
+  oh('2026-11-11', '2026-11-11', 'Armistice Day'),
+  oh('2026-12-25', '2026-12-25', 'Christmas Day'),
+  oh('2027-01-01', '2027-01-01', "New Year's Day"),
+  oh('2027-03-28', '2027-03-28', 'Easter'),
+  oh('2027-03-29', '2027-03-29', 'Easter Monday'),
+  oh('2027-05-06', '2027-05-06', 'Ascension Day'),
+];
+export const SCHOOL_HOLIDAYS_JSON = [
+  oh('2026-10-19', '2026-11-01', 'All Saints Holidays', ['BE-FR']),
+  oh('2026-11-02', '2026-11-08', 'All Saints Holidays', ['BE-NL']),
+  oh('2026-12-21', '2027-01-03', 'Winter Holidays', ['BE-FR']),
+];
+
+// Energy-Charts /signal, 2026-10-25 (Belgium, a sunny Sunday): forecast renewable share per hour (%),
+// the first 3 hours of the day plus the sunny early afternoon.
+export const SIGNAL_JSON = {
+  unix_seconds: [1792879200, 1792882800, 1792886400, 1792922400, 1792926000, 1792929600],
+  share: [60.8, 61.6, 63.6, 104.1, 99.8, 95.1],
+  signal: [2, 2, 2, 2, 2, 2],
+};
