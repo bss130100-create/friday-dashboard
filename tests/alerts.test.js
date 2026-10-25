@@ -32,13 +32,15 @@ const trip = (scheduledZ, startZ, extra = {}) => ({
 });
 const disruption = (title, planned = false) => ({ title, planned, time: MON('05:30') });
 
-test('windows: weekdays 06:00-09:30 and 15:30-19:30 Brussels time only', () => {
-  assert.equal(commuteWindow(MON('05:00')), 'morning'); // 06:00
-  assert.equal(commuteWindow(MON('08:29')), 'morning'); // 09:29
-  assert.equal(commuteWindow(MON('08:30')), null); // 09:30
-  assert.equal(commuteWindow(MON('04:59')), null); // 05:59
+test('windows: weekdays 08:00-09:00 and 15:30-17:30 Brussels time only', () => {
+  // MON is in UTC; Brussels is UTC+1 on that Monday
+  assert.equal(commuteWindow(MON('07:00')), 'morning'); // 08:00
+  assert.equal(commuteWindow(MON('07:59')), 'morning'); // 08:59
+  assert.equal(commuteWindow(MON('08:00')), null); // 09:00
+  assert.equal(commuteWindow(MON('06:59')), null); // 07:59
   assert.equal(commuteWindow(MON('14:30')), 'evening'); // 15:30
-  assert.equal(commuteWindow(MON('18:30')), null); // 19:30
+  assert.equal(commuteWindow(MON('16:29')), 'evening'); // 17:29
+  assert.equal(commuteWindow(MON('16:30')), null); // 17:30
   assert.equal(commuteWindow(new Date('2026-10-24T07:00:00Z')), null); // Saturday
   assert.deepEqual(watchedRoutes(CONFIG, 'morning').map((r) => r.label), ['Home → Office A', 'Home → Office B']);
   assert.deepEqual(watchedRoutes(CONFIG, 'evening').map((r) => r.label), ['Office A → Home', 'Office B → Home']);
@@ -87,7 +89,7 @@ test('commute check: nothing fetched outside the windows; inside, one request at
   };
   assert.deepEqual(await commuteEvents(CONFIG, MON('12:00'), getJson), []);
   assert.equal(asked.length, 0);
-  assert.deepEqual(await commuteEvents(CONFIG, MON('06:00'), getJson), []);
+  assert.deepEqual(await commuteEvents(CONFIG, MON('07:00'), getJson), []);
   assert.equal(asked.length, 3); // disruptions + the two morning routes
 });
 
@@ -131,7 +133,7 @@ test('push: a failing push service is an error, and the event is retried next ti
 test('cron: the 5-minute job does nothing until addresses are saved', async () => {
   const env = { DB: fakeD1() };
   globalThis.fetch = async (url) => { throw new Error(`unexpected ${url}`); };
-  await worker.scheduled({ cron: '*/5 * * * *', scheduledTime: MON('06:00').getTime() }, env);
+  await worker.scheduled({ cron: '*/5 * * * *', scheduledTime: MON('07:00').getTime() }, env);
   assert.equal(await settings(env, new Request('https://miap.test/settings/commute')), null);
 });
 

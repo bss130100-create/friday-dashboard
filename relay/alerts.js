@@ -1,5 +1,5 @@
 // What MIAP pushes to your phone, and when. Called from the Worker's cron jobs.
-//   Every 5 min, weekdays 06:00-09:30 (to work) and 15:30-19:30 (home), Brussels time:
+//   Every 5 min, weekdays 08:00-09:00 (to work) and 15:30-17:30 (home), Brussels time:
 //     a trip in the next hour on your routes is cancelled, runs 5+ min late, or an SNCB disruption
 //     names a station it uses.
 //   Every hour: an M5+ earthquake within 500 km of home in the last 2 hours.
@@ -9,7 +9,7 @@ import { DISTURBANCES_URL, parseDisturbances, placesIn, normalize } from '../js/
 import { distanceKm } from '../js/geo.js';
 
 const ZONE = 'Europe/Brussels';
-export const WINDOWS = { morning: [6 * 60, 9 * 60 + 30], evening: [15 * 60 + 30, 19 * 60 + 30] };
+export const WINDOWS = { morning: [8 * 60, 9 * 60], evening: [15 * 60 + 30, 17 * 60 + 30] };
 const AHEAD_MS = 60 * 60 * 1000;
 export const DELAY_MIN = 5;
 const QUAKE_MAG = 5;
