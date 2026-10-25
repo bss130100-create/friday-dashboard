@@ -44,6 +44,7 @@
     <a href="#weather">Weather</a>
     <a href="#news">News</a>
     <a href="#global">Global events</a>
+    <a href="#system">System</a>
   </nav>
   <main>
     <section data-tab="time" id="briefing"><h2>AI briefing</h2><button type="button" id="brief-me">Brief me</button><div class="body"><p class="dim">Gathering panels…</p></div><div class="status"></div></section>
@@ -101,6 +102,8 @@
     <section data-tab="global" id="outages"><h2>Internet outages</h2><div class="body"><p class="dim">Querying IODA…</p></div><div class="status"></div></section>
     <section data-tab="global" id="sats"><h2>Orbital tracking</h2><div class="body"><p class="dim">Loading orbits…</p></div><div class="status"></div></section>
     <section data-tab="global" id="history" class="wide"><h2>Archive · trends</h2><div class="body"><p class="dim">Reading MIAP's memory…</p></div><div class="status"></div></section>
+    <section data-tab="system" id="system" class="wide"><h2>System status</h2><div class="body"><p class="dim">Asking Cloudflare…</p></div>
+      <p class="prune"><button type="button" id="prune">Delete data older than 30 days</button> <span id="prune-msg" class="dim small"></span></p><div class="status"></div></section>
   </main>
   <footer class="dim">Data: TomTom (roads) · iRail (SNCB disruptions) · Workers AI (briefing) · <a href="https://transitous.org/sources/">Transitous</a> (© OpenStreetMap contributors) · CelesTrak · Open-Meteo · CAMS · Bing News · GPSJam · Cloudflare Radar · USGS · IODA (Georgia Tech) · Natural Earth.
     Your location goes to Open-Meteo (weather, air, sun) and Transitous (nearest address, way home), and is never stored. Commute addresses are kept in MIAP's private database and sent to Transitous for routing.

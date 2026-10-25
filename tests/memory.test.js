@@ -51,6 +51,10 @@ function fakeFetch({ failRadar = false } = {}) {
 }
 afterEach(() => delete globalThis.fetch);
 
+// The Worker's ctx: work done after the answer (error counting) is collected here.
+const later = [];
+const CTX = { waitUntil: (p) => later.push(p) };
+
 test('API answers -> table rows', () => {
   const q = quakeRows({ features: [{ id: 'us1', properties: { time: 1, mag: 4.7, place: 'X' }, geometry: { coordinates: [121, 20, 35] } }] });
   assert.deepEqual(q, [['us1', 1, 4.7, 'X', 20, 121, 35]]);
@@ -72,7 +76,7 @@ test('snapshot fills all three tables; running it again does not duplicate', asy
   const near = await history(env, { kind: 'quakes', days: 30, near: { lat: 44.43, lon: 26.1 } }, NOW); // Bucharest
   assert.match(near.nearest365d.place, /Vrancea/);
   const g = await history(env, { kind: 'gnss', days: 90 }, NOW);
-  // backfill ran (fewer than 30 days stored) but never overwrote a real snapshot
+  // backfill ran (empty table) and the real snapshot replaced its day
   assert.deepEqual(g.days.filter((d) => d.zone === 'Baltic / Kaliningrad').map((d) => [d.date, d.high]), [['2026-09-01', 25], ['2026-10-23', 40]]);
   const a = await history(env, { kind: 'attacks', days: 7 }, NOW);
   assert.equal(a.days.length, new Set(RADAR_JSON.result.top_0.map((r) => r.originCountryAlpha2)).size);
@@ -92,9 +96,10 @@ test('/history validates input and explains a missing database', async () => {
   assert.throws(() => historyQuery('https://r.example/history?kind=gnss&days=9999'), /days must be/);
   assert.deepEqual(historyQuery('https://r.example/history?kind=quakes&lat=50.8&lon=4.3').near, { lat: 50.8, lon: 4.3 });
   assert.throws(() => historyQuery('https://r.example/history?kind=quakes&lat=99&lon=4'), /out of range/);
-  const res = await worker.fetch(new Request('https://r.example/history?kind=gnss'), {});
+  const res = await worker.fetch(new Request('https://r.example/history?kind=gnss'), {}, CTX);
   assert.equal(res.status, 400);
   assert.match(await res.text(), /D1 database is not bound/);
+  await assert.rejects(later.pop(), /D1 database is not bound/); // nowhere to count it either: shows in the logs
 });
 
 test('snapshot explains missing static assets instead of failing silently', async () => {
@@ -166,7 +171,7 @@ test('Radar attacks: one request per 15 min for the page and the snapshot togeth
   await radarAttacks(env, t0 + 15 * 60000);
   assert.equal(asked.length, 2);
   await assert.rejects(radarAttacks({ DB: fakeD1() }, t0), /RADAR_TOKEN secret is not set/);
-  const res = await worker.fetch(new Request('https://m.example/attacks'), env); // the page's route
+  const res = await worker.fetch(new Request('https://m.example/attacks'), env, CTX); // the page's route
   assert.deepEqual(await res.json(), RADAR_JSON);
 });
 
@@ -182,9 +187,13 @@ test('settings: null until saved, then the saved object; bad input refused', asy
 });
 
 test('/settings/commute without a login is refused with 403', async () => {
-  const res = await worker.fetch(new Request('https://m.example/settings/commute'), { DB: fakeD1() });
+  const env = { DB: fakeD1() };
+  const res = await worker.fetch(new Request('https://m.example/settings/commute'), env, CTX);
   assert.equal(res.status, 403);
   assert.match(await res.text(), /no Access login/);
+  await later.pop();
+  const { results } = await env.DB.prepare('SELECT path, status, count FROM route_errors').all();
+  assert.deepEqual(results, [{ path: '/settings/commute', status: 403, count: 1 }]); // counted for the System tab
 });
 
 // --- roads (TomTom) and briefing (Workers AI)
@@ -244,6 +253,7 @@ test('briefing: panels go to the model as readouts; bad input and missing AI are
   assert.equal(asked.input.max_tokens, 160);
   await assert.rejects(briefing({}, post()), /Workers AI is not bound/);
   await assert.rejects(briefing({ AI: { run: async () => ({}) } }, post()), /no text/);
-  const res = await worker.fetch(new Request('https://m.example/briefing'), env);
+  const res = await worker.fetch(new Request('https://m.example/briefing'), { ...env, DB: fakeD1() }, CTX);
   assert.equal(res.status, 400);
+  await later.pop();
 });

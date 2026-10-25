@@ -74,6 +74,19 @@ and deploys by itself (Workers Builds), so nothing is ever pasted by hand.
    Then Worker → **Access** tab → **Protect this Worker behind Access** → **All traffic** → policy: **Emails** = your address
    → session duration **1 month** → **Apply Access**. You log in with a code sent to that email.
 
+### Cloudflare usage (System tab)
+The **System status** panel shows MIAP's own health: Worker requests today against the free 100,000, errors and CPU time
+over 24 h, Workers AI neurons against the free 10,000 a day, and the D1 database's size and rows read/written against
+its free limits (from Cloudflare's GraphQL Analytics API, asked at most every 10 min). It also lists which routes answered
+with errors and how the scheduled jobs ran; MIAP records those itself in D1 (`route_errors`, `cron_runs`, 7 days).
+The **Delete data older than 30 days** button (asks first, needs your login) removes old quakes, GNSS and attack days,
+error counts and cache rows; saved addresses and phone alerts stay. Archive · trends then only goes back 30 days.
+
+It needs two Worker secrets (Worker → **Settings** → **Variables and Secrets** → **Add** → type **Secret**):
+1. `CF_API_TOKEN`: [API Tokens](https://dash.cloudflare.com/profile/api-tokens) → **Create Token** → **Custom token** →
+   permission **Account › Account Analytics › Read** (nothing else) → copy it. It never goes in this repo.
+2. `CF_ACCOUNT_ID`: **Workers & Pages** overview, right-hand column, **Account ID**.
+
 Builds and their logs: Worker → **Deployments**. The hourly job's runs and errors: Worker → **Settings** → **Trigger Events** → **View events**.
 When the login expires, panels say "login expired? reload the page": reloading shows the login screen.
 
