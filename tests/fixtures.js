@@ -80,11 +80,10 @@ export const SCHOOL_HOLIDAYS_JSON = [
   oh('2026-12-21', '2027-01-03', 'Winter Holidays', ['BE-FR']),
 ];
 
-// Energy-Charts, 2026-10-25 (Belgium, a sunny Sunday with negative prices): the first 2 hours of
-// quarter-hour prices (EUR/MWh) and of hourly renewable shares (%).
-export const PRICE_JSON = {
-  license_info: 'CC BY 4.0',
-  unix_seconds: [1792879200, 1792880100, 1792881000, 1792881900, 1792882800, 1792883700, 1792884600, 1792885500],
-  price: [13.05, 12.63, 8.16, 7.01, 9.65, 7.46, 6.0, 5.39],
+// Energy-Charts /signal, 2026-10-25 (Belgium, a sunny Sunday): forecast renewable share per hour (%),
+// the first 3 hours of the day plus the sunny early afternoon.
+export const SIGNAL_JSON = {
+  unix_seconds: [1792879200, 1792882800, 1792886400, 1792922400, 1792926000, 1792929600],
+  share: [60.8, 61.6, 63.6, 104.1, 99.8, 95.1],
+  signal: [2, 2, 2, 2, 2, 2],
 };
-export const SIGNAL_JSON = { unix_seconds: [1792879200, 1792882800], share: [60.8, 61.6], signal: [2, 2] };

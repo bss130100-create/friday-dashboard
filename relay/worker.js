@@ -163,22 +163,15 @@ export async function radarAttacks(env, now = Date.now()) {
   return cached(await openDb(env), 'radar-attacks', RADAR_CACHE_MS, () => getJson(RADAR_ATTACKS_URL, { Authorization: `Bearer ${env.RADAR_TOKEN}` }), now);
 }
 
-// Belgian electricity (Energy-Charts, Fraunhofer ISE, free, no key): day-ahead market price per quarter-hour
-// for today and, once the auction is published (~13:00), tomorrow; plus the forecast renewable share per hour.
-// Relayed because Energy-Charts doesn't allow browsers on other sites (CORS).
-const ENERGY_CHARTS = 'https://api.energy-charts.info';
+// Belgian electricity (Energy-Charts, Fraunhofer ISE, free, no key): the forecast renewable share of
+// demand per hour for today. Relayed because Energy-Charts doesn't allow browsers on other sites (CORS).
+const RENEWABLES_URL = 'https://api.energy-charts.info/signal?country=be';
 const POWER_CACHE_MS = 30 * 60 * 1000;
-export function brusselsDate(ms) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels' }).format(ms); // '2026-10-25'
-}
 export async function power(env, now = Date.now()) {
-  const start = brusselsDate(now);
-  const end = brusselsDate(now + 24 * HOUR_MS);
   return cached(await openDb(env), 'power', POWER_CACHE_MS, async () => {
-    const price = await getJson(`${ENERGY_CHARTS}/price?bzn=BE&start=${start}&end=${end}`);
-    const signal = await getJson(`${ENERGY_CHARTS}/signal?country=be`);
-    if (!Array.isArray(price.price) || !Array.isArray(signal.share)) throw new Error('Energy-Charts: unexpected answer');
-    return { price: { unix_seconds: price.unix_seconds, price: price.price }, renewables: { unix_seconds: signal.unix_seconds, share: signal.share } };
+    const signal = await getJson(RENEWABLES_URL);
+    if (!Array.isArray(signal.share) || !Array.isArray(signal.unix_seconds)) throw new Error('Energy-Charts: unexpected answer');
+    return { renewables: { unix_seconds: signal.unix_seconds, share: signal.share } };
   }, now);
 }
 
