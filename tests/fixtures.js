@@ -62,3 +62,29 @@ export const RADAR_JSON = {
     { originCountryAlpha2: 'CN', originCountryName: 'China', targetCountryAlpha2: 'US', targetCountryName: 'United States', value: '2.5' },
   ] },
 };
+
+// OpenHolidays, 2026-10-25, trimmed (Belgium).
+const oh = (startDate, endDate, name, groups) => ({ startDate, endDate, name: [{ language: 'EN', text: name }], ...(groups && { groups: groups.map((code) => ({ code })) }) });
+export const PUBLIC_HOLIDAYS_JSON = [
+  oh('2026-11-01', '2026-11-01', 'All Saints Day'),
+  oh('2026-11-11', '2026-11-11', 'Armistice Day'),
+  oh('2026-12-25', '2026-12-25', 'Christmas Day'),
+  oh('2027-01-01', '2027-01-01', "New Year's Day"),
+  oh('2027-03-28', '2027-03-28', 'Easter'),
+  oh('2027-03-29', '2027-03-29', 'Easter Monday'),
+  oh('2027-05-06', '2027-05-06', 'Ascension Day'),
+];
+export const SCHOOL_HOLIDAYS_JSON = [
+  oh('2026-10-19', '2026-11-01', 'All Saints Holidays', ['BE-FR']),
+  oh('2026-11-02', '2026-11-08', 'All Saints Holidays', ['BE-NL']),
+  oh('2026-12-21', '2027-01-03', 'Winter Holidays', ['BE-FR']),
+];
+
+// Energy-Charts, 2026-10-25 (Belgium, a sunny Sunday with negative prices): the first 2 hours of
+// quarter-hour prices (EUR/MWh) and of hourly renewable shares (%).
+export const PRICE_JSON = {
+  license_info: 'CC BY 4.0',
+  unix_seconds: [1792879200, 1792880100, 1792881000, 1792881900, 1792882800, 1792883700, 1792884600, 1792885500],
+  price: [13.05, 12.63, 8.16, 7.01, 9.65, 7.46, 6.0, 5.39],
+};
+export const SIGNAL_JSON = { unix_seconds: [1792879200, 1792882800], share: [60.8, 61.6], signal: [2, 2] };

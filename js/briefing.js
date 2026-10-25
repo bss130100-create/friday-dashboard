@@ -6,7 +6,7 @@ import { esc } from './ui.js';
 
 export const SOURCES = {
   here: 'Where I am', commute: 'Commute', traffic: 'Roads & rail', weather: 'Weather', air: 'Air quality',
-  astro: 'Sun & moon', quakes: 'Earthquakes', news: 'News', topic: 'Topic of the week',
+  astro: 'Sun & moon', daysoff: 'Days off', power: 'Electricity prices', quakes: 'Earthquakes', news: 'News', topic: 'Topic of the week',
 };
 const MAX_PER_PANEL = 500;
 const WEEKDAY_ONLY = new Set(['commute']); // routes to and from work

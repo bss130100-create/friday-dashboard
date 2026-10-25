@@ -22,6 +22,8 @@ import { drawTrafficMap, TRAFFIC_HALF_KM } from './trafficmap.js';
 import { mapPanel, resizeMaps } from './basemap.js';
 import { WEATHER_HALF_KM, loadGrid, loadRadar, paintTemperature, paintWind, paintRain, gridSummary, radarSummary } from './weathermap.js';
 import { readouts, loadBriefing } from './briefing.js';
+import { loadDaysOff, renderDaysOff } from './daysoff.js';
+import { loadPower, renderPower } from './power.js';
 import { supported, UNSUPPORTED, renderAlerts, alertState, loadPushKey, enableAlerts, sendTest } from './alerts.js';
 import { ISS_TLE_URL, GPS_TLE_URL, loadTle, parseTle, satState, visibleGps, renderSatellites } from './satellites.js';
 
@@ -59,6 +61,10 @@ runPanel('air', async () => showBody('air', renderAir(await loadAir(await locati
 let astro = null;
 runPanel('astro', async () => { astro = await loadAstro(await location()); showBody('astro', renderAstro(astro, new Date())); }, 60 * MINUTE);
 setInterval(() => astro && showBody('astro', renderAstro(astro, new Date())), MINUTE); // keep "daylight left" ticking
+
+// --- days off (OpenHolidays) and electricity prices (Energy-Charts via the Worker): no location needed
+runPanel('daysoff', async () => showBody('daysoff', renderDaysOff(await loadDaysOff(new Date()))), 6 * 60 * MINUTE);
+runPanel('power', async () => showBody('power', renderPower(await loadPower(new Date()))), 15 * MINUTE);
 
 // --- System tab: MIAP's own health (Worker /system) and the 30-day wipe
 runPanel('system', async () => showBody('system', renderSystem(await loadSystem(), new Date())), 10 * MINUTE);

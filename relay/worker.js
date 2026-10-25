@@ -163,6 +163,25 @@ export async function radarAttacks(env, now = Date.now()) {
   return cached(await openDb(env), 'radar-attacks', RADAR_CACHE_MS, () => getJson(RADAR_ATTACKS_URL, { Authorization: `Bearer ${env.RADAR_TOKEN}` }), now);
 }
 
+// Belgian electricity (Energy-Charts, Fraunhofer ISE, free, no key): day-ahead market price per quarter-hour
+// for today and, once the auction is published (~13:00), tomorrow; plus the forecast renewable share per hour.
+// Relayed because Energy-Charts doesn't allow browsers on other sites (CORS).
+const ENERGY_CHARTS = 'https://api.energy-charts.info';
+const POWER_CACHE_MS = 30 * 60 * 1000;
+export function brusselsDate(ms) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels' }).format(ms); // '2026-10-25'
+}
+export async function power(env, now = Date.now()) {
+  const start = brusselsDate(now);
+  const end = brusselsDate(now + 24 * HOUR_MS);
+  return cached(await openDb(env), 'power', POWER_CACHE_MS, async () => {
+    const price = await getJson(`${ENERGY_CHARTS}/price?bzn=BE&start=${start}&end=${end}`);
+    const signal = await getJson(`${ENERGY_CHARTS}/signal?country=be`);
+    if (!Array.isArray(price.price) || !Array.isArray(signal.share)) throw new Error('Energy-Charts: unexpected answer');
+    return { price: { unix_seconds: price.unix_seconds, price: price.price }, renewables: { unix_seconds: signal.unix_seconds, share: signal.share } };
+  }, now);
+}
+
 // Rows go in as ONE JSON parameter that SQLite unpacks with json_each: one statement per job,
 // so the Worker stays far below its 10 ms CPU budget.
 const INSERT_QUAKES = `INSERT OR REPLACE INTO quakes SELECT value->>0, value->>1, value->>2, value->>3, value->>4, value->>5, value->>6 FROM json_each(?)`;
@@ -538,6 +557,7 @@ const ROUTES = {
   '/push/test': async (request, env) => { await loggedIn(request, env); return pushTest(env, request); },
   '/settings/commute': async (request, env) => { await loggedIn(request, env); return settings(env, request); },
   '/attacks': (request, env) => radarAttacks(env),
+  '/power': (request, env) => power(env),
   '/history': (request, env) => history(env, historyQuery(request.url)),
   '/roads': (request, env) => roads(env, roadsQuery(request.url)),
   '/briefing': (request, env) => briefing(env, request),
