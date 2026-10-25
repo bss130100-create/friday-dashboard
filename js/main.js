@@ -16,6 +16,7 @@ import { loadTopic, readWatched, toggleWatched, renderTopic } from './topic.js';
 import { geocode, readConfig, saveConfig, loadCommute, loadHere } from './commute.js';
 import { tabFromHash, showTab } from './tabs.js';
 import { packPanels } from './masonry.js';
+import { loadSystem, renderSystem, pruneOld, renderPruned, PRUNE_QUESTION } from './system.js';
 import { loadTraffic } from './traffic.js';
 import { drawTrafficMap, TRAFFIC_HALF_KM } from './trafficmap.js';
 import { mapPanel, resizeMaps } from './basemap.js';
@@ -58,6 +59,21 @@ runPanel('air', async () => showBody('air', renderAir(await loadAir(await locati
 let astro = null;
 runPanel('astro', async () => { astro = await loadAstro(await location()); showBody('astro', renderAstro(astro, new Date())); }, 60 * MINUTE);
 setInterval(() => astro && showBody('astro', renderAstro(astro, new Date())), MINUTE); // keep "daylight left" ticking
+
+// --- System tab: MIAP's own health (Worker /system) and the 30-day wipe
+runPanel('system', async () => showBody('system', renderSystem(await loadSystem(), new Date())), 10 * MINUTE);
+document.getElementById('prune').addEventListener('click', async () => {
+  if (!window.confirm(PRUNE_QUESTION)) return;
+  const msg = document.getElementById('prune-msg');
+  msg.className = 'dim small';
+  msg.textContent = 'Deleting…';
+  try {
+    msg.textContent = renderPruned(await pruneOld());
+  } catch (err) {
+    msg.textContent = `ERROR: ${err.message}`;
+    msg.className = 'err small';
+  }
+});
 
 // --- roads & rail around you (TomTom via the Worker + SNCB disruptions via iRail)
 const trafficMap = mapPanel(document.getElementById('traffic-map'), TRAFFIC_HALF_KM);

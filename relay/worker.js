@@ -22,6 +22,7 @@
 
 import { newVapidKeys, sendPush } from './push.js';
 import { commuteEvents, quakeEvents } from './alerts.js';
+import { GRAPHQL_URL, usageQueries, parseWorkers, parseAi, parseD1 } from './usage.js';
 
 const QUAKES_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson';
 const RADAR_ATTACKS_URL =
@@ -50,6 +51,9 @@ const SCHEMA = [
   'CREATE TABLE IF NOT EXISTS cache (key TEXT NOT NULL PRIMARY KEY, saved INTEGER NOT NULL, value TEXT NOT NULL)',
   'CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT NOT NULL PRIMARY KEY, p256dh TEXT NOT NULL, auth TEXT NOT NULL, added INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS alerts_sent (key TEXT NOT NULL PRIMARY KEY, at INTEGER NOT NULL)',
+  // MIAP's own health (System tab): errors per page path and hour, and every scheduled run
+  'CREATE TABLE IF NOT EXISTS route_errors (hour TEXT NOT NULL, path TEXT NOT NULL, status INTEGER NOT NULL, count INTEGER NOT NULL, last_error TEXT, PRIMARY KEY (hour, path, status))',
+  'CREATE TABLE IF NOT EXISTS cron_runs (cron TEXT NOT NULL, started INTEGER NOT NULL, ms INTEGER NOT NULL, ok INTEGER NOT NULL, error TEXT)',
 ];
 
 // The tables, created on first use: once per database binding while this Worker instance lives,
@@ -71,6 +75,85 @@ export async function cached(db, key, maxAgeMs, load, now = Date.now()) {
   const value = await load();
   await db.prepare('INSERT OR REPLACE INTO cache (key, saved, value) VALUES (?, ?, ?)').bind(key, now, JSON.stringify(value)).run();
   return value;
+}
+
+// ---------- System tab: MIAP's own health ----------
+// Cloudflare's numbers (see usage.js) are asked at most every 10 min (its analytics lag a few minutes
+// anyway); MIAP's own records (errors per path, scheduled runs) are read live from D1.
+const USAGE_CACHE_MS = 10 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+
+async function graphql(env, body) {
+  const res = await fetch(GRAPHQL_URL, { method: 'POST', headers: { Authorization: `Bearer ${env.CF_API_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error(`HTTP ${res.status} from Cloudflare analytics`);
+  return res.json();
+}
+
+// -> { workers, ai, d1 }: each the numbers, or { error } when that part failed
+export async function cloudflareUsage(env, now = Date.now()) {
+  const queries = usageQueries(env, now);
+  const parse = { workers: parseWorkers, ai: parseAi, d1: parseD1 };
+  return cached(await openDb(env), 'cf-usage', USAGE_CACHE_MS, async () => {
+    const names = Object.keys(queries);
+    const results = await Promise.allSettled(names.map(async (n) => parse[n](await graphql(env, queries[n]))));
+    return Object.fromEntries(names.map((n, i) => [n, results[i].status === 'fulfilled' ? results[i].value : { error: results[i].reason.message }]));
+  }, now);
+}
+
+const hourOf = (ms) => new Date(ms).toISOString().slice(0, 13); // '2026-10-25T10'
+
+// An error answer from one of our routes, counted per hour and path (System tab, "errors by path").
+export async function recordError(env, path, status, message, now = Date.now()) {
+  await (await openDb(env)).prepare(`INSERT INTO route_errors VALUES (?, ?, ?, 1, ?)
+    ON CONFLICT (hour, path, status) DO UPDATE SET count = count + 1, last_error = excluded.last_error`).bind(hourOf(now), path, status, message.slice(0, 300)).run();
+}
+
+// One scheduled run: when, how long, and how it ended. Kept 7 days.
+export async function recordRun(env, cron, started, ms, error) {
+  const db = await openDb(env);
+  await db.batch([
+    db.prepare('INSERT INTO cron_runs VALUES (?, ?, ?, ?, ?)').bind(cron, started, ms, error ? 0 : 1, error ? error.message.slice(0, 300) : null),
+    db.prepare('DELETE FROM cron_runs WHERE started < ?').bind(started - 7 * 24 * HOUR_MS),
+  ]);
+}
+
+export async function ownHealth(env, now = Date.now()) {
+  const db = await openDb(env);
+  const since = now - 24 * HOUR_MS;
+  const [errors, crons, last] = await db.batch([
+    db.prepare('SELECT path, status, SUM(count) AS count, MAX(hour) AS hour, last_error FROM route_errors WHERE hour >= ? GROUP BY path, status ORDER BY count DESC').bind(hourOf(since)),
+    db.prepare('SELECT cron, COUNT(*) AS runs, SUM(1 - ok) AS failed, ROUND(AVG(ms)) AS avg_ms FROM cron_runs WHERE started >= ? GROUP BY cron').bind(since),
+    db.prepare('SELECT cron, started, ms, ok, error FROM cron_runs c WHERE started = (SELECT MAX(started) FROM cron_runs WHERE cron = c.cron)'),
+  ]);
+  const lastOf = new Map(last.results.map((r) => [r.cron, r]));
+  return {
+    errorsByPath: errors.results,
+    crons: crons.results.map((c) => ({ ...c, last: lastOf.get(c.cron) })),
+  };
+}
+
+export async function systemStatus(env, now = Date.now()) {
+  const [cloudflare, own] = await Promise.allSettled([cloudflareUsage(env, now), ownHealth(env, now)]);
+  const part = (r) => (r.status === 'fulfilled' ? r.value : { error: r.reason.message });
+  return { at: now, cloudflare: part(cloudflare), own: part(own) };
+}
+
+// The wipe button: everything MIAP collected that is older than 30 days. Settings and phones stay.
+export const KEEP_DAYS = 30;
+export async function prune(env, now = Date.now()) {
+  const db = await openDb(env);
+  const cutoff = now - KEEP_DAYS * 24 * HOUR_MS;
+  const day = new Date(cutoff).toISOString().slice(0, 10);
+  const jobs = {
+    quakes: db.prepare('DELETE FROM quakes WHERE time < ?').bind(cutoff),
+    gnss_daily: db.prepare('DELETE FROM gnss_daily WHERE date < ?').bind(day),
+    attacks_daily: db.prepare('DELETE FROM attacks_daily WHERE date < ?').bind(day),
+    route_errors: db.prepare('DELETE FROM route_errors WHERE hour < ?').bind(hourOf(cutoff)),
+    cron_runs: db.prepare('DELETE FROM cron_runs WHERE started < ?').bind(cutoff),
+    cache: db.prepare('DELETE FROM cache WHERE saved < ?').bind(cutoff),
+  };
+  const results = await db.batch(Object.values(jobs));
+  return { before: day, deleted: Object.fromEntries(Object.keys(jobs).map((t, i) => [t, results[i].meta.changes])) };
 }
 
 // Radar's "last 24 h" ranking barely moves in 15 min; the page and the hourly snapshot share it.
@@ -135,9 +218,10 @@ export async function snapshot(env, now = new Date()) {
   const jobs = {
     quakes: async () => db.prepare(INSERT_QUAKES).bind(JSON.stringify(quakeRows(await getJson(QUAKES_URL)))).run(),
     gnss: async () => {
+      // the backfill goes only into an empty table (first run): after a 30-day wipe old days must not come back
+      const { n } = await db.prepare('SELECT COUNT(*) AS n FROM gnss_daily').first();
+      if (n === 0) await db.prepare(BACKFILL_GNSS).bind(JSON.stringify(await assetJson(env, '/data/gnss-backfill.json'))).run();
       await db.prepare(INSERT_GNSS).bind(JSON.stringify(gnssRows(await assetJson(env, '/data/gpsjam.json')))).run();
-      const { n } = await db.prepare('SELECT COUNT(DISTINCT date) AS n FROM gnss_daily').first();
-      if (n < 30) await db.prepare(BACKFILL_GNSS).bind(JSON.stringify(await assetJson(env, '/data/gnss-backfill.json'))).run();
     },
     attacks: async () => {
       const rows = attackRows(await radarAttacks(env, now.getTime()), today);
@@ -457,16 +541,25 @@ const ROUTES = {
   '/history': (request, env) => history(env, historyQuery(request.url)),
   '/roads': (request, env) => roads(env, roadsQuery(request.url)),
   '/briefing': (request, env) => briefing(env, request),
+  '/system': async (request, env) => { await loggedIn(request, env); return systemStatus(env); },
+  '/system/prune': async (request, env) => {
+    if (request.method !== 'POST') throw new RangeError('use POST');
+    await loggedIn(request, env);
+    return prune(env);
+  },
 };
 
 export default {
-  async fetch(request, env) {
-    const route = ROUTES[new URL(request.url).pathname];
+  async fetch(request, env, ctx) {
+    const path = new URL(request.url).pathname;
+    const route = ROUTES[path];
     if (route) {
       try {
         return new Response(JSON.stringify(await route(request, env)), { headers: { 'Content-Type': 'application/json' } });
       } catch (err) {
         const status = err instanceof LoginError ? 403 : err instanceof RangeError || err instanceof SyntaxError ? 400 : 500;
+        // counted for the System tab after the answer goes out; if counting fails, it shows in the Worker's logs
+        ctx.waitUntil(recordError(env, path, status, err.message));
         return new Response(err.message, { status });
       }
     }
@@ -483,13 +576,23 @@ export default {
         headers: { 'Content-Type': upstream.headers.get('Content-Type') ?? 'text/plain' },
       });
     } catch (err) {
+      ctx.waitUntil(recordError(env, path, 502, err.message));
       return new Response(`upstream failed: ${err.message}`, { status: 502 });
     }
   },
 
+  // Every run is recorded (System tab), then a failure is re-thrown so it also shows in the logs.
   async scheduled(event, env) {
     const now = new Date(event.scheduledTime);
-    if (event.cron === '*/5 * * * *') await everyFiveMinutes(env, now);
-    else await hourly(env, now);
+    const started = Date.now();
+    let failure = null;
+    try {
+      if (event.cron === '*/5 * * * *') await everyFiveMinutes(env, now);
+      else await hourly(env, now);
+    } catch (err) {
+      failure = err;
+    }
+    await recordRun(env, event.cron, started, Date.now() - started, failure);
+    if (failure) throw failure;
   },
 };
