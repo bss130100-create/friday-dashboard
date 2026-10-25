@@ -15,6 +15,7 @@ import { renderHistory } from './history.js';
 import { loadTopic, readWatched, toggleWatched, renderTopic } from './topic.js';
 import { geocode, readConfig, saveConfig, loadCommute, loadHere } from './commute.js';
 import { tabFromHash, showTab } from './tabs.js';
+import { packPanels } from './masonry.js';
 import { loadTraffic } from './traffic.js';
 import { drawTrafficMap, TRAFFIC_HALF_KM } from './trafficmap.js';
 import { mapPanel, resizeMaps } from './basemap.js';
@@ -27,6 +28,7 @@ const MINUTE = 60 * 1000;
 
 // --- sub-menus (tabs): the open one is in the address, e.g. .../#commute
 showTab(tabFromHash(window.location.hash));
+packPanels(document.querySelector('main'));
 window.addEventListener('hashchange', () => {
   showTab(tabFromHash(window.location.hash));
   resizeMaps(); // a map drawn while its tab was hidden must re-measure itself
