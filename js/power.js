@@ -87,7 +87,7 @@ export function renderPower({ now, hours, holidays }) {
     </div>
     <table>
       <tr><td>Grid now</td><td>${Math.round(hours[0].share)}% renewable</td></tr>
-      ${green ? `<tr><td class="nowrap">Greenest ${WINDOW_HOURS} h</td><td class="nowrap">${esc(day(green.from))} ${clock(green.from)}–${clock(green.to)} · ${Math.round(green.avg)}%${greenAtNight ? ' · night rate too' : ''}</td></tr>` : ''}
+      ${green ? `<tr><td class="nowrap">Greenest ${WINDOW_HOURS} h</td><td><span class="nowrap">${esc(day(green.from))} ${clock(green.from)}–${clock(green.to)}</span> · ${Math.round(green.avg)}%${greenAtNight ? ' · <span class="nowrap">night rate too</span>' : ''}</td></tr>` : ''}
     </table>
     <h3>RENEWABLE SHARE BY HOUR</h3>
     ${chart}
