@@ -47,6 +47,10 @@ h1 { margin: 0; font: 700 34px/41px var(--head); letter-spacing: -.02em; }
 .systems.warm::before { background: var(--warm); box-shadow: 0 0 6px rgba(255, 180, 84, .5); }
 @keyframes blink { 50% { opacity: .35; } }
 
+.health { display: flex; gap: 3px; margin-top: 6px; max-width: 260px; }
+.health i { flex: 1; height: 3px; border-radius: 1px; background: var(--cyan); opacity: .7; }
+.health i.bad { background: var(--warm); opacity: 1; }
+
 /* iPhone: room above the logo so iOS 26's glass status bar doesn't distort it */
 @media (max-width: 720px) {
   body { padding-top: calc(max(16px, env(safe-area-inset-top)) + 40px); }
@@ -80,7 +84,8 @@ nav.tabs a.on::after { content: ""; position: absolute; bottom: 1px; width: 14px
 /* ---------- panels: rounded cards ---------- */
 /* align-items: start = each panel is only as tall as its content, not as tall as its row */
 /* 1px rows: js/masonry.js gives each panel its own height, so short panels stack without gaps */
-main { display: grid; column-gap: 14px; grid-auto-rows: 1px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); align-items: start; }
+/* min-height: the footer (sources, privacy note) only shows when you scroll down */
+main { min-height: 100vh; display: grid; column-gap: 14px; grid-auto-rows: 1px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); align-items: start; }
 @media (min-width: 720px) { section.wide { grid-column: span 2; } }
 section { position: relative; min-width: 0; padding: 16px 18px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; }
 section.error { border-color: rgba(255, 77, 94, .6); }
@@ -115,7 +120,8 @@ td:first-child, th { color: var(--dim); }
 /* ---------- gauges ---------- */
 .gauge-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .bar { flex: 1; min-width: 120px; height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
-.fill { height: 100%; min-width: 4px; border-radius: 3px; background: var(--cyan); }
+.fill { height: 100%; min-width: 4px; border-radius: 3px; background: var(--cyan); animation: grow .7s ease-out both; transform-origin: left; }
+@keyframes grow { from { transform: scaleX(0); } }
 .fill.warm { background: var(--warm); }
 .fill.hot { background: var(--hot); }
 /* System tab: one usage line = label, bar against the free limit, numbers */
@@ -202,7 +208,8 @@ button:hover { color: var(--cool); }
 .chart .base { stroke: var(--line); stroke-width: 1px; vector-effect: non-scaling-stroke; }
 .chart .line { fill: none; stroke: var(--cyan); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
 .chart .end { fill: var(--cyan); }
-.chart .col { fill: var(--cyan); opacity: .8; }
+.chart .col { fill: var(--cyan); opacity: .8; transform-box: fill-box; transform-origin: bottom; animation: rise .6s ease-out both; }
+@keyframes rise { from { transform: scaleY(0); } }
 .chart .hit { fill: transparent; }
 .chart .hit:hover { fill: rgba(86, 217, 255, .12); }
 

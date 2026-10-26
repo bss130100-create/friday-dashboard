@@ -442,6 +442,7 @@ const BRIEF_RULES = [
   'Lead with whatever should change what he does next: a delay, cancellation or closure on his way, rain or cold (say what to wear or bring), poor air, a quake near him.',
   'If nothing needs action, say that in a few words, then give the single most notable news or world item.',
   'Be specific: use the names, times and numbers from the readouts. Use only facts from the readouts; never invent anything. Skip readouts with nothing notable.',
+  'Voice: calm, dry and confident, like JARVIS talking to Tony Stark. Speak to Mihai directly and tell him what matters, never just list data.',
 ].join(' ');
 
 export function briefingMessages(body) {
