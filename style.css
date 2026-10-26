@@ -121,6 +121,9 @@ td:first-child, th { color: var(--dim); }
 .meter { display: grid; grid-template-columns: minmax(150px, 1fr) 2fr auto; align-items: center; gap: 4px 12px; margin: 6px 0; }
 @media (max-width: 720px) { .meter { grid-template-columns: 1fr auto; } .meter .bar { grid-column: 1 / -1; grid-row: 2; } }
 .prune { margin: 10px 0 4px; }
+.chart-title { margin: 14px 0 2px; color: var(--cyan); font: 13px var(--mono); letter-spacing: .05em; }
+.chart-title + .dim { margin: 0; }
+.axis { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--dim); margin-top: 2px; }
 
 /* ---------- maps ---------- */
 .map-wrap { position: relative; user-select: none; -webkit-user-select: none; }

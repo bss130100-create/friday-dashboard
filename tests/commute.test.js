@@ -1,7 +1,7 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  geocodeUrl, parseGeocode, geocode, parseConfig, saveConfig, readConfig, routes, planUrl, parsePlan, renderRoute, loadCommute,
+  geocodeUrl, parseGeocode, geocode, parseConfig, saveConfig, readConfig, routes, planUrl, parsePlan, renderRoute, loadCommute, fastest,
   reverseUrl, parseReverse, renderHere, loadHere,
 } from '../js/commute.js';
 
@@ -22,8 +22,8 @@ const PLAN = { itineraries: [
     leg('TRAM', '2026-10-24T16:15:00Z', '2026-10-24T16:40:00Z', { routeShortName: '82' }),
   ] },
 ] };
-const place = (name) => ({ name, lat: 50.8, lon: 4.3 });
-const CONFIG = { home: place('Home St 1'), works: [{ label: 'Office A', place: place('A') }, { label: 'Office B', place: place('B') }] };
+const place = (name, lat = 50.8) => ({ name, lat, lon: 4.3 });
+const CONFIG = { home: place('Home St 1'), works: [{ label: 'Office A', place: place('A', 50.7) }, { label: 'Office B', place: place('B', 50.9) }] };
 
 // Stands in for the Worker's /settings/commute (GET returns null until a PUT).
 function fakeSettings() {
@@ -54,13 +54,25 @@ test('config: needs home + exactly two workplaces; saved to the Worker and read 
   assert.throws(() => parseConfig({ ...CONFIG, works: [CONFIG.works[0]] }), /both workplaces/);
 });
 
-test('four routes in the requested order', () => {
-  assert.deepEqual(routes(CONFIG).map((r) => r.label), ['Home → Office A', 'Home → Office B', 'Office A → Home', 'Office B → Home']);
-  assert.equal(routes(CONFIG)[2].to.name, 'Home St 1');
+test('four routes in the requested order, to work from where they start', () => {
+  const here = { lat: 50.85, lon: 4.35 };
+  const r = routes(CONFIG, { label: 'Here', place: here });
+  assert.deepEqual(r.map((x) => x.label), ['Here → Office A', 'Here → Office B', 'Office A → Home', 'Office B → Home']);
+  assert.equal(r[0].from, here);
+  assert.equal(r[2].to.name, 'Home St 1');
+  assert.equal(routes(CONFIG, { label: 'Home', place: CONFIG.home })[1].label, 'Home → Office B');
+});
+
+test('fastest: the 2 quickest usable trips, shown in departure order', () => {
+  const now = new Date('2026-10-26T08:00:00Z');
+  const t = (start, durationMin, cancelled = false) => ({ start: new Date(`2026-10-26T${start}:00Z`), durationMin, cancelled });
+  const trips = [t('08:10', 73), t('08:30', 83), t('08:39', 74), t('08:50', 60, true), t('07:50', 50), t('09:00', 74)];
+  assert.deepEqual(fastest(trips, now).map((x) => [x.start.toISOString().slice(11, 16), x.durationMin]), [['08:10', 73], ['08:39', 74]]);
+  assert.deepEqual(fastest([t('08:50', 60, true)], now), []);
 });
 
 test('plan: delays, cancellations and leg names', () => {
-  assert.equal(planUrl({ lat: 50.8357, lon: 4.3365 }, { lat: 50.6917, lon: 4.2057 }),
+  assert.equal(planUrl({ lat: 50.8357, lon: 4.3365 }, { lat: 50.6917, lon: 4.2057 }, 3),
     'https://api.transitous.org/api/v5/plan?fromPlace=50.83570%2C4.33650&toPlace=50.69170%2C4.20570&numItineraries=3');
   const [a, b] = parsePlan(PLAN);
   assert.equal(a.durationMin, 25);
@@ -91,7 +103,7 @@ test('loadCommute plans all four routes, one request at a time', async () => {
     inFlight--;
     return new Response(JSON.stringify(PLAN));
   };
-  const html = await loadCommute(CONFIG, new Date('2026-10-24T15:24:00Z'));
+  const html = await loadCommute(CONFIG, GRAND_PLACE, new Date('2026-10-24T15:24:00Z'));
   assert.equal(asked.length, 4);
   assert.equal((html.match(/<h3>/g) ?? []).length, 4);
 });
@@ -130,7 +142,7 @@ test('Transitous requests from different panels never overlap', async () => {
     return new Response(JSON.stringify(url.includes('reverse') ? REVERSE : PLAN));
   };
   const now = new Date('2026-10-24T15:24:00Z');
-  const [commute, here] = await Promise.all([loadCommute(CONFIG, now), loadHere(GRAND_PLACE, HOME, now)]);
+  const [commute, here] = await Promise.all([loadCommute(CONFIG, GRAND_PLACE, now), loadHere(GRAND_PLACE, HOME, now)]);
   assert.equal(max, 1, 'Transitous returns 429 for parallel requests');
   assert.equal((commute.match(/<h3>/g) ?? []).length, 4);
   assert.match(here, /Here → Home/);
@@ -141,4 +153,14 @@ test('one failed Transitous request does not block the next', async () => {
   await assert.rejects(loadHere(GRAND_PLACE, HOME, new Date()), /HTTP 429 from api\.transitous\.org/);
   globalThis.fetch = async (url) => new Response(JSON.stringify(url.includes('reverse') ? REVERSE : PLAN));
   assert.match(await loadHere(GRAND_PLACE, HOME, new Date('2026-10-24T15:24:00Z')), /Grand-Place - Grote Markt 26/);
+});
+
+test('commute from where you are: already at a workplace means no trip to plan there', async () => {
+  const asked = [];
+  globalThis.fetch = async (url) => { asked.push(url); return new Response(JSON.stringify(PLAN)); };
+  const atOfficeA = { ...CONFIG.works[0].place, accuracy: 5 };
+  const html = await loadCommute(CONFIG, atOfficeA, new Date('2026-10-24T15:24:00Z'));
+  assert.match(html, /Here → Office A<\/h3><p class="leave">You're there\./);
+  assert.equal(asked.length, 3); // Office B and the two trips home
+  assert.ok(asked.every((u) => u.includes('numItineraries=6')));
 });
