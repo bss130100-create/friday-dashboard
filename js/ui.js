@@ -28,8 +28,8 @@ function updateSystems() {
   if (!out) return;
   const all = document.querySelectorAll('main > section').length;
   const failed = document.querySelectorAll('main > section.error').length;
-  out.textContent = failed ? `${all - failed}/${all} SYSTEMS ONLINE` : 'ALL SYSTEMS NOMINAL';
-  out.classList.toggle('hot', failed > 0);
+  out.textContent = failed ? `${failed} of ${all} panels need attention` : 'All systems normal';
+  out.classList.toggle('warm', failed > 0); // Reactor Amber: MIAP needs you
 }
 
 export function showBody(id, html) {
