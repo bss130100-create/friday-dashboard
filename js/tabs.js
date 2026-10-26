@@ -1,7 +1,7 @@
 // Sub-menus: each panel's <section> says which tab it belongs to (data-tab in index.html).
 // The open tab lives in the address (#commute ...), so a bookmark or a reload keeps it.
 
-export const TABS = ['time', 'commute', 'weather', 'news', 'global', 'system'];
+export const TABS = ['time', 'commute', 'weather', 'world', 'system'];
 
 export function tabFromHash(hash) {
   const tab = hash.replace(/^#/, '');
@@ -13,5 +13,9 @@ export function showTab(tab) {
     if (!TABS.includes(s.dataset.tab)) throw new Error(`Panel #${s.id} has no valid data-tab`);
     s.hidden = s.dataset.tab !== tab;
   }
-  for (const a of document.querySelectorAll('nav.tabs a')) a.classList.toggle('on', a.hash === `#${tab}`);
+  for (const a of document.querySelectorAll('nav.tabs a')) {
+    const on = a.hash === `#${tab}`;
+    a.classList.toggle('on', on);
+    if (on) document.getElementById('tab-title').textContent = a.textContent.trim(); // large title = tab name
+  }
 }

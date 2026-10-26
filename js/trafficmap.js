@@ -5,7 +5,7 @@
 import { esc } from './ui.js';
 
 const BLOCKAGES = new Set(['jam', 'accident', 'laneClosed', 'brokenDownVehicle']);
-const COLORS = { red: '#ff3b3b', orange: '#ff9f1a' };
+const COLORS = { red: '#FF7043', orange: '#FFB347' }; // Reactor Amber: critical, watch
 export const TRAFFIC_HALF_KM = 25; // ~50 km across
 
 export function roadColor(kind) {
