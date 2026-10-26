@@ -21,7 +21,8 @@ export const loadSystem = () => fetchJson('/system');
 export const pruneOld = () => sendJson('/system/prune', 'POST', {});
 
 const pct = (part, whole) => Math.round((part / whole) * 1000) / 10;
-const hourLabel = (iso) => `${iso.slice(11, 16)}Z`;
+// chart hours in Brussels time, like the rest of MIAP
+const hourLabel = (iso) => new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Brussels', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 const err = (e) => `<p class="err">ERROR: ${esc(e)}</p>`;
 const fmt = (n) => n.toLocaleString('en-GB');
 const size = (bytes) => (bytes < 1e9 ? `${(bytes / 1e6).toFixed(1)} MB` : `${(bytes / 1e9).toFixed(1)} GB`);
@@ -37,18 +38,42 @@ export function meter(label, value, limit, show = fmt) {
 
 const workersMeter = (w) => (w.error ? err(`Worker analytics: ${w.error}`) : meter('Worker requests today', w.requestsToday, FREE.requests));
 
+// A chart with its numbers: one plain line on what it shows, this hour / busiest hour / 24 h total,
+// and times under it (first, middle, last hour).
+export function chartBlock({ title, meaning, points, unit = '', total = null, line = false, height }) {
+  if (!points.length) return `<p class="chart-title">${esc(title)}</p><p class="dim small">no data yet</p>`;
+  const peak = points.reduce((a, b) => (b.value > a.value ? b : a));
+  const stats = [
+    `this hour <b>${fmt(points.at(-1).value)}${unit}</b>`,
+    `busiest <b>${fmt(peak.value)}${unit}</b> at ${esc(peak.label)}`,
+    total === null ? '' : `<b>${fmt(total)}</b> in 24 h`,
+  ].filter(Boolean).join(' · ');
+  const chart = line ? lineChart(points, { unit, height }) : barChart(points, { unit, height });
+  const ticks = [points[0], points[Math.floor(points.length / 2)], points.at(-1)].map((p) => `<span>${esc(p.label)}</span>`).join('');
+  return `<p class="chart-title">${esc(title)}</p><p class="dim small">${meaning}</p><p class="small">${stats}</p>${chart}<div class="axis">${ticks}</div>`;
+}
+
+// Cloudflare's names for how a request ended, in plain words
+const OUTCOMES = {
+  success: 'worked', scriptThrewException: 'crashed (code error)', exceededCpu: 'stopped: used too much CPU',
+  exceededMemory: 'stopped: used too much memory', clientDisconnected: 'visitor left before the answer', internalError: 'Cloudflare-side error',
+};
+
 function workersDetail(w) {
   if (w.error) return '';
   const cpuClass = w.cpuP99Ms > FREE.cpuMs ? 'hot' : w.cpuP99Ms > FREE.cpuMs / 2 ? 'warm' : '';
+  const series = (pick) => w.hours.map((h) => ({ label: hourLabel(h.hour), value: pick(h) }));
   return `<div class="kpis">
-      <div><span class="kpi ${w.errors ? 'hot' : ''}">${fmt(w.errors)}</span><span class="dim">errors in 24 h · ${w.requests ? pct(w.errors, w.requests) : 0}% of ${fmt(w.requests)}</span></div>
-      <div><span class="kpi">${w.cpuP50Ms} / <span class="${cpuClass}">${w.cpuP99Ms}</span></span><span class="dim">CPU ms, median / p99 (limit ${FREE.cpuMs})</span></div>
-      <div><span class="kpi">${fmt(w.subrequests)}</span><span class="dim">calls to other APIs, 24 h</span></div>
+      <div><span class="kpi ${w.errors ? 'hot' : ''}">${fmt(w.errors)}</span><span class="dim">crashes in 24 h, out of ${fmt(w.requests)} requests</span></div>
+      <div><span class="kpi">${w.cpuP50Ms} ms</span><span class="dim">typical work per request</span></div>
+      <div><span class="kpi ${cpuClass}">${w.cpuP99Ms} ms</span><span class="dim">slowest 1% (free limit ${FREE.cpuMs} ms)</span></div>
+      <div><span class="kpi">${fmt(w.subrequests)}</span><span class="dim">calls to other services, 24 h</span></div>
     </div>
-    <p class="dim small">Requests per hour</p>${barChart(w.hours.map((h) => ({ label: hourLabel(h.hour), value: h.requests })), { unit: ' requests' })}
-    <p class="dim small">Errors per hour</p>${barChart(w.hours.map((h) => ({ label: hourLabel(h.hour), value: h.errors })), { height: 32, unit: ' errors' })}
-    <p class="dim small">CPU time p99 per hour</p>${lineChart(w.hours.map((h) => ({ label: hourLabel(h.hour), value: h.cpuP99Ms })), { unit: ' ms' })}
-    <table class="small">${w.outcomes.map((o) => `<tr><td>${esc(o.status)}</td><td class="${o.status === 'success' ? '' : 'hot'}">${fmt(o.requests)}</td></tr>`).join('')}</table>`;
+    ${chartBlock({ title: 'Requests per hour', meaning: 'How often MIAP\'s server was used: page loads, panel refreshes and the background jobs.', points: series((h) => h.requests), total: w.requests })}
+    ${chartBlock({ title: 'Crashes per hour', meaning: 'Requests that failed inside the server. 0 is what you want.', points: series((h) => h.errors), total: w.errors, height: 32 })}
+    ${chartBlock({ title: 'Slowest requests per hour', meaning: `Work time of the slowest 1% of requests in each hour. The free plan allows ${FREE.cpuMs} ms per request.`, points: series((h) => h.cpuP99Ms), unit: ' ms', line: true })}
+    <p class="chart-title">How the requests ended · 24 h</p>
+    <table class="small">${w.outcomes.map((o) => `<tr><td>${esc(OUTCOMES[o.status] ?? o.status)}</td><td class="${o.status === 'success' ? '' : 'hot'}">${fmt(o.requests)}</td></tr>`).join('')}</table>`;
 }
 
 const renderAi = (a) => (a.error ? err(`Workers AI analytics: ${a.error}`) : meter('Workers AI neurons today', a.neuronsToday, FREE.neurons));

@@ -28,7 +28,7 @@ export function commuteWindow(now) {
 
 // The two routes to watch in a window: to work in the morning, home in the evening.
 export function watchedRoutes(config, window) {
-  const all = routes(config);
+  const all = routes(config, { label: 'Home', place: config.home }); // the Worker has no GPS: alerts start from home
   return window === 'morning' ? all.slice(0, 2) : all.slice(2, 4);
 }
 
@@ -65,7 +65,7 @@ export async function commuteEvents(config, now, getJson) {
   const disruptions = parseDisturbances(await getJson(DISTURBANCES_URL));
   const events = [];
   for (const r of watchedRoutes(config, window)) {
-    events.push(...tripEvents(r.label, parsePlan(await getJson(planUrl(r.from, r.to))), disruptions, now));
+    events.push(...tripEvents(r.label, parsePlan(await getJson(planUrl(r.from, r.to, 3))), disruptions, now));
   }
   return events;
 }

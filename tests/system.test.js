@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { GRAPHQL_URL, SCRIPT, D1_DATABASE_ID, usageQueries, parseWorkers, parseAi, parseD1 } from '../relay/usage.js';
 import worker, { cloudflareUsage, recordError, recordRun, ownHealth, systemStatus, prune, snapshot } from '../relay/worker.js';
-import { renderSystem, renderPruned, meter, PRUNE_QUESTION } from '../js/system.js';
+import { renderSystem, renderPruned, meter, chartBlock, PRUNE_QUESTION } from '../js/system.js';
 
 afterEach(() => delete globalThis.fetch);
 
@@ -164,12 +164,25 @@ test('panel: meters against the free limits, failures in red, jobs and paths lis
     },
   }, NOW);
   assert.match(html, /Worker requests today[^]*900 \/ 100,000 · 0\.9%/);
-  assert.match(html, /kpi hot">6<\/span><span class="dim">errors in 24 h · 0\.5% of 1,200/);
-  assert.match(html, /2\.1 \/ <span class="warm">8\.45<\/span>/);
+  assert.match(html, /kpi hot">6<\/span><span class="dim">crashes in 24 h, out of 1,200 requests/);
+  assert.match(html, /kpi">2\.1 ms<\/span><span class="dim">typical/);
+  assert.match(html, /kpi warm">8\.45 ms<\/span><span class="dim">slowest 1% \(free limit 10 ms\)/);
+  assert.match(html, /Crashes per hour[^]*this hour <b>6<\/b> · busiest <b>6<\/b> at 11:00 · <b>6<\/b> in 24 h/); // 10:00Z = 11:00 Brussels
+  assert.match(html, /<td>crashed \(code error\)<\/td><td class="hot">6/);
   assert.match(html, /ERROR: Workers AI analytics: Cloudflare analytics: unknown field/);
   assert.match(html, /Database size \(total\)[^]*3\.5 MB \/ 5\.0 GB/);
   assert.match(html, /Database rows written today[^]*950 \/ 100,000/);
   assert.match(html, /\/roads<\/td><td class="hot">500&nbsp;×&nbsp;2/);
   assert.match(html, /FAILED<\/span> Hourly snapshot \+ quake alerts: last 20m ago, took 950 ms · 24 runs in 24 h, avg 875 ms · <span class="hot">1 failed/);
   assert.match(renderSystem({ cloudflare: { error: 'CF_API_TOKEN secret is not set' }, own: { errorsByPath: [], crons: [] } }, NOW), /ERROR: CF_API_TOKEN[^]*No error answers[^]*No scheduled runs/);
+});
+
+test('chart block: plain meaning, this hour / busiest / total, and the time axis', () => {
+  const points = [{ label: '09:00', value: 3 }, { label: '10:00', value: 210 }, { label: '11:00', value: 12 }];
+  const html = chartBlock({ title: 'Requests per hour', meaning: 'How often.', points, total: 225 });
+  assert.match(html, /Requests per hour<\/p><p class="dim small">How often\.<\/p>/);
+  assert.match(html, /this hour <b>12<\/b> · busiest <b>210<\/b> at 10:00 · <b>225<\/b> in 24 h/);
+  assert.match(html, /<div class="axis"><span>09:00<\/span><span>10:00<\/span><span>11:00<\/span><\/div>/);
+  assert.doesNotMatch(chartBlock({ title: 'CPU', meaning: 'x', points, unit: ' ms', line: true }), /in 24 h/);
+  assert.match(chartBlock({ title: 'X', meaning: 'x', points: [] }), /no data yet/);
 });

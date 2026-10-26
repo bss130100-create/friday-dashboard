@@ -258,7 +258,8 @@ async function refreshCommute() {
     showBody('commute', '<p class="dim">Open setup above: enter your home and work addresses once.</p>');
     return;
   }
-  showBody('commute', await loadCommute(config, new Date()));
+  // trips to work start where you are now (a fresh fix, at most a minute old)
+  showBody('commute', await loadCommute(config, await getLocation({ precise: true }), new Date()));
 }
 
 commuteForm.addEventListener('submit', async (event) => {

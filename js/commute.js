@@ -69,21 +69,23 @@ export async function saveConfig(config) {
   return parseConfig(await sendJson(SETTINGS_URL, 'PUT', parseConfig(config)));
 }
 
-// The four routes, in the order they are shown.
-export function routes(config) {
+// The four routes, in the order they are shown. start: where the trips to work begin,
+// { label: 'Here', place: your GPS fix } on the page, { label: 'Home', place: home } for the alerts.
+export function routes(config, start) {
   const [w1, w2] = config.works;
   return [
-    { label: `Home → ${w1.label}`, from: config.home, to: w1.place },
-    { label: `Home → ${w2.label}`, from: config.home, to: w2.place },
+    { label: `${start.label} → ${w1.label}`, from: start.place, to: w1.place },
+    { label: `${start.label} → ${w2.label}`, from: start.place, to: w2.place },
     { label: `${w1.label} → Home`, from: w1.place, to: config.home },
     { label: `${w2.label} → Home`, from: w2.place, to: config.home },
   ];
 }
 
 // --- trips
-export function planUrl(from, to) {
+// count: how many upcoming trips to ask for
+export function planUrl(from, to, count) {
   const at = (p) => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`;
-  return `${API}/v5/plan?${new URLSearchParams({ fromPlace: at(from), toPlace: at(to), numItineraries: '3' })}`;
+  return `${API}/v5/plan?${new URLSearchParams({ fromPlace: at(from), toPlace: at(to), numItineraries: String(count) })}`;
 }
 
 const RAIL = new Set(['RAIL', 'REGIONAL_RAIL', 'REGIONAL_FAST_RAIL', 'SUBURBAN', 'LONG_DISTANCE', 'HIGHSPEED_RAIL', 'NIGHT_RAIL']);
@@ -136,9 +138,30 @@ export function renderRoute(label, trips, now) {
   return `<h3>&gt; ${esc(label)}</h3>${head}<ul class="trips">${rows.join('')}</ul>`;
 }
 
-export async function loadCommute(config, now) {
+// The commute panel shows the FASTEST_SHOWN quickest of the next CANDIDATES trips (cancelled and
+// already-gone ones left out), in departure order.
+const CANDIDATES = 6;
+const FASTEST_SHOWN = 2;
+const THERE_KM = 0.2;
+
+export function fastest(trips, now, n = FASTEST_SHOWN) {
+  return trips
+    .filter((t) => !t.cancelled && t.start >= now - 60000)
+    .sort((a, b) => a.durationMin - b.durationMin || a.start - b.start)
+    .slice(0, n)
+    .sort((a, b) => a.start - b.start);
+}
+
+// here: your current GPS fix; the trips to work start there, the trips home start at work.
+export async function loadCommute(config, here, now) {
   const parts = [];
-  for (const r of routes(config)) parts.push(renderRoute(r.label, parsePlan(await transitous(planUrl(r.from, r.to))), now));
+  for (const r of routes(config, { label: 'Here', place: here })) {
+    if (distanceKm(r.from.lat, r.from.lon, r.to.lat, r.to.lon) < THERE_KM) {
+      parts.push(`<h3>&gt; ${esc(r.label)}</h3><p class="leave">You're there.</p>`);
+      continue;
+    }
+    parts.push(renderRoute(r.label, fastest(parsePlan(await transitous(planUrl(r.from, r.to, CANDIDATES))), now), now));
+  }
   return parts.join('');
 }
 
@@ -148,12 +171,12 @@ export function renderHere(here, address, home, trips, now) {
   const km = distanceKm(here.lat, here.lon, home.lat, home.lon);
   const fix = `${here.lat.toFixed(5)}, ${here.lon.toFixed(5)} · ±${Math.round(here.accuracy)} m`;
   const top = `<div class="kpi-sm">${esc(address)}</div><div class="dim small">${fix} · ${km.toFixed(1)} km from home</div>`;
-  if (km < 0.2) return `${top}<p class="leave">You're home.</p>`;
+  if (km < THERE_KM) return `${top}<p class="leave">You're home.</p>`;
   return top + renderRoute('Here → Home', trips, now);
 }
 
 export async function loadHere(here, home, now) {
   const address = parseReverse(await transitous(reverseUrl(here)));
-  const trips = distanceKm(here.lat, here.lon, home.lat, home.lon) < 0.2 ? [] : parsePlan(await transitous(planUrl(here, home)));
+  const trips = distanceKm(here.lat, here.lon, home.lat, home.lon) < THERE_KM ? [] : parsePlan(await transitous(planUrl(here, home, 3)));
   return renderHere(here, address, home, trips, now);
 }
