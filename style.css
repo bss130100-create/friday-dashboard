@@ -38,6 +38,9 @@ a:hover { color: var(--cool); }
 .brand { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .brand svg { width: 28px; height: 28px; flex: none; filter: drop-shadow(0 0 3px var(--glow)); animation: reactor 4s ease-in-out infinite; }
 /* slow reactor pulse: the logo breathes, glow stays small so it never looks blurred */
+/* scanning: the logo's broken outer arcs turn slowly, once a minute */
+.brand .scan { transform-box: view-box; transform-origin: 18px 18px; animation: scan 60s linear infinite; }
+@keyframes scan { from { transform: rotate(-70deg); } to { transform: rotate(290deg); } }
 @keyframes reactor { 50% { filter: drop-shadow(0 0 1px var(--glow)); opacity: .82; } }
 .brand span { font: 700 15px var(--head); letter-spacing: .22em; }
 h1 { margin: 0; font: 700 34px/41px var(--head); letter-spacing: -.02em; }
@@ -96,7 +99,7 @@ h3 { margin: 14px 0 4px; font: 600 13px var(--body); color: var(--dim); }
 .err { color: var(--hot); }
 .status { margin-top: 8px; font: 11px var(--mono); color: var(--dim); text-align: right; letter-spacing: .02em; }
 /* telemetry in mono: chronometer rows, System numbers, chart axes */
-#clock td, #system table, .meter .small, .axis, .tag { font-family: var(--mono); }
+#clock td, #system table, .meter .small:last-child, .axis, .tag { font-family: var(--mono); }
 #clock .big { color: var(--cyan); }
 table { border-collapse: collapse; font-size: 15px; }
 td, th { padding: 3px 14px 3px 0; text-align: left; font-weight: normal; vertical-align: top; }
@@ -124,9 +127,15 @@ td:first-child, th { color: var(--dim); }
 @keyframes grow { from { transform: scaleX(0); } }
 .fill.warm { background: var(--warm); }
 .fill.hot { background: var(--hot); }
-/* System tab: one usage line = label, bar against the free limit, numbers */
-.meter { display: grid; grid-template-columns: minmax(150px, 1fr) 2fr auto; align-items: center; gap: 4px 12px; margin: 8px 0; }
-@media (max-width: 720px) { .meter { grid-template-columns: 1fr auto; } .meter .bar { grid-column: 1 / -1; grid-row: 2; } }
+/* System tab: one usage line = ring against the free limit, label, numbers */
+.meter { display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 4px 12px; margin: 8px 0; }
+.ring { width: 36px; height: 36px; }
+.ring circle { fill: none; stroke-width: 3.5; }
+.ring .track { stroke: var(--fill); }
+.ring .arc { stroke: var(--cyan); stroke-linecap: round; filter: drop-shadow(0 0 2px var(--glow)); animation: sweep-in .9s ease-out both; }
+.ring.warm .arc { stroke: var(--warm); filter: none; }
+.ring.hot .arc { stroke: var(--hot); filter: none; }
+@keyframes sweep-in { from { stroke-dasharray: 0 100; } }
 .prune { margin: 12px 0 4px; }
 #prune { background: var(--amber-fill); color: var(--hot); }
 .chart-title { margin: 16px 0 2px; color: var(--fg); font: 600 17px var(--body); }
