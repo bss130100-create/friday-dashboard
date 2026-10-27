@@ -19,7 +19,9 @@ function fakeD1() {
     all: async () => stmt(sql, params).exec(),
     first: async () => { const row = db.prepare(sql).get(...params); return row ? { ...row } : null; },
   });
-  return { prepare: (sql) => stmt(sql), batch: async (list) => list.map((s) => s.exec()) };
+  // sqls + raw: what the Worker asked, and the database itself, to check how SQLite runs each query
+  const sqls = [];
+  return { prepare: (sql) => { sqls.push(sql); return stmt(sql); }, batch: async (list) => list.map((s) => s.exec()), sqls, raw: db };
 }
 
 const NOW = Date.parse('2026-10-25T11:00:00Z');
@@ -102,6 +104,21 @@ test('own records: errors per path and hour, scheduled runs with the latest per 
   const hourly = h.crons.find((c) => c.cron === '0 * * * *');
   assert.deepEqual([hourly.runs, hourly.failed, hourly.avg_ms, hourly.last.ok, hourly.last.error], [2, 1, 875, 0, 'snapshot failed: attacks: HTTP 401']);
   assert.equal(h.crons.find((c) => c.cron === '*/5 * * * *').runs, 1);
+});
+
+// D1 bills every row a query looks at. cron_runs grows by ~300 rows a day, so no query on it may
+// read the whole table, let alone the whole table once per row (that was 350,000 rows per System load).
+test('cron_runs queries jump to their rows through the index, never scan the table', async () => {
+  const env = { DB: fakeD1() };
+  for (let i = 0; i < 50; i++) await recordRun(env, '*/5 * * * *', NOW - i * 300000, 40, null);
+  await ownHealth(env, NOW);
+  const onRuns = [...new Set(env.DB.sqls)].filter((sql) => /(FROM|INTO) cron_runs/.test(sql));
+  assert.equal(onRuns.length, 4); // insert + delete old (each run), totals + last run (System load)
+  for (const sql of onRuns.filter((q) => !q.startsWith('INSERT'))) {
+    const plan = env.DB.raw.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...sql.split('?').slice(1).map(() => NOW)).map((r) => r.detail);
+    assert.ok(plan.some((step) => step.includes('USING INDEX cron_runs_started')), `${sql}\n${plan.join('\n')}`);
+    assert.ok(!plan.some((step) => /^SCAN|CORRELATED/.test(step)), `${sql}\n${plan.join('\n')}`);
+  }
 });
 
 test('a scheduled run is recorded even when it fails, and the failure is still thrown', async () => {

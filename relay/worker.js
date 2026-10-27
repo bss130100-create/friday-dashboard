@@ -52,6 +52,9 @@ const SCHEMA = [
   // MIAP's own health (System tab): errors per page path and hour, and every scheduled run
   'CREATE TABLE IF NOT EXISTS route_errors (hour TEXT NOT NULL, path TEXT NOT NULL, status INTEGER NOT NULL, count INTEGER NOT NULL, last_error TEXT, PRIMARY KEY (hour, path, status))',
   'CREATE TABLE IF NOT EXISTS cron_runs (cron TEXT NOT NULL, started INTEGER NOT NULL, ms INTEGER NOT NULL, ok INTEGER NOT NULL, error TEXT)',
+  // D1 bills every row a query looks at. cron_runs gains ~300 rows a day and every run deletes old
+  // ones, every System load reads the last 24 h: this index lets both jump to the rows they need.
+  'CREATE INDEX IF NOT EXISTS cron_runs_started ON cron_runs (started)',
 ];
 
 // The tables, created on first use: once per database binding while this Worker instance lives,
@@ -121,7 +124,9 @@ export async function ownHealth(env, now = Date.now()) {
   const [errors, crons, last] = await db.batch([
     db.prepare('SELECT path, status, SUM(count) AS count, MAX(hour) AS hour, last_error FROM route_errors WHERE hour >= ? GROUP BY path, status ORDER BY count DESC').bind(hourOf(since)),
     db.prepare('SELECT cron, COUNT(*) AS runs, SUM(1 - ok) AS failed, ROUND(AVG(ms)) AS avg_ms FROM cron_runs WHERE started >= ? GROUP BY cron').bind(since),
-    db.prepare('SELECT cron, started, ms, ok, error FROM cron_runs c WHERE started = (SELECT MAX(started) FROM cron_runs WHERE cron = c.cron)'),
+    // SQLite fills ms, ok, error from the row that holds MAX(started): each job's last run.
+    // (Was a subquery per row: rows x rows read, 350,000 per System load with 2 days of runs.)
+    db.prepare('SELECT cron, MAX(started) AS started, ms, ok, error FROM cron_runs WHERE started >= ? GROUP BY cron').bind(since),
   ]);
   const lastOf = new Map(last.results.map((r) => [r.cron, r]));
   return {
@@ -218,8 +223,8 @@ export async function snapshot(env, now = new Date()) {
   const jobs = {
     gnss: async () => {
       // the backfill goes only into an empty table (first run): after a 30-day wipe old days must not come back
-      const { n } = await db.prepare('SELECT COUNT(*) AS n FROM gnss_daily').first();
-      if (n === 0) await db.prepare(BACKFILL_GNSS).bind(JSON.stringify(await assetJson(env, '/data/gnss-backfill.json'))).run();
+      const any = await db.prepare('SELECT 1 AS one FROM gnss_daily LIMIT 1').first(); // 1 row read, COUNT(*) read them all
+      if (!any) await db.prepare(BACKFILL_GNSS).bind(JSON.stringify(await assetJson(env, '/data/gnss-backfill.json'))).run();
       await db.prepare(INSERT_GNSS).bind(JSON.stringify(gnssRows(await assetJson(env, '/data/gpsjam.json')))).run();
     },
     attacks: async () => {
