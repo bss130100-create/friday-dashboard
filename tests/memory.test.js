@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import worker, {
   quakeRows, gnssRows, attackRows, snapshot, history, historyQuery, verifyLogin, settings,
-  roadsQuery, roadsBox, parseIncidents, roads, briefingMessages, briefing, radarAttacks, accessKeys as teamKeys,
+  roadsQuery, roadsBox, parseIncidents, roads, briefingMessages, parseBrief, briefing, radarAttacks, accessKeys as teamKeys,
 } from '../relay/worker.js';
 import { USGS_JSON, RADAR_JSON } from './fixtures.js';
 
@@ -237,24 +237,39 @@ test('roads: asks TomTom once, then serves the cache for 30 min; no key is a cle
   await assert.rejects(roads({ DB: fakeD1() }, cell, t0), /TOMTOM_KEY secret is not set/);
 });
 
-test('briefing: panels go to the model as readouts; bad input and missing AI are explained', async () => {
+test('briefing: panels go to the model as readouts, JSON mode asks for summary + 3 lists; bad input and missing AI are explained', async () => {
   const body = { now: 'Saturday 19:30', panels: { Weather: '12 °C light rain' } };
   const [system, user] = briefingMessages(body);
   assert.match(system.content, /at most 3 short sentences/);
+  assert.match(system.content, /"updates".*"upcoming".*"actions"/);
   assert.match(system.content, /Never mention work or the commute to work on a Saturday or Sunday/);
+  assert.match(system.content, /never invent anything/);
   assert.match(system.content, /like JARVIS/);
   assert.equal(user.content, 'Local time: Saturday 19:30\n[Weather] 12 °C light rain');
   assert.throws(() => briefingMessages({ panels: {} }), /needs \{ now, panels \}/);
   assert.throws(() => briefingMessages({ now: 'x', panels: { a: 'y'.repeat(7000) } }), /too long/);
   const post = () => new Request('https://m.example/briefing', { method: 'POST', body: JSON.stringify(body) });
   let asked;
-  const env = { AI: { run: async (model, input) => { asked = { model, input }; return { response: ' Rain: take a coat. ' }; } } };
-  assert.deepEqual(await briefing(env, post()), { text: 'Rain: take a coat.' });
+  const answer = { summary: ' Rain: take a coat. ', updates: ['12 °C, light rain'], upcoming: [], actions: ['Take a coat', ' '] };
+  const env = { AI: { run: async (model, input) => { asked = { model, input }; return { response: answer }; } } };
+  assert.deepEqual(await briefing(env, post()), { summary: 'Rain: take a coat.', updates: ['12 °C, light rain'], upcoming: [], actions: ['Take a coat'] });
   assert.equal(asked.model, '@cf/meta/llama-3.3-70b-instruct-fp8-fast');
-  assert.equal(asked.input.max_tokens, 160);
+  assert.equal(asked.input.max_tokens, 400);
+  assert.equal(asked.input.response_format.type, 'json_schema');
+  assert.deepEqual(asked.input.response_format.json_schema.required, ['summary', 'updates', 'upcoming', 'actions']);
   await assert.rejects(briefing({}, post()), /Workers AI is not bound/);
-  await assert.rejects(briefing({ AI: { run: async () => ({}) } }, post()), /no text/);
+  await assert.rejects(briefing({ AI: { run: async () => ({}) } }, post()), /no summary/);
   const res = await worker.fetch(new Request('https://m.example/briefing'), { ...env, DB: fakeD1() }, CTX);
   assert.equal(res.status, 400);
   await later.pop();
+});
+
+test('briefing answer: parsed object or JSON text, lists capped at 3, anything else fails loudly', () => {
+  const brief = { summary: 'All quiet.', updates: ['a', 'b', 'c', 'd'], upcoming: ['Sunset 17:20'], actions: [] };
+  assert.deepEqual(parseBrief(brief), { summary: 'All quiet.', updates: ['a', 'b', 'c'], upcoming: ['Sunset 17:20'], actions: [] });
+  assert.deepEqual(parseBrief(JSON.stringify(brief)), parseBrief(brief));
+  assert.throws(() => parseBrief('All quiet.'), /not JSON/);
+  assert.throws(() => parseBrief({ ...brief, summary: ' ' }), /no summary/);
+  assert.throws(() => parseBrief({ ...brief, actions: 'none' }), /no "actions" list/);
+  assert.throws(() => parseBrief({ ...brief, updates: [3] }), /no "updates" list/);
 });

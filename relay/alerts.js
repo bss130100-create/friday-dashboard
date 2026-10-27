@@ -4,14 +4,12 @@
 //     names a station it uses.
 //   Every hour: an M5+ earthquake within 500 km of home in the last 2 hours.
 // Each event is pushed once (remembered in the alerts_sent table for 3 days).
-import { routes, planUrl, parsePlan } from '../js/commute.js';
+import { routes, planUrl, parsePlan, soon, DELAY_MIN } from '../js/commute.js';
 import { DISTURBANCES_URL, parseDisturbances, placesIn, normalize } from '../js/rail.js';
 import { distanceKm } from '../js/geo.js';
 
 const ZONE = 'Europe/Brussels';
 export const WINDOWS = { morning: [8 * 60, 9 * 60], evening: [15 * 60 + 30, 17 * 60 + 30] };
-const AHEAD_MS = 60 * 60 * 1000;
-export const DELAY_MIN = 5;
 const QUAKE_MAG = 5;
 const QUAKE_KM = 500;
 
@@ -34,14 +32,14 @@ export function watchedRoutes(config, window) {
 
 // Events for one route: trips leaving within the next hour, plus disruptions on their stations.
 export function tripEvents(label, trips, disruptions, now) {
-  const soon = trips.filter((t) => t.start - now > -2 * 60000 && t.start - now < AHEAD_MS);
+  const leaving = soon(trips, now);
   const events = [];
-  for (const t of soon) {
+  for (const t of leaving) {
     const what = `${hhmm(t.scheduled)} ${t.legs.filter((l) => !l.startsWith('walk')).join(' › ')}`;
     if (t.cancelled) events.push({ key: `cancel|${label}|${t.scheduled.toISOString()}`, title: `Cancelled · ${label}`, body: `${what} is cancelled. Open MIAP for the next option.` });
     else if (t.delayMin >= DELAY_MIN) events.push({ key: `delay|${label}|${t.scheduled.toISOString()}`, title: `+${t.delayMin} min · ${label}`, body: `${what} now leaves at ${hhmm(t.start)}.` });
   }
-  const stops = new Set(soon.flatMap((t) => t.stops.flatMap((s) => s.split('/')).map(normalize)));
+  const stops = new Set(leaving.flatMap((t) => t.stops.flatMap((s) => s.split('/')).map(normalize)));
   for (const d of disruptions) {
     if (!d.planned && placesIn(d.title).some((p) => stops.has(p))) {
       events.push({ key: `rail|${d.title}|${d.time.toISOString()}`, title: `SNCB disruption · ${label}`, body: d.title });

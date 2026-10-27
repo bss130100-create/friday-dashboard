@@ -11,7 +11,7 @@
 //   GET /history?kind=gnss|quakes|attacks&days=90  ->  trends from MIAP's memory (D1 database)
 //   GET|PUT /settings/commute  ->  your commute addresses, kept in the D1 database (never in this public repo)
 //   GET /roads?lat=&lon=  ->  traffic incidents around you (TomTom, needs the secret TOMTOM_KEY), cached 30 min
-//   POST /briefing        ->  a 2-3 sentence AI briefing of what the panels show (Workers AI, bound as AI)
+//   POST /briefing        ->  AI briefing of what the panels show: summary + updates, coming up, actions (Workers AI, bound as AI)
 //   GET /push/key, POST /push/subscribe, POST /push/test  ->  phone alerts (Web Push, see push.js + alerts.js)
 //
 // Cron: hourly = memory snapshot + earthquake alerts; every 5 min = commute alerts (inside the windows only).
@@ -429,21 +429,40 @@ async function tomtom(env, cell, now) {
 }
 
 // ---------- AI briefing (Workers AI) ----------
-// The page sends what its panels show right now; a small model turns it into 2-3 sentences.
-// Free plan: 10,000 "neurons" a day; one briefing costs about 75 (see BRIEF_MODEL).
+// The page sends what its panels show right now. The model answers in JSON (Workers AI "JSON mode",
+// response_format json_schema): a 1-3 sentence summary, plus three short lists the page shows when
+// you expand the briefing card.
+// Free plan: 10,000 "neurons" a day; one briefing costs about 110 (see BRIEF_MODEL).
 
-// Llama 3.3 70B: much better judgement than the 8B model. ~75 neurons a briefing, so ~100 a day fit the free 10,000.
+// Llama 3.3 70B: much better judgement than the 8B model, and it supports JSON mode.
+// ~2,000 tokens in + ~250 out = ~110 neurons a briefing, so ~90 a day fit the free 10,000.
 const BRIEF_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
-const MAX_BRIEF_CHARS = 6000;
+const MAX_BRIEF_CHARS = 7000;
+export const MAX_BRIEF_ITEMS = 3;
 const BRIEF_RULES = [
-  "You are MIAP, the personal assistant of Mihai, who lives in Brussels. From the dashboard readouts, write a briefing of at most 3 short sentences (60 words max). No greeting, no lists, no markdown.",
+  'You are MIAP, the personal assistant of Mihai, who lives in Brussels. From the dashboard readouts, write his briefing as JSON.',
+  '"summary": at most 3 short sentences (60 words max). No greeting, no markdown.',
+  `"updates": up to ${MAX_BRIEF_ITEMS} notable facts from the readouts right now (delays, weather, air, prices, news, quakes), each under 15 words.`,
+  `"upcoming": up to ${MAX_BRIEF_ITEMS} things coming up, each with its time or date from the readouts (next trip, sunset, next day off, school holidays).`,
+  `"actions": up to ${MAX_BRIEF_ITEMS} concrete things he should do, only when a readout gives the reason (what to wear or bring, when to leave). An empty list when nothing needs doing.`,
   'First think about what matters at this local day and time: weekday mornings = getting to work; weekday afternoons and evenings = getting home; weekends = weather, being out and about, the world.',
   'Never mention work or the commute to work on a Saturday or Sunday.',
-  'Lead with whatever should change what he does next: a delay, cancellation or closure on his way, rain or cold (say what to wear or bring), poor air, a quake near him.',
-  'If nothing needs action, say that in a few words, then give the single most notable news or world item.',
+  'The summary leads with whatever should change what he does next: a delay, cancellation or closure on his way, rain or cold (say what to wear or bring), poor air, a quake near him.',
+  'If nothing needs action, the summary says that in a few words, then gives the single most notable news or world item.',
   'Be specific: use the names, times and numbers from the readouts. Use only facts from the readouts; never invent anything. Skip readouts with nothing notable.',
   'Voice: calm, dry and confident, like JARVIS talking to Tony Stark. Speak to Mihai directly and tell him what matters, never just list data.',
 ].join(' ');
+
+const BRIEF_SCHEMA = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    updates: { type: 'array', items: { type: 'string' }, maxItems: MAX_BRIEF_ITEMS },
+    upcoming: { type: 'array', items: { type: 'string' }, maxItems: MAX_BRIEF_ITEMS },
+    actions: { type: 'array', items: { type: 'string' }, maxItems: MAX_BRIEF_ITEMS },
+  },
+  required: ['summary', 'updates', 'upcoming', 'actions'],
+};
 
 export function briefingMessages(body) {
   const panels = body?.panels;
@@ -457,12 +476,35 @@ export function briefingMessages(body) {
   return [{ role: 'system', content: BRIEF_RULES }, { role: 'user', content: readouts }];
 }
 
+// The model's answer -> { summary, updates, upcoming, actions }. Workers AI hands JSON-mode answers
+// back either already parsed or as JSON text, depending on the model, so both are read here.
+export function parseBrief(response) {
+  let brief = response;
+  if (typeof response === 'string') {
+    try {
+      brief = JSON.parse(response);
+    } catch {
+      throw new Error('Workers AI answered with text that is not JSON');
+    }
+  }
+  if (typeof brief?.summary !== 'string' || !brief.summary.trim()) throw new Error('Workers AI returned no summary');
+  const list = (key) => {
+    const items = brief[key];
+    if (!Array.isArray(items) || items.some((item) => typeof item !== 'string')) throw new Error(`Workers AI returned no "${key}" list`);
+    return items.map((item) => item.trim()).filter(Boolean).slice(0, MAX_BRIEF_ITEMS);
+  };
+  return { summary: brief.summary.trim(), updates: list('updates'), upcoming: list('upcoming'), actions: list('actions') };
+}
+
 export async function briefing(env, request) {
   if (request.method !== 'POST') throw new RangeError(`${request.method} not allowed`);
   if (!env.AI) throw new Error('Workers AI is not bound to this Worker as "AI" (see wrangler.jsonc)');
-  const out = await env.AI.run(BRIEF_MODEL, { messages: briefingMessages(await request.json()), max_tokens: 160 });
-  if (typeof out?.response !== 'string' || !out.response.trim()) throw new Error('Workers AI returned no text');
-  return { text: out.response.trim() };
+  const out = await env.AI.run(BRIEF_MODEL, {
+    messages: briefingMessages(await request.json()),
+    response_format: { type: 'json_schema', json_schema: BRIEF_SCHEMA },
+    max_tokens: 400,
+  });
+  return parseBrief(out?.response);
 }
 
 // ---------- phone alerts (Web Push) ----------

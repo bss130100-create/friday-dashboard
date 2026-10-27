@@ -4,7 +4,7 @@
 // (Brugel, the Brussels regulator). On top, the forecast renewable share per hour (Energy-Charts,
 // via our Worker's /power) shows when the Belgian grid is greenest.
 import { fetchJson } from './http.js';
-import { esc } from './ui.js';
+import { esc, expander } from './ui.js';
 import { barChart } from './charts.js';
 import { brusselsToday, holidaysUrl, parseHolidays } from './daysoff.js';
 
@@ -89,7 +89,7 @@ export function renderPower({ now, hours, holidays }) {
       <tr><td>Grid now</td><td>${Math.round(hours[0].share)}% renewable</td></tr>
       ${green ? `<tr><td class="nowrap">Greenest ${WINDOW_HOURS} h</td><td><span class="nowrap">${esc(day(green.from))} ${clock(green.from)}–${clock(green.to)}</span> · ${Math.round(green.avg)}%${greenAtNight ? ' · <span class="nowrap">night rate too</span>' : ''}</td></tr>` : ''}
     </table>
-    <h3>RENEWABLE SHARE BY HOUR</h3>
+    ${expander(`<h3>RENEWABLE SHARE BY HOUR</h3>
     ${chart}
-    <p class="dim small">Night rate (Sibelga): 22:00–07:00 on weekdays, all day on weekends and public holidays. Over 100% renewable = Belgium exports the surplus.</p>`;
+    <p class="dim small">Night rate (Sibelga): 22:00–07:00 on weekdays, all day on weekends and public holidays. Over 100% renewable = Belgium exports the surplus.</p>`, 'Hourly chart')}`;
 }
