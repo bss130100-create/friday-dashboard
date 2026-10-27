@@ -1,5 +1,5 @@
 // Entry point: wires each panel to its data source and refresh interval.
-import { runPanel, showBody, showError, esc, toggleExpand } from './ui.js';
+import { runPanel, showBody, showError, esc, toggleExpand, watchFreshness } from './ui.js';
 import { getLocation } from './location.js';
 import { renderClock } from './clock.js';
 import { loadWeather, renderWeather } from './weather.js';
@@ -27,6 +27,7 @@ import { supported, UNSUPPORTED, renderAlerts, alertState, loadPushKey, enableAl
 import { ISS_TLE_URL, GPS_TLE_URL, loadTle, parseTle, satState, visibleGps, renderSatellites } from './satellites.js';
 
 const MINUTE = 60 * 1000;
+watchFreshness();
 
 // --- sub-menus (tabs): the open one is in the address, e.g. .../#commute
 showTab(tabFromHash(window.location.hash));

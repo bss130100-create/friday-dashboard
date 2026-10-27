@@ -17,6 +17,7 @@
   <!-- use-credentials: browsers fetch the manifest without cookies otherwise, and the Access login would block it -->
   <link rel="manifest" href="manifest.webmanifest" crossorigin="use-credentials">
   <link rel="stylesheet" href="vendor/leaflet.css">
+  <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="style.css">
   <script type="module" src="js/main.js"></script>
 </head>
@@ -69,7 +70,7 @@
     <section data-tab="commute" id="alerts">
       <h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>Phone alerts</h2>
       <p class="dim small">Weekdays 08:00–09:00 and 15:30–17:30, checked every 5 min: a trip in the next hour cancelled, 5+ min late, or an SNCB disruption on its stations.</p>
-      <p><button type="button" id="alerts-on">Enable alerts</button> <button type="button" id="alerts-test">Send test</button></p>
+      <p><button type="button" id="alerts-on" class="primary">Enable alerts</button> <button type="button" id="alerts-test">Send test</button></p>
       <div class="body"><p class="dim">Checking this device…</p></div><div class="status"></div>
     </section>
     <section data-tab="weather" id="atmosphere" class="hero"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18h10a4 4 0 0 0 .4-7.98A6 6 0 0 0 6.2 11 3.5 3.5 0 0 0 7 18z"/></svg>Atmosphere</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>

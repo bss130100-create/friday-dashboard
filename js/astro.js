@@ -72,12 +72,12 @@ export function renderAstro(a, now) {
   return `
     <div class="astro">
       <div>
-        <h3>SOL</h3>
+        <h3>Sun</h3>
         <table>
-          <tr><td>RISE</td><td>${clock(a.sunrise)}</td></tr>
-          <tr><td>SET</td><td>${clock(a.sunset)}</td></tr>
-          <tr><td>DAY</td><td>${hm(a.daylightS)}</td></tr>
-          <tr><td>UV MAX</td><td>${a.uvMax.toFixed(1)}</td></tr>
+          <tr><td>Sunrise</td><td>${clock(a.sunrise)}</td></tr>
+          <tr><td>Sunset</td><td>${clock(a.sunset)}</td></tr>
+          <tr><td>Daylight</td><td>${hm(a.daylightS)}</td></tr>
+          <tr><td>UV max</td><td>${a.uvMax.toFixed(1)}</td></tr>
         </table>
         <p class="accent">${esc(sunState)}</p>
       </div>

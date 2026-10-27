@@ -118,7 +118,7 @@ test('loadTraffic: roads from our Worker, rail from iRail', async () => {
     throw new Error(`unexpected ${url}`);
   };
   const { html, shapes } = await loadTraffic(GRAND_PLACE, NOW);
-  assert.match(html, /ROADS[\s\S]*CLOSED[\s\S]*RAIL[\s\S]*Louvain \/ Leuven - Ottignies[\s\S]*1 more elsewhere/);
+  assert.match(html, /Roads within 40 km[\s\S]*CLOSED[\s\S]*Rail lines near you[\s\S]*Louvain \/ Leuven - Ottignies[\s\S]*1 more elsewhere/);
   assert.deepEqual(shapes.map((s) => s.color), ['red', 'orange', 'red']); // closure, jam, Leuven disruption
 });
 

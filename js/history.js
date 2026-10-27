@@ -77,7 +77,7 @@ export async function renderHistory() {
   const gnss = await loadHistory('gnss', 120);
   const attacks = await loadHistory('attacks', 90);
   return `<div class="history">
-    <div><h3>GNSS JAMMING TREND</h3>${renderGnssHistory(gnss)}</div>
-    <div><h3>ATTACK ORIGINS TREND</h3>${renderAttackHistory(attacks)}</div>
+    <div><h3>GNSS jamming trend</h3>${renderGnssHistory(gnss)}</div>
+    <div><h3>Attack origins trend</h3>${renderAttackHistory(attacks)}</div>
   </div>`;
 }

@@ -56,6 +56,6 @@ test('renderHistory asks the Worker for both, one after another', async () => {
   };
   const html = await renderHistory();
   assert.deepEqual(asked, ['gnss', 'attacks']);
-  assert.match(html, /GNSS JAMMING TREND[\s\S]*ATTACK ORIGINS TREND/);
+  assert.match(html, /GNSS jamming trend[\s\S]*Attack origins trend/);
   assert.doesNotMatch(html, /EARTHQUAKE/);
 });

@@ -92,7 +92,7 @@ function renderD1(d) {
 
 function renderErrors(rows) {
   if (!rows.length) return '<p class="dim small">No error answers in the last 24 h.</p>';
-  return `<table class="small">${rows.map((r) => `<tr><td>${esc(r.path)}</td><td class="hot">${r.status}&nbsp;×&nbsp;${r.count}</td><td class="dim">${esc(r.last_error ?? '')}</td></tr>`).join('')}</table>`;
+  return `<table class="small paths">${rows.map((r) => `<tr><td>${esc(r.path)}</td><td class="hot">${r.status}&nbsp;×&nbsp;${r.count}</td><td class="dim">${esc(r.last_error ?? '')}</td></tr>`).join('')}</table>`;
 }
 
 const CRON_NAMES = { '0 * * * *': 'Hourly snapshot', '*/5 * * * *': 'Commute alerts (every 5 min)' };

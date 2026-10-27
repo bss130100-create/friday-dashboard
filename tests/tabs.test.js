@@ -83,8 +83,8 @@ test('style.css: motion only when it means something, Reduce Motion respected, d
   assert.doesNotMatch(css, /\.systems::before \{[^}]*animation/); // status dot: no constant blink
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\*, \*::before, \*::after \{ animation: none !important; transition: none !important; \}/);
   assert.match(css, /bottom: calc\(12px \+ env\(safe-area-inset-bottom\)\)/); // dock above the home indicator
-  assert.match(css, /padding: max\(16px, env\(safe-area-inset-top\)\) 16px calc\(88px \+ env\(safe-area-inset-bottom\)\)/);
-  assert.match(css, /scroll-padding-bottom: calc\(88px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(css, /padding: max\(var\(--s4\), env\(safe-area-inset-top\)\) var\(--s4\) calc\(92px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(css, /scroll-padding-bottom: calc\(92px \+ env\(safe-area-inset-bottom\)\)/);
 });
 
 test('index.html: footer comes after the panels, which fill at least one screen', () => {

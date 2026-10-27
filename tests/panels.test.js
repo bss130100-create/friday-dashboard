@@ -5,6 +5,7 @@ import { project, worldMap } from '../js/worldmap.js';
 import { outagesUrl, parseOutages, renderOutages } from '../js/outages.js';
 import { parseAir, aqiBand, pollenBand, renderAir } from '../js/airquality.js';
 import { moonPhase, parseAstro, renderAstro } from '../js/astro.js';
+import { freshness } from '../js/ui.js';
 import { parseGpsJam, renderGpsJam } from '../js/gpsjam.js';
 import { attacksUrl, parseAttacks, renderAttacks } from '../js/attacks.js';
 import { IODA_JSON, AIR_JSON, ASTRO_JSON, RADAR_JSON } from './fixtures.js';
@@ -41,7 +42,7 @@ test('air quality bands and pollen', () => {
   assert.equal(pollenBand(60), 'high');
   const a = parseAir(AIR_JSON);
   assert.equal(a.aqi, 34);
-  assert.match(renderAir(a), /RAGWEED/);
+  assert.match(renderAir(a), /Ragweed/);
 });
 
 test('air quality outside Europe says pollen is not modelled', () => {
@@ -80,4 +81,13 @@ test('attacks: parsed from Radar, errors surfaced, needs relay', () => {
   assert.match(renderAttacks(p), /class="arc attack"/);
   assert.throws(() => parseAttacks({ success: false, errors: [{ message: 'Authentication error' }] }), /Authentication error/);
   assert.equal(attacksUrl(), '/attacks');
+});
+
+test('freshness: no line while current, "Last updated" once older than 2 refreshes (at least 15 min)', () => {
+  const t0 = Date.parse('2026-10-27T07:00:00Z');
+  const min = 60 * 1000;
+  assert.equal(freshness(t0, 10 * min, t0 + 14 * min), ''); // weather (10 min): 15 min floor
+  assert.equal(freshness(t0, 10 * min, t0 + 21 * min), 'Last updated 21m ago');
+  assert.equal(freshness(t0, 6 * 60 * min, t0 + 11 * 60 * min), ''); // holidays (6 h): stale after 12 h
+  assert.equal(freshness(t0, 0, t0 + 3 * 60 * min), 'Last updated 3h ago'); // a card without an interval
 });

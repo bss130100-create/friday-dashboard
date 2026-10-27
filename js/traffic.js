@@ -80,8 +80,8 @@ export function renderTraffic(roads, rail, now) {
   const part = (title, result, render) =>
     `<h3>${title}</h3>${result.status === 'fulfilled' ? render(result.value) : `<p class="err">ERROR: ${esc(result.reason.message)}</p>`}`;
   return `<div class="traffic">
-    <div>${part('ROADS · 40 km around you', roads, (r) => renderRoads(r.incidents))}</div>
-    <div>${part('RAIL · lines near you', rail, (r) => renderRail(r, now))}</div></div>`;
+    <div>${part('Roads within 40 km', roads, (r) => renderRoads(r.incidents))}</div>
+    <div>${part('Rail lines near you', rail, (r) => renderRail(r, now))}</div></div>`;
 }
 
 // -> { html: the lists, shapes: what to draw on the map }

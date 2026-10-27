@@ -87,11 +87,11 @@ test('plan: delays, cancellations and leg names', () => {
 test('render: countdown to the next running trip, in Brussels time', () => {
   const trips = parsePlan(PLAN);
   const html = renderRoute('Home → Office A', trips, new Date('2026-10-24T15:24:00Z'));
-  assert.match(html, /leave in 12 min/);
+  assert.match(html, /Leave in 12 min/);
   assert.match(html, /17:36 <span class="warm">\+3<\/span> → 18:01/);
-  assert.match(html, /CANCELLED/);
-  assert.match(renderRoute('x', trips, new Date('2026-10-24T15:35:30Z')), /LEAVE NOW/);
-  assert.match(renderRoute('x', [trips[1]], new Date('2026-10-24T15:00:00Z')), /no trip found/);
+  assert.match(html, /Cancelled/);
+  assert.match(renderRoute('x', trips, new Date('2026-10-24T15:35:30Z')), /Leave now/);
+  assert.match(renderRoute('x', [trips[1]], new Date('2026-10-24T15:00:00Z')), /No trip found/);
 });
 
 test('loadCommute plans all four routes, one request at a time', async () => {
@@ -133,7 +133,7 @@ test('where am I: address, GPS fix and the way home; at home no trip is planned'
   const html = renderHere(GRAND_PLACE, 'Grand-Place 26', HOME, parsePlan(PLAN), now);
   assert.match(html, /Grand-Place 26/);
   assert.match(html, /50\.84660, 4\.35280 · ±8 m · 6\.\d km from home/);
-  assert.match(html, /Here → Home[\s\S]*leave in 12 min/);
+  assert.match(html, /Here → Home[\s\S]*Leave in 12 min/);
   assert.match(renderHere({ ...HOME, accuracy: 5 }, 'Home St 1', HOME, [], now), /You're home/);
 });
 
@@ -193,7 +193,7 @@ test('soon: trips leaving in the next hour; weekend = Saturday and Sunday in Bru
 test('Today commute card: says what is wrong first, then the next trip on the routes that matter now', () => {
   const html = commuteSummary(plans([], [], mondayTrips(), allClear(mondayTrips())), MONDAY);
   assert.match(html, /^<p class="verdict warm">16:50 bus 820 › tram 82 to Home is cancelled\.<\/p>/);
-  assert.match(html, /<span class="route">Office A → Home<\/span><span class="warm">leave in 12 min<\/span>\s*<span class="dim">25 min · there 17:01<\/span>/);
+  assert.match(html, /<span class="route">Office A → Home<\/span><span class="">Leave in 12 min<\/span>\s*<span class="dim">25 min · there 17:01<\/span>/);
   assert.doesNotMatch(html, /Here → Office/);
   assert.match(html, /href="#commute"/);
   const late = mondayTrips().map((t) => ({ ...t, delayMin: 7 }));
@@ -205,7 +205,7 @@ test('Today commute card: all clear, nothing in the next hour, no trip, at work,
   const toWork = allClear(mondayTrips(-8 * 3600000));
   assert.match(commuteSummary(plans(toWork, toWork, [], []), morning), /^<p class="verdict ok">No delays or cancellations on your next trips\.<\/p>/);
   assert.match(commuteSummary(plans(toWork, toWork, [], []), new Date(morning.getTime() - 3 * 3600000)), /^<p class="verdict">No trips in the next hour\.<\/p>/);
-  assert.match(commuteSummary(plans(toWork, [], [], []), morning), /<span class="route">Here → Office B<\/span><span class="dim">no trip found right now<\/span>/);
+  assert.match(commuteSummary(plans(toWork, [], [], []), morning), /<span class="route">Here → Office B<\/span><span class="dim">No trip found right now<\/span>/);
   const atWork = plans([], toWork, [], []);
   atWork[0].there = true;
   assert.match(commuteSummary(atWork, morning), /<span class="route">Here → Office A<\/span><span>You're there\.<\/span>/);
