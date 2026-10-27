@@ -38,8 +38,8 @@ a:hover { color: var(--cool); }
 
 /* ---------- header: logo, tab title, status ---------- */
 .app-header { display: flex; flex-direction: column; gap: 2px; margin: 0 4px 16px; }
-.brand { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-.brand svg { width: 28px; height: 28px; flex: none; filter: drop-shadow(0 0 3px var(--glow)); }
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.brand svg { width: 36px; height: 36px; flex: none; filter: drop-shadow(0 0 3px var(--glow)); }
 .brand .scan { transform-box: view-box; transform-origin: 18px 18px; }
 /* the reactor only moves while MIAP is thinking (writing a briefing): a slow pulse, the outer arcs turning */
 body.thinking .brand svg, body.thinking #briefing .ico { animation: reactor 2.4s ease-in-out infinite; }
