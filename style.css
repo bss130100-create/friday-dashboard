@@ -287,7 +287,9 @@ footer a { text-decoration: underline; text-decoration-color: rgba(86, 217, 255,
 .incidents { list-style: none; padding: 0; margin: var(--s1) 0; font: var(--t-subhead); }
 .incidents li { margin: 6px 0; }
 /* traffic map: OpenStreetMap tiles inverted to a dark map; our red/orange lines are not filtered */
-.tmap { height: 340px; margin: var(--s1) 0 var(--s2); border-radius: var(--r-inner); overflow: hidden; background: var(--bg); }
+/* isolation: Leaflet's layers and controls (z-index up to 1000) stay inside the map, so the map scrolls
+   under the dock (z-index 1000) like any card instead of drawing its zoom buttons and credits over it */
+.tmap { isolation: isolate; height: 340px; margin: var(--s1) 0 var(--s2); border-radius: var(--r-inner); overflow: hidden; background: var(--bg); }
 .tmap .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.8) contrast(1.1); }
 .tmap .leaflet-control-attribution { background: rgba(0, 0, 0, .7); color: var(--dim); }
 .tmap .leaflet-control-attribution a { color: var(--cool); }
