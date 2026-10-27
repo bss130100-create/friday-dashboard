@@ -327,6 +327,11 @@ body.thinking #brief-me { pointer-events: none; opacity: .75; }
 .count .unit { margin: 0; }
 .lead { margin: 2px 0 var(--s1); font: var(--t-headline); font-weight: 400; }
 p.small { margin: var(--s2) 0 0; }
+/* weather map layer switch: an iOS segmented control, the chosen layer lit cyan */
+.segmented { display: flex; gap: 2px; padding: 2px; margin: 0 0 var(--s2); border-radius: var(--r-pill); background: var(--fill); }
+.segmented button { flex: 1; min-height: var(--tap); padding: 0 var(--s2); background: none; color: var(--dim); font: var(--t-footnote); font-weight: 600; }
+.segmented button[aria-pressed="true"] { background: var(--cyan-tint); color: var(--cyan); box-shadow: inset 0 0 0 1px var(--cyan-edge); }
+
 /* holidays: a vertical timeline; cyan dot = long weekend, hollow = other day off, steel = school holidays */
 .timeline { list-style: none; margin: 0; padding: 0; }
 .timeline li { position: relative; display: grid; grid-template-columns: 84px 1fr auto; gap: var(--s2); padding: var(--s2) 0 var(--s2) 18px; font: var(--t-subhead); }

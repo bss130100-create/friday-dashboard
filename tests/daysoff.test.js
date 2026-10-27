@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { brusselsToday, addDays, daysBetween, holidaysUrl, parseHolidays, bridge, renderDaysOff, holidayTimeline, renderHolidays } from '../js/daysoff.js';
+import { brusselsToday, addDays, daysBetween, holidaysUrl, parseHolidays, bridge, renderDaysOff, holidayTimeline, renderDaysOffCard } from '../js/daysoff.js';
 import { PUBLIC_HOLIDAYS_JSON, SCHOOL_HOLIDAYS_JSON } from './fixtures.js';
 
 test('dates: Brussels today (also across midnight UTC), adding days, counting days', () => {
@@ -51,18 +51,18 @@ test('holiday timeline: public and school holidays in date order, running school
   assert.ok(!holidayTimeline({ ...DATA, school: german }).some((h) => h.name === 'Winter Holidays'));
 });
 
-test('holidays card: first 4 on the timeline, the rest behind "Show all"', () => {
-  const html = renderHolidays(DATA);
+test('days off card: the countdown on top, the whole timeline behind "Show all"', () => {
+  const html = renderDaysOffCard(DATA);
   const [shown, hidden] = html.split('<div class="more">');
-  assert.equal((shown.match(/<li /g) ?? []).length, 4);
-  assert.match(shown, /<li class="school now"><span class="when">Mon 19 Oct<\/span>/);
+  assert.equal(shown, renderDaysOff(DATA)); // the countdown, nothing else, until you open it
+  assert.equal((hidden.match(/<li /g) ?? []).length, 9);
+  assert.match(hidden, /<li class="school now"><span class="when">Mon 19 Oct<\/span>/);
   assert.match(hidden, /Easter Monday/);
-  assert.match(html, /<span class="closed">Show all 9<\/span>/);
-  assert.doesNotMatch(renderHolidays({ ...DATA, today: '2027-04-01' }), /class="more"/); // only Ascension left
+  assert.match(html, /<span class="closed">Show all 9 holidays<\/span>/);
 });
 
 test('fails loudly on a bad answer or an empty year', () => {
   assert.throws(() => parseHolidays({ error: 'x' }), /expected a list/);
   assert.throws(() => renderDaysOff({ today: '2028-01-01', publicDays: parseHolidays(PUBLIC_HOLIDAYS_JSON), school: [] }), /no public holidays/);
-  assert.throws(() => renderHolidays({ today: '2028-01-01', publicDays: parseHolidays(PUBLIC_HOLIDAYS_JSON), school: [] }), /no holidays/);
+  assert.throws(() => renderDaysOffCard({ today: '2028-01-01', publicDays: parseHolidays(PUBLIC_HOLIDAYS_JSON), school: [] }), /no public holidays/);
 });

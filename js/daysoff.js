@@ -1,7 +1,7 @@
 // Days-off planner: Belgian public holidays for the next 12 months, which ones make a long weekend
 // (or one with a single day of leave), and the French- and Dutch-speaking school holidays
 // (both run in Brussels; trains and roads are quieter during them).
-// Two Today cards share one load: "Days off" (countdown) and "Holidays" (timeline you can expand).
+// One Today card: the countdown to the next day off, and the full timeline behind "Show all".
 // Source: OpenHolidays API (free, no key, open to browsers).
 import { fetchJson } from './http.js';
 import { esc, expander } from './ui.js';
@@ -110,14 +110,10 @@ export function holidayTimeline({ today, publicDays, school }) {
   return items.sort((a, b) => a.start.localeCompare(b.start));
 }
 
-const TIMELINE_SHOWN = 4;
-
-export function renderHolidays(data) {
+// The Days off card: countdown on top, every public and school holiday of the next 12 months behind "Show all".
+export function renderDaysOffCard(data) {
   const items = holidayTimeline(data);
-  if (!items.length) throw new Error('OpenHolidays: no holidays in the next 12 months');
   const row = (h) => `<li class="${h.kind}${h.when === 'now' ? ' now' : ''}"><span class="when">${pretty(h.start)}</span>
     <span class="what"><strong>${esc(h.name)}</strong><span class="note">${esc(h.note)}</span></span><span class="in">${h.when}</span></li>`;
-  const list = (part) => `<ol class="timeline">${part.map(row).join('')}</ol>`;
-  const rest = items.slice(TIMELINE_SHOWN);
-  return list(items.slice(0, TIMELINE_SHOWN)) + (rest.length ? expander(list(rest), `Show all ${items.length}`) : '');
+  return renderDaysOff(data) + expander(`<ol class="timeline">${items.map(row).join('')}</ol>`, `Show all ${items.length} holidays`);
 }

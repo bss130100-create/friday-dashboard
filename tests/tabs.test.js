@@ -58,7 +58,9 @@ test('expander: details hidden in .more, one button that says what opens', () =>
 test('default card order on each tab (Mission control layout); Edit changes it per person', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const cards = (tab) => [...html.matchAll(new RegExp(`<section data-tab="${tab}" id="([^"]+)"( class="hero")?`, 'g'))].map((m) => m[1] + (m[2] ? ' (hero)' : ''));
-  assert.deepEqual(cards('time'), ['briefing (hero)', 'commute-today', 'daysoff', 'holidays', 'topic', 'power', 'clock', 'astro']);
+  assert.deepEqual(cards('time'), ['briefing (hero)', 'commute-today', 'daysoff', 'topic', 'power', 'clock', 'astro']);
+  assert.deepEqual(cards('weather'), ['atmosphere (hero)', 'wxmap', 'air']);
+  assert.match(html, /<div class="segmented" role="group" aria-label="Map layer"><button type="button" data-layer="temp" aria-pressed="true">Temperature<\/button><button type="button" data-layer="wind" aria-pressed="false">Wind<\/button><button type="button" data-layer="rain" aria-pressed="false">Rain<\/button><\/div>/);
   assert.deepEqual(cards('commute'), ['routes (hero)', 'traffic', 'here']);
   assert.equal(cards('intel')[0], 'news (hero)');
   assert.deepEqual(cards('system'), ['usage (hero)', 'alerts', 'addresses']);
