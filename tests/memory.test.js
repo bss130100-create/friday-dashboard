@@ -169,23 +169,36 @@ test('Radar attacks: one request per 15 min for the page and the snapshot togeth
 test('settings: null until saved, then the saved object; bad input refused', async () => {
   const env = { DB: fakeD1() };
   const put = (body) => new Request('https://m.example/settings/commute', { method: 'PUT', body });
-  assert.equal(await settings(env, new Request('https://m.example/settings/commute')), null);
-  await settings(env, put('{"home":{"name":"H","lat":1,"lon":2}}'));
-  assert.deepEqual(await settings(env, new Request('https://m.example/settings/commute')), { home: { name: 'H', lat: 1, lon: 2 } });
-  await assert.rejects(settings(env, put('[1]')), /JSON object/);
-  await assert.rejects(settings(env, put('x'.repeat(5000))), /too big/);
-  await assert.rejects(settings(env, new Request('https://m.example/settings/commute', { method: 'DELETE' })), /not allowed/);
+  const get = new Request('https://m.example/settings/commute');
+  assert.equal(await settings(env, get, 'commute'), null);
+  await settings(env, put('{"home":{"name":"H","lat":1,"lon":2}}'), 'commute');
+  assert.deepEqual(await settings(env, get, 'commute'), { home: { name: 'H', lat: 1, lon: 2 } });
+  await assert.rejects(settings(env, put('[1]'), 'commute'), /JSON object/);
+  await assert.rejects(settings(env, put('x'.repeat(5000)), 'commute'), /too big/);
+  await assert.rejects(settings(env, new Request('https://m.example/settings/commute', { method: 'DELETE' }), 'commute'), /not allowed/);
 });
 
-test('/settings/commute without a login is refused with 403', async () => {
+test('settings: the panel order is kept under its own key, next to the addresses', async () => {
   const env = { DB: fakeD1() };
-  const res = await worker.fetch(new Request('https://m.example/settings/commute'), env, CTX);
-  assert.equal(res.status, 403);
-  assert.match(await res.text(), /no Access login/);
-  await later.pop();
-  const { results } = await env.DB.prepare('SELECT path, status, count FROM route_errors').all();
-  assert.deepEqual(results, [{ path: '/settings/commute', status: 403, count: 1 }]); // counted for the System tab
+  const put = (body) => new Request('https://m.example/settings/layout', { method: 'PUT', body });
+  await settings(env, put('{"home":{"name":"H","lat":1,"lon":2}}'), 'commute');
+  assert.equal(await settings(env, new Request('https://m.example/settings/layout'), 'layout'), null);
+  await settings(env, put('{"time":["topic","briefing"]}'), 'layout');
+  assert.deepEqual(await settings(env, new Request('https://m.example/settings/layout'), 'layout'), { time: ['topic', 'briefing'] });
+  assert.deepEqual(await settings(env, new Request('https://m.example/settings/commute'), 'commute'), { home: { name: 'H', lat: 1, lon: 2 } });
 });
+
+for (const path of ['/settings/commute', '/settings/layout']) {
+  test(`${path} without a login is refused with 403`, async () => {
+    const env = { DB: fakeD1() };
+    const res = await worker.fetch(new Request(`https://m.example${path}`), env, CTX);
+    assert.equal(res.status, 403);
+    assert.match(await res.text(), /no Access login/);
+    await later.pop();
+    const { results } = await env.DB.prepare('SELECT path, status, count FROM route_errors').all();
+    assert.deepEqual(results, [{ path, status: 403, count: 1 }]); // counted for the System tab
+  });
+}
 
 // --- roads (TomTom) and briefing (Workers AI)
 const TOMTOM = { incidents: [

@@ -6,8 +6,9 @@ import { healthSegments, systemsLine, expander } from '../js/ui.js';
 
 test('tabFromHash: known tab, otherwise the first one', () => {
   assert.equal(tabFromHash('#commute'), 'commute');
-  assert.equal(tabFromHash('#world'), 'world');
-  assert.equal(tabFromHash('#global'), 'time'); // old tab, merged into World
+  assert.equal(tabFromHash('#intel'), 'intel');
+  assert.equal(tabFromHash('#system'), 'system');
+  assert.equal(tabFromHash('#world'), 'time'); // old tab, renamed Intel
   assert.equal(tabFromHash(''), 'time');
   assert.equal(tabFromHash('#nope'), 'time');
 });
@@ -18,16 +19,19 @@ test('index.html: every panel sits in a tab, and every tab has a link and at lea
   assert.ok(sections.length >= 14);
   for (const attrs of sections) assert.match(attrs, new RegExp(`data-tab="(${TABS.join('|')})"`), attrs);
   for (const tab of TABS) {
-    assert.ok(html.includes(`<a href="#${tab}">`), `link for ${tab}`);
+    assert.ok(html.includes(`href="#${tab}"`), `link for ${tab}`);
     assert.ok(html.includes(`data-tab="${tab}"`), `panel in ${tab}`);
   }
 });
 
-test('index.html: tab bar has 5 tabs and the header shows the MIAP logo', () => {
+test('index.html: four tabs in the dock, System opens from the MIAP logo', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.equal(TABS.length, 5);
-  assert.match(html, /<div class="brand"><svg[^>]*>.*<\/svg><span>MIAP<\/span><\/div>/);
+  const dock = html.slice(html.indexOf('<nav class="tabs"'), html.indexOf('</nav>'));
+  assert.deepEqual([...dock.matchAll(/<a href="#(\w+)">/g)].map((m) => m[1]), ['time', 'commute', 'weather', 'intel']);
+  assert.match(html, /<a class="brand" href="#system" aria-label="System status and settings"><svg[^>]*>.*<\/svg><span>MIAP<\/span><\/a>/);
   assert.ok(html.includes('id="tab-title"'));
+  assert.match(html, /<h1 id="tab-title">Today<\/h1><button type="button" id="edit-order" aria-pressed="false">Edit<\/button>/);
+  assert.match(html, /<button type="button" id="reset-order">Reset to default order<\/button>/);
   assert.ok(!html.includes('Orbitron'), 'old HUD font is gone');
 });
 
@@ -51,10 +55,13 @@ test('expander: details hidden in .more, one button that says what opens', () =>
   assert.match(html, /<button type="button" class="expand" aria-expanded="false"><span class="closed">Show all 9<\/span><span class="opened">Show less<\/span>/);
 });
 
-test('Today: one prominent briefing card, then the small cards in the agreed order', () => {
+test('default card order on each tab (Mission control layout); Edit changes it per person', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const today = [...html.matchAll(/<section data-tab="time" id="([^"]+)"( class="hero")?>/g)].map((m) => m[1] + (m[2] ? ' (hero)' : ''));
-  assert.deepEqual(today, ['briefing (hero)', 'daysoff', 'holidays', 'commute-today', 'clock', 'power', 'astro']);
+  const cards = (tab) => [...html.matchAll(new RegExp(`<section data-tab="${tab}" id="([^"]+)"( class="hero")?`, 'g'))].map((m) => m[1] + (m[2] ? ' (hero)' : ''));
+  assert.deepEqual(cards('time'), ['briefing (hero)', 'commute-today', 'daysoff', 'holidays', 'topic', 'power', 'clock', 'astro']);
+  assert.deepEqual(cards('commute'), ['routes (hero)', 'traffic', 'here']);
+  assert.equal(cards('intel')[0], 'news (hero)');
+  assert.deepEqual(cards('system'), ['usage (hero)', 'alerts', 'addresses']);
   assert.match(html, /<button type="button" id="brief-me"><span class="idle">Brief me<\/span>/);
 });
 
@@ -97,7 +104,7 @@ test('index.html: footer comes after the panels, which fill at least one screen'
 test('logo: the scan ring is never rotated with transforms (Safari drew it off the reactor)', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
-  const logo = html.slice(html.indexOf('<div class="brand">'), html.indexOf('</svg>', html.indexOf('<div class="brand">')));
+  const logo = html.slice(html.indexOf('<a class="brand"'), html.indexOf('</svg>', html.indexOf('<a class="brand"')));
   assert.doesNotMatch(logo, /transform=/);
   assert.doesNotMatch(css, /\.brand \.scan \{[^}]*transform/);
   assert.match(css, /@keyframes scan \{ from \{ stroke-dashoffset/);

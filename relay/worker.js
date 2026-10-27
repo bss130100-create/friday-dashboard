@@ -10,6 +10,7 @@
 //                             (needs the secret RADAR_TOKEN, see README; cached 15 min, shared with the snapshot)
 //   GET /history?kind=gnss|attacks&days=90  ->  trends from MIAP's memory (D1 database)
 //   GET|PUT /settings/commute  ->  your commute addresses, kept in the D1 database (never in this public repo)
+//   GET|PUT /settings/layout   ->  your card order on each tab (Edit mode), same table
 //   GET /roads?lat=&lon=  ->  traffic incidents around you (TomTom, needs the secret TOMTOM_KEY), cached 30 min
 //   POST /briefing        ->  AI briefing of what the panels show: summary + updates, coming up, actions (Workers AI, bound as AI)
 //   GET /push/key, POST /push/subscribe, POST /push/test  ->  phone alerts (Web Push, see push.js + alerts.js)
@@ -316,16 +317,16 @@ export async function accessKeys(env, kid, now = Date.now()) {
 
 const loggedIn = (request, env) => verifyLogin(request, Date.now(), (kid) => accessKeys(env, kid));
 
-// GET -> the saved object (or null), PUT -> save the request body (a JSON object).
-export async function settings(env, request) {
+// GET -> the saved object (or null), PUT -> save the request body (a JSON object) under `key`.
+export async function settings(env, request, key) {
   const db = await openDb(env);
-  if (request.method === 'GET') return readSetting(db, 'commute');
+  if (request.method === 'GET') return readSetting(db, key);
   if (request.method !== 'PUT') throw new RangeError(`${request.method} not allowed`);
   const text = await request.text();
   if (text.length > MAX_SETTING_CHARS) throw new RangeError(`settings too big (max ${MAX_SETTING_CHARS} characters)`);
   const value = JSON.parse(text);
   if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new RangeError('settings must be a JSON object');
-  await db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('commute', ?)").bind(JSON.stringify(value)).run();
+  await db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').bind(key, JSON.stringify(value)).run();
   return value;
 }
 
@@ -547,7 +548,8 @@ const ROUTES = {
   '/push/key': async (request, env) => { await loggedIn(request, env); return pushKey(env); },
   '/push/subscribe': async (request, env) => { await loggedIn(request, env); return subscribe(env, request); },
   '/push/test': async (request, env) => { await loggedIn(request, env); return pushTest(env, request); },
-  '/settings/commute': async (request, env) => { await loggedIn(request, env); return settings(env, request); },
+  '/settings/commute': async (request, env) => { await loggedIn(request, env); return settings(env, request, 'commute'); },
+  '/settings/layout': async (request, env) => { await loggedIn(request, env); return settings(env, request, 'layout'); },
   '/attacks': (request, env) => radarAttacks(env),
   '/power': (request, env) => power(env),
   '/history': (request, env) => history(env, historyQuery(request.url)),

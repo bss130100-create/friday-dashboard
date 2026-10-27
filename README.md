@@ -7,9 +7,12 @@ plus the few helpers the page needs, and it sits behind a **Cloudflare Access lo
 **Live (login):** https://friday-relay.mcioroianu2.workers.dev
 
 ## Panels and how they work
-Panels are grouped in five tabs: **Today** (AI briefing, days off, holidays, commute, chronometer, electricity, sun & moon), **Commute** (where I am, phone alerts, commute),
-**Weather** (atmosphere, temperature, wind and rain maps, air quality & pollen) and **World** (newsfeed, topic of the week, roads & rail, GNSS, cyber attacks,
-archive), plus **System**. The open tab is in the address (`#commute`), so a bookmark opens it.
+Panels are grouped in four tabs: **Today** (AI briefing, commute, days off, holidays, topic of the week, electricity, chronometer, sun & moon),
+**Commute** (commute, roads & rail, where I am), **Weather** (atmosphere, temperature, wind and rain maps, air quality & pollen) and
+**Intel** (newsfeed, GNSS, cyber attacks, archive). **System** (MIAP's health, phone alerts, home and work addresses) has no tab button:
+tap the arc reactor logo. The open tab is in the address (`#commute`, `#system`), so a bookmark opens it.
+**Edit** (next to the tab's title) folds the cards into rows you drag into your own order (or move with the arrow keys);
+the order is saved per tab in MIAP's database (`/settings/layout`), so every device shows the same layout. "Reset to default order" undoes it.
 Cards with more detail open in place (the button under them); the open state survives the next refresh.
 
 | Panel | Source | Refresh | What happens |
@@ -22,7 +25,7 @@ Cards with more detail open in place (the button under them); the open state sur
 | Electricity · Belgium | Sibelga rate periods + [Energy-Charts](https://www.energy-charts.info) (Fraunhofer ISE, CC BY 4.0) via the Worker + OpenHolidays | 15 min (Worker caches 30 min) | Made for a fixed-price contract with a day/night (bi-horaire) meter in Brussels: whether the cheap night rate is on now and when it changes (night = 22:00–07:00 on weekdays, all day on weekends and public holidays, per Brugel), plus the forecast renewable share of Belgian demand per hour (bars; over 100% = Belgium exports the surplus) and the greenest 3-hour window. |
 | Topic of the week | `data/topic.json` in this repo | 1 h | This week's topic, a fact of the day (rotates daily from the `start` date) and a watch list. Ticks are saved in this browser only. A new topic = Claude edits `data/topic.json` and pushes. |
 | Commute · public transport | [Transitous](https://transitous.org) (free community journey planner, data from SNCB, STIB, De Lijn, TEC…) | 5 min | Four routes: Here (your current GPS position) → Work 1, Here → Work 2, Work 1 → Home, Work 2 → Home, each showing the 2 fastest of the next 6 trips. Door to door with trains, buses, trams, metro and walking, live delays and cancellations, and "leave in N min". **Addresses are typed once under *setup* and saved in MIAP's private database (D1, behind the login), so every device you log in from has them. They are never in this public repo.** The Worker also checks the Access login token itself before reading or saving them. Transitous receives them to plan the trips. |
-| Where I am · way home | your phone's GPS + Transitous | 2 min | Your precise position (GPS on a phone, Wi-Fi on a laptop) with its accuracy, the nearest street address, the distance to home, and the next trips home with "leave in N min". Needs the home address from Commute setup. |
+| Where I am · way home | your phone's GPS + Transitous | 2 min | Your precise position (GPS on a phone, Wi-Fi on a laptop) with its accuracy, the nearest street address, the distance to home, and the next trips home with "leave in N min". Needs the home address saved in System. |
 | Phone alerts | the Worker's cron + Transitous, iRail → Web Push | 5 min | Pushes to your phone, once per event. Weekdays 08:00–09:00 (routes to work) and 15:30–17:30 (routes home), Brussels time: a trip leaving in the next hour is cancelled, runs 5+ min late, or a live SNCB disruption names one of its stations. See *Phone alerts* below. |
 | Atmosphere | [Open-Meteo](https://open-meteo.com) | 10 min | Current weather at your location. |
 | Temperature map · Wind map | [Open-Meteo](https://open-meteo.com) | 30 min | Current temperature (coloured 5 °C bands) and wind (arrow = where it blows to, number = km/h) on a 7 × 7 grid of points 20 km apart, ~120 km around you. All 49 points come in ONE request, which Open-Meteo counts as about one call of its free 10,000 a day. |
