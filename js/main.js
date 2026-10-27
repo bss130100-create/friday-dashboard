@@ -21,7 +21,7 @@ import { drawTrafficMap, TRAFFIC_HALF_KM } from './trafficmap.js';
 import { mapPanel, resizeMaps } from './basemap.js';
 import { WEATHER_HALF_KM, loadGrid, loadRadar, paintTemperature, paintWind, paintRain, gridSummary, radarSummary } from './weathermap.js';
 import { readouts, loadBriefing } from './briefing.js';
-import { loadDaysOff, renderDaysOff, renderHolidays } from './daysoff.js';
+import { loadDaysOff, renderDaysOffCard } from './daysoff.js';
 import { loadPower, renderPower } from './power.js';
 import { supported, UNSUPPORTED, renderAlerts, alertState, loadPushKey, enableAlerts, sendTest } from './alerts.js';
 
@@ -69,15 +69,8 @@ let astro = null;
 runPanel('astro', async () => { astro = await loadAstro(await location()); showBody('astro', renderAstro(astro, new Date())); }, 60 * MINUTE);
 setInterval(() => astro && showBody('astro', renderAstro(astro, new Date())), MINUTE); // keep "daylight left" ticking
 
-// --- days off + holidays timeline (one OpenHolidays load) and electricity prices (Energy-Charts via the Worker): no location needed
-runPanel('daysoff', async () => {
-  const days = await loadDaysOff(new Date()).catch((err) => {
-    showError('holidays', err); // same data, same failure
-    throw err;
-  });
-  showBody('daysoff', renderDaysOff(days));
-  showBody('holidays', renderHolidays(days));
-}, 6 * 60 * MINUTE);
+// --- days off (countdown + holidays timeline, OpenHolidays) and electricity prices (Energy-Charts via the Worker): no location needed
+runPanel('daysoff', async () => showBody('daysoff', renderDaysOffCard(await loadDaysOff(new Date()))), 6 * 60 * MINUTE);
 runPanel('power', async () => showBody('power', renderPower(await loadPower(new Date()))), 15 * MINUTE);
 
 // --- System tab: MIAP's own health (Worker /system) and the 30-day wipe
@@ -104,28 +97,37 @@ runPanel('traffic', async () => {
   await drawTrafficMap(trafficMap, here, shapes);
 }, 15 * MINUTE);
 
-// --- weather maps: one Open-Meteo grid request feeds both the temperature and the wind map
-// the view is 10 km wider than the grid, so the edge values aren't cut off
-const tempMap = mapPanel(document.getElementById('tempmap-map'), WEATHER_HALF_KM + 10);
-const windMap = mapPanel(document.getElementById('windmap-map'), WEATHER_HALF_KM + 10);
-const rainMap = mapPanel(document.getElementById('rainmap-map'), WEATHER_HALF_KM + 10);
-runPanel('tempmap', async () => {
-  const here = await location();
-  const grid = await loadGrid(here).catch((err) => {
-    showError('windmap', err); // same data, same failure
-    throw err;
-  });
-  await tempMap.draw(here, paintTemperature(grid));
-  showBody('tempmap', gridSummary(grid, 'temp'));
-  await windMap.draw(here, paintWind(grid));
-  showBody('windmap', gridSummary(grid, 'wind'));
-}, 30 * MINUTE);
-runPanel('rainmap', async () => {
-  const here = await location();
-  const radar = await loadRadar();
-  await rainMap.draw(here, paintRain(radar));
-  showBody('rainmap', radarSummary(radar, new Date()));
+// --- weather map: one map, three layers (temperature, wind, rain radar) behind a switch.
+// One Open-Meteo grid request feeds temperature and wind (at most every 30 min); the radar refreshes every 10 min.
+// The view is 10 km wider than the grid, so the edge values aren't cut off.
+const weatherMap = mapPanel(document.getElementById('wxmap-map'), WEATHER_HALF_KM + 10);
+const GRID_EVERY = 30 * MINUTE;
+const wx = { layer: 'temp', here: null, grid: null, gridAt: 0, radar: null };
+
+async function drawWeatherMap() {
+  if (!wx.grid || !wx.radar) return; // still loading: the refresh draws it
+  const paint = wx.layer === 'temp' ? paintTemperature(wx.grid) : wx.layer === 'wind' ? paintWind(wx.grid) : paintRain(wx.radar);
+  await weatherMap.draw(wx.here, paint);
+  showBody('wxmap', wx.layer === 'rain' ? radarSummary(wx.radar, new Date()) : gridSummary(wx.grid, wx.layer));
+}
+
+runPanel('wxmap', async () => {
+  wx.here = await location();
+  if (Date.now() - wx.gridAt >= GRID_EVERY) {
+    wx.grid = await loadGrid(wx.here);
+    wx.gridAt = Date.now();
+  }
+  wx.radar = await loadRadar();
+  await drawWeatherMap();
 }, 10 * MINUTE);
+
+document.querySelector('#wxmap .segmented').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-layer]');
+  if (!button) return;
+  wx.layer = button.dataset.layer;
+  for (const b of button.parentElement.children) b.setAttribute('aria-pressed', String(b === button));
+  drawWeatherMap().catch((err) => showError('wxmap', err));
+});
 
 // --- AI briefing: built from what the other panels show, so it waits for them to load first.
 // While MIAP is thinking, body.thinking makes the reactor pulse (style.css); one briefing at a time.
