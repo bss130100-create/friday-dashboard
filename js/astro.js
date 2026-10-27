@@ -55,13 +55,13 @@ const hm = (seconds) => `${Math.floor(seconds / 3600)}h ${String(Math.floor((sec
 const clock = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
 // Moon drawn as a lit disc with a shadow ellipse sliding across it.
-function moonSvg({ fraction }) {
+function moonSvg({ fraction, name }) {
   const waxing = fraction < 0.5;
   const k = Math.cos(2 * Math.PI * fraction); // 1 = new, -1 = full
   const rx = Math.abs(k) * 40;
   const litHalf = waxing ? 'M50,10 A40,40 0 0 1 50,90' : 'M50,10 A40,40 0 0 0 50,90';
   const terminator = `A${rx.toFixed(1)},40 0 0 ${(k > 0) === waxing ? 0 : 1} 50,10`;
-  return `<svg class="moon" viewBox="0 0 100 100" role="img" aria-label="moon phase">
+  return `<svg class="moon" viewBox="0 0 100 100" role="img" aria-label="Moon: ${esc(name)}">
     <circle cx="50" cy="50" r="40" class="moon-dark"/><path d="${litHalf} ${terminator}Z" class="moon-lit"/></svg>`;
 }
 
@@ -72,12 +72,12 @@ export function renderAstro(a, now) {
   return `
     <div class="astro">
       <div>
-        <h3>SOL</h3>
+        <h3>Sun</h3>
         <table>
-          <tr><td>RISE</td><td>${clock(a.sunrise)}</td></tr>
-          <tr><td>SET</td><td>${clock(a.sunset)}</td></tr>
-          <tr><td>DAY</td><td>${hm(a.daylightS)}</td></tr>
-          <tr><td>UV MAX</td><td>${a.uvMax.toFixed(1)}</td></tr>
+          <tr><td>Sunrise</td><td>${clock(a.sunrise)}</td></tr>
+          <tr><td>Sunset</td><td>${clock(a.sunset)}</td></tr>
+          <tr><td>Daylight</td><td>${hm(a.daylightS)}</td></tr>
+          <tr><td>UV max</td><td>${a.uvMax.toFixed(1)}</td></tr>
         </table>
         <p class="accent">${esc(sunState)}</p>
       </div>

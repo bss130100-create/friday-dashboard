@@ -182,7 +182,7 @@ test('panel: meters against the free limits, failures in red, jobs and paths lis
   assert.match(html, /kpi hot">6<\/span><span class="dim">crashes in 24 h, out of 1,200 requests/);
   assert.match(html, /kpi">2\.1 ms<\/span><span class="dim">typical/);
   assert.match(html, /kpi warm">8\.45 ms<\/span><span class="dim">slowest 1% \(free limit 10 ms\)/);
-  assert.match(html, /Crashes per hour[^]*this hour <b>6<\/b> · busiest <b>6<\/b> at 11:00 · <b>6<\/b> in 24 h/); // 10:00Z = 11:00 Brussels
+  assert.match(html, /Crashes per hour[^]*This hour <b>6<\/b> · busiest <b>6<\/b> at 11:00 · <b>6<\/b> in 24 h/); // 10:00Z = 11:00 Brussels
   assert.match(html, /<td>crashed \(code error\)<\/td><td class="hot">6/);
   assert.match(html, /ERROR: Workers AI analytics: Cloudflare analytics: unknown field/);
   assert.match(html, /Database size \(total\)[^]*3\.5 MB \/ 5\.0 GB/);
@@ -196,10 +196,10 @@ test('chart block: plain meaning, this hour / busiest / total, and the time axis
   const points = [{ label: '09:00', value: 3 }, { label: '10:00', value: 210 }, { label: '11:00', value: 12 }];
   const html = chartBlock({ title: 'Requests per hour', meaning: 'How often.', points, total: 225 });
   assert.match(html, /Requests per hour<\/p><p class="dim small">How often\.<\/p>/);
-  assert.match(html, /this hour <b>12<\/b> · busiest <b>210<\/b> at 10:00 · <b>225<\/b> in 24 h/);
+  assert.match(html, /This hour <b>12<\/b> · busiest <b>210<\/b> at 10:00 · <b>225<\/b> in 24 h/);
   assert.match(html, /<div class="axis"><span>09:00<\/span><span>10:00<\/span><span>11:00<\/span><\/div>/);
   assert.doesNotMatch(chartBlock({ title: 'CPU', meaning: 'x', points, unit: ' ms', line: true }), /in 24 h/);
-  assert.match(chartBlock({ title: 'X', meaning: 'x', points: [] }), /no data yet/);
+  assert.match(chartBlock({ title: 'X', meaning: 'x', points: [] }), /No data yet/);
 });
 
 test('ring: arc is the percentage, never empty, never past full', () => {

@@ -72,7 +72,7 @@ export function renderRail({ near, elsewhere }, now) {
   const rows = near.slice(0, MAX_RAIL).map((d) => `<li><span class="tag ${d.planned ? 'cool' : 'hot'}">${d.planned ? 'PLANNED' : 'NOW'}</span>
     <a href="${esc(d.link)}" target="_blank" rel="noopener">${esc(d.title)}</a> <span class="dim small">${ago(d.time, now)}</span></li>`);
   const none = near.length ? '' : '<p class="dim">No disruptions on lines near you.</p>';
-  return `${none}<ul class="incidents">${rows.join('')}</ul><p class="dim small">${elsewhere} more elsewhere in Belgium</p>`;
+  return `${none}<ul class="incidents">${rows.join('')}</ul><p class="dim small">${elsewhere ? `${elsewhere} more elsewhere in Belgium.` : 'None elsewhere in Belgium.'}</p>`;
 }
 
 // Roads and rail fail independently: one source down still shows the other.
@@ -80,8 +80,8 @@ export function renderTraffic(roads, rail, now) {
   const part = (title, result, render) =>
     `<h3>${title}</h3>${result.status === 'fulfilled' ? render(result.value) : `<p class="err">ERROR: ${esc(result.reason.message)}</p>`}`;
   return `<div class="traffic">
-    <div>${part('ROADS · 40 km around you', roads, (r) => renderRoads(r.incidents))}</div>
-    <div>${part('RAIL · lines near you', rail, (r) => renderRail(r, now))}</div></div>`;
+    <div>${part('Roads within 40 km', roads, (r) => renderRoads(r.incidents))}</div>
+    <div>${part('Rail lines near you', rail, (r) => renderRail(r, now))}</div></div>`;
 }
 
 // -> { html: the lists, shapes: what to draw on the map }

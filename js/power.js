@@ -83,13 +83,13 @@ export function renderPower({ now, hours, holidays }) {
   return `
     <div class="gauge-row">
       <div class="big">${period === 'night' ? 'NIGHT' : 'DAY'}<span class="unit"> rate</span></div>
-      <div class="dim">${period === 'night' ? 'cheap rate now' : 'full rate now'}${change ? ` · ${period === 'night' ? 'day' : 'night'} rate from ${esc(day(change))} ${clock(change)}` : ''}</div>
+      <div class="dim">${period === 'night' ? 'Cheap rate now' : 'Full rate now'}${change ? ` · ${period === 'night' ? 'day' : 'night'} rate from ${esc(day(change))} ${clock(change)}` : ''}</div>
     </div>
     <table>
       <tr><td>Grid now</td><td>${Math.round(hours[0].share)}% renewable</td></tr>
       ${green ? `<tr><td class="nowrap">Greenest ${WINDOW_HOURS} h</td><td><span class="nowrap">${esc(day(green.from))} ${clock(green.from)}–${clock(green.to)}</span> · ${Math.round(green.avg)}%${greenAtNight ? ' · <span class="nowrap">night rate too</span>' : ''}</td></tr>` : ''}
     </table>
-    ${expander(`<h3>RENEWABLE SHARE BY HOUR</h3>
+    ${expander(`<h3>Renewable share by hour</h3>
     ${chart}
     <p class="dim small">Night rate (Sibelga): 22:00–07:00 on weekdays, all day on weekends and public holidays. Over 100% renewable = Belgium exports the surplus.</p>`, 'Hourly chart')}`;
 }

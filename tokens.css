@@ -1,0 +1,58 @@
+/* MIAP design tokens: the only place for colours, type, spacing, radii, elevation and motion.
+   style.css uses these names and never raw values, so the whole app changes from here.
+   Reactor Dark palette (dark only, no light mode): cyan = normal/active, amber = warning, red = critical only.
+   50% Iron Man, 50% Apple: the frame is a HUD (card labels with tracer lines, corner brackets on the hero,
+   cyan readouts, mono telemetry), the content inside is Apple (iOS text styles, list rows, 44px targets). */
+:root {
+  /* ---------- colour ---------- */
+  --bg: #05070A;         /* Void Black: the page */
+  --panel: #101720;      /* Graphite: cards */
+  --fill: #182330;       /* Steel: tracks, buttons, raised surfaces */
+  --line: #1F2C3A;       /* hairline separators inside cards */
+  --fg: #D7E5F2;         /* Ice White: primary text */
+  --dim: #8FA3B6;        /* secondary text, 6.5:1 on graphite */
+  --cyan: #56D9FF;       /* Reactor Cyan: data, links, all good */
+  --cool: #A9ECFF;       /* cyan, lighter: hover */
+  --warm: #FFB454;       /* Alert Amber: warnings */
+  --hot: #FF4D5E;        /* red: critical only */
+  --on-cyan: #05070A;    /* text on a filled cyan button */
+  --cyan-tint: rgba(86, 217, 255, .12);  /* selected tab, tinted buttons */
+  --cyan-edge: rgba(86, 217, 255, .22);  /* the hero card's edge */
+  --amber-tint: rgba(255, 180, 84, .14);
+  --red-tint: rgba(255, 77, 94, .14);
+  --glow: rgba(86, 217, 255, .35);       /* every glow is at most 3px */
+  --hud-line: rgba(86, 217, 255, .32);   /* HUD tracer lines and frames */
+  --hud-label: #7FB8CC;                  /* HUD card labels: cyan-grey, 8.3:1 on graphite */
+  --moon: #E6FBFF;                       /* the lit part of the moon */
+
+  /* ---------- type: Apple's iOS text styles (weight size/line-height family) ---------- */
+  --head: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, system-ui, sans-serif;
+  --body: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace; /* UTC, paths, diagnostics only */
+  --t-large: 700 34px/41px var(--head);     /* Large Title: the tab name */
+  --t-display: 600 44px/48px var(--head);   /* the one big number of a card */
+  --t-title2: 700 22px/28px var(--head);    /* a card's headline value */
+  --t-title3: 600 20px/25px var(--head);    /* the briefing sentence */
+  --t-headline: 600 17px/22px var(--body);  /* card titles, verdicts */
+  --t-body: 400 17px/22px var(--body);
+  --t-subhead: 400 15px/20px var(--body);   /* default text inside cards */
+  --t-footnote: 400 13px/18px var(--body);  /* secondary lines */
+  --t-caption: 400 12px/16px var(--body);   /* freshness, sources */
+  --t-caption2: 600 10px/12px var(--body);  /* dock labels */
+  --t-hud: 600 12px/16px var(--body);       /* HUD card labels, in small caps with --hud-track */
+  --hud-track: .12em;
+
+  /* ---------- spacing: 4px steps ---------- */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px;
+
+  /* ---------- shape ---------- */
+  --r-card: 22px;    /* cards */
+  --r-inner: 12px;   /* maps, inputs, tags inside a card */
+  --r-pill: 999px;   /* buttons, dock */
+  --tap: 44px;       /* smallest tap target (Apple HIG) */
+
+  /* ---------- motion: only in answer to a tap, off with Reduce Motion ---------- */
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --fast: .2s;
+  --slow: .35s;
+}

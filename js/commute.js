@@ -46,7 +46,7 @@ export function reverseUrl(here) {
 export function parseReverse(json) {
   if (!Array.isArray(json)) throw new Error('Unexpected Transitous reverse-geocode response');
   const hit = json.find((h) => h.type === 'ADDRESS') ?? json[0];
-  return hit ? parseGeocode([hit], '').name : 'no address nearby';
+  return hit ? parseGeocode([hit], '').name : 'No address nearby';
 }
 
 // --- settings: { home: place, works: [{ label, place }, { label, place }] }, place = { name, lat, lon }
@@ -124,18 +124,18 @@ export function renderRoute(label, trips, now) {
   const head = next
     ? (() => {
         const inMin = minutes(next.start - now);
-        const cls = inMin <= 5 ? 'hot' : inMin <= 15 ? 'warm' : '';
-        return `<div><span class="leave ${cls}">${inMin <= 1 ? 'LEAVE NOW' : `leave in ${inMin} min`}</span>
-          <span class="dim">· ${next.durationMin} min, there at ${hhmm(next.end)}</span></div>`;
+        const cls = inMin <= 5 ? 'warm' : '';
+        return `<div class="leave ${cls}">${inMin <= 1 ? 'Leave now' : `Leave in ${inMin} min`}</div>
+          <div class="dim">${next.durationMin} min, there at ${hhmm(next.end)}</div>`;
       })()
-    : '<div class="dim">no trip found right now</div>';
+    : '<div class="dim">No trip found right now</div>';
   const rows = trips.map((t) => {
     const delay = t.delayMin > 0 ? ` <span class="warm">+${t.delayMin}</span>` : '';
-    const status = t.cancelled ? ' <span class="hot">CANCELLED</span>' : '';
-    return `<li${t.cancelled ? ' class="dim"' : ''}><span class="t">${hhmm(t.start)}${delay} → ${hhmm(t.end)}</span>
-      <span class="dim">${t.durationMin}'</span>${status}<br><span class="legs">${t.legs.map(esc).join(' › ')}</span></li>`;
+    const status = t.cancelled ? ' <span class="hot">Cancelled</span>' : '';
+    return `<li${t.cancelled ? ' class="dim"' : ''}><span class="t">${hhmm(t.start)}${delay} → ${hhmm(t.end)}${status}</span>
+      <span class="dim">${t.durationMin} min</span><span class="legs">${t.legs.map(esc).join(' › ')}</span></li>`;
   });
-  return `<h3>${esc(label)}</h3>${head}<ul class="trips">${rows.join('')}</ul>`;
+  return `<div class="route-block"><h3>${esc(label)}</h3>${head}<ul class="trips">${rows.join('')}</ul></div>`;
 }
 
 // The commute panel shows the FASTEST_SHOWN quickest of the next CANDIDATES trips (cancelled and
@@ -217,10 +217,10 @@ export function commuteSummary(plans, now) {
   const rows = watchedNow(plans, now).map((p) => {
     if (p.there) return `<li><span class="route">${esc(p.label)}</span><span>You're there.</span></li>`;
     const next = fastest(p.trips, now)[0];
-    if (!next) return `<li><span class="route">${esc(p.label)}</span><span class="dim">no trip found right now</span></li>`;
+    if (!next) return `<li><span class="route">${esc(p.label)}</span><span class="dim">No trip found right now</span></li>`;
     const inMin = minutes(next.start - now);
-    const cls = inMin <= 5 ? 'hot' : inMin <= 15 ? 'warm' : '';
-    return `<li><span class="route">${esc(p.label)}</span><span class="${cls}">${inMin <= 1 ? 'leave now' : `leave in ${inMin} min`}</span>
+    const cls = inMin <= 5 ? 'warm' : '';
+    return `<li><span class="route">${esc(p.label)}</span><span class="${cls}">${inMin <= 1 ? 'Leave now' : `Leave in ${inMin} min`}</span>
       <span class="dim">${next.durationMin} min · there ${hhmm(next.end)}</span></li>`;
   });
   return `${commuteVerdict(plans, now)}<ul class="next-trips">${rows.join('')}</ul>${link}`;
@@ -231,7 +231,7 @@ export function commuteSummary(plans, now) {
 export function renderHere(here, address, home, trips, now) {
   const km = distanceKm(here.lat, here.lon, home.lat, home.lon);
   const fix = `${here.lat.toFixed(5)}, ${here.lon.toFixed(5)} · ±${Math.round(here.accuracy)} m`;
-  const top = `<div class="kpi-sm">${esc(address)}</div><div class="dim small">${fix} · ${km.toFixed(1)} km from home</div>`;
+  const top = `<div class="place-name">${esc(address)}</div><div class="dim small"><span class="fix">${fix}</span> · ${km.toFixed(1)} km from home</div>`;
   if (km < THERE_KM) return `${top}<p class="leave">You're home.</p>`;
   return top + renderRoute('Here → Home', trips, now);
 }

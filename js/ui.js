@@ -16,6 +16,11 @@ export function ago(date, now) {
   return minutes < 60 ? `${minutes}m ago` : `${Math.floor(minutes / 60)}h ago`;
 }
 
+// Date -> "08:18", the time on this device (freshness lines)
+export function hhmm(date) {
+  return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+}
+
 function panel(id) {
   const el = document.getElementById(id);
   if (!el) throw new Error(`Panel #${id} missing from index.html`);
@@ -42,7 +47,7 @@ export function healthSegments(states) {
 
 function panelState(section) {
   if (section.classList.contains('error')) return 'bad';
-  return section.querySelector('.status').textContent ? 'ok' : 'wait';
+  return section.dataset.updated ? 'ok' : 'wait';
 }
 
 let lastWarm = null;
@@ -80,11 +85,35 @@ export function toggleExpand(button) {
   syncExpanders(section);
 }
 
+// Freshness: a card shows no time while its data is current, like Apple's widgets. The line appears
+// once the data is older than twice its refresh interval (at least 15 min), e.g. after the phone slept,
+// so old data never passes for live data.
+const MIN_STALE_MS = 15 * 60 * 1000;
+export function freshness(updatedMs, everyMs, nowMs) {
+  if (nowMs - updatedMs <= Math.max(2 * everyMs, MIN_STALE_MS)) return '';
+  return `Last updated ${ago(updatedMs, nowMs)}`;
+}
+
+function markFreshness(now = Date.now()) {
+  for (const el of document.querySelectorAll('main > section[data-updated]:not(.error)')) {
+    const line = freshness(Number(el.dataset.updated), Number(el.dataset.every ?? 0), now);
+    el.classList.toggle('stale', Boolean(line));
+    el.querySelector('.status').textContent = line;
+  }
+}
+
+// Re-checked every minute and when the page comes back to the screen.
+export function watchFreshness() {
+  setInterval(markFreshness, 60 * 1000);
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && markFreshness());
+}
+
 export function showBody(id, html) {
   const el = panel(id);
-  el.classList.remove('error');
+  el.classList.remove('error', 'stale');
   el.querySelector('.body').innerHTML = html;
-  el.querySelector('.status').textContent = `updated ${new Date().toISOString().slice(11, 19)}Z`;
+  el.dataset.updated = String(Date.now());
+  el.querySelector('.status').textContent = '';
   syncExpanders(el);
   updateSystems();
 }
@@ -93,13 +122,14 @@ export function showError(id, err) {
   const el = panel(id);
   el.classList.add('error');
   el.querySelector('.body').innerHTML = `<p class="err">ERROR: ${esc(err.message)}</p>`;
-  el.querySelector('.status').textContent = `failed ${new Date().toISOString().slice(11, 19)}Z, retries on next refresh`;
+  el.querySelector('.status').textContent = `Couldn't refresh at ${hhmm(new Date())}. Trying again at the next refresh.`;
   updateSystems();
   console.error(`[${id}]`, err);
 }
 
 // Run `task` now and then every `everyMs`. Errors are shown in the panel, never swallowed.
 export function runPanel(id, task, everyMs) {
+  panel(id).dataset.every = String(everyMs);
   const tick = async () => {
     try {
       await task();

@@ -35,6 +35,6 @@ export function renderGpsJam(j, you) {
       <div><span class="kpi">${j.cells.length - high}</span><span class="dim">medium</span></div>
       <div><span class="kpi">${esc(j.date)}</span><span class="dim">UTC day</span></div>
     </div>
-    <table class="small">${j.regions.slice(0, 8).map((r) => `<tr><td>${esc(r.name)}</td><td class="hot">${r.high}</td></tr>`).join('')}</table>
+    <table class="small">${j.regions.slice(0, 8).map((r) => `<tr><td>${esc(r.name)}</td><td>${r.high}</td></tr>`).join('')}</table>
     <p class="dim small">A cell is "high" when &gt;10% of aircraft there reported degraded GPS. Data: gpsjam.org.</p>`;
 }

@@ -40,12 +40,12 @@ export function parseHolidays(json) {
 // What a public holiday on this date means for a Monday-to-Friday worker.
 export function bridge(date) {
   switch (weekday(date)) {
-    case 1: return { long: true, leave: 0, text: 'long weekend, Sat–Mon' };
-    case 5: return { long: true, leave: 0, text: 'long weekend, Fri–Sun' };
-    case 2: return { long: true, leave: 1, text: `take ${pretty(addDays(date, -1))} off: 4 days, Sat–Tue` };
-    case 4: return { long: true, leave: 1, text: `take ${pretty(addDays(date, 1))} off: 4 days, Thu–Sun` };
-    case 3: return { long: false, leave: 0, text: 'midweek day off' };
-    default: return { long: false, leave: 0, text: 'weekend: you get a replacement day (your employer sets it)' };
+    case 1: return { long: true, leave: 0, text: 'Long weekend, Sat–Mon' };
+    case 5: return { long: true, leave: 0, text: 'Long weekend, Fri–Sun' };
+    case 2: return { long: true, leave: 1, text: `Take ${pretty(addDays(date, -1))} off for 4 days, Sat–Tue` };
+    case 4: return { long: true, leave: 1, text: `Take ${pretty(addDays(date, 1))} off for 4 days, Thu–Sun` };
+    case 3: return { long: false, leave: 0, text: 'Midweek day off' };
+    default: return { long: false, leave: 0, text: 'Falls on a weekend: you get a replacement day (your employer picks it)' };
   }
 }
 
@@ -84,7 +84,7 @@ export function renderDaysOff({ today, publicDays }) {
     <div class="count">${count}</div>
     <p class="lead">${n === 0 ? '' : 'to '}<strong>${esc(next.name)}</strong> · ${pretty(next.start)}</p>
     <p class="dim small">${esc(bridge(next.start).text)}</p>
-    ${nextLong && nextLong !== next ? `<p class="small">Next long weekend: <strong>${esc(nextLong.name)}</strong>, ${pretty(nextLong.start)} (${inDays(today, nextLong.start)})${bridge(nextLong.start).leave ? `: ${esc(bridge(nextLong.start).text)}` : ''}.</p>` : ''}`;
+    ${nextLong && nextLong !== next ? `<p class="small">Next long weekend: <strong>${esc(nextLong.name)}</strong>, ${pretty(nextLong.start)} (${inDays(today, nextLong.start)}).${bridge(nextLong.start).leave ? ` ${esc(bridge(nextLong.start).text)}.` : ''}</p>` : ''}`;
 }
 
 // One list, soonest first: the public holidays that give a day off, and the FR and NL school

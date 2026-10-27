@@ -43,7 +43,7 @@ export function renderBriefing(brief, panelCount) {
   ].filter(Boolean);
   return `<p class="brief">${esc(brief.summary)}</p>
     ${details ? expander(details, counts.join(' · ')) : ''}
-    <p class="source">from ${plural(panelCount, 'panel')} · Workers AI</p>`;
+    <p class="source">From ${plural(panelCount, 'panel')} · Workers AI</p>`;
 }
 
 export async function loadBriefing(panels, now) {
