@@ -242,6 +242,7 @@ test('briefing: panels go to the model as readouts; bad input and missing AI are
   const [system, user] = briefingMessages(body);
   assert.match(system.content, /at most 3 short sentences/);
   assert.match(system.content, /Never mention work or the commute to work on a Saturday or Sunday/);
+  assert.match(system.content, /like JARVIS/);
   assert.equal(user.content, 'Local time: Saturday 19:30\n[Weather] 12 °C light rain');
   assert.throws(() => briefingMessages({ panels: {} }), /needs \{ now, panels \}/);
   assert.throws(() => briefingMessages({ now: 'x', panels: { a: 'y'.repeat(7000) } }), /too long/);

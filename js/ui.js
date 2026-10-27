@@ -22,6 +22,11 @@ function panel(id) {
   return el;
 }
 
+// Segmented indicator under the status line: one lit segment per panel, amber when that panel failed.
+export function healthSegments(oks) {
+  return oks.map((ok) => `<i class="${ok ? 'ok' : 'bad'}"></i>`).join('');
+}
+
 // Header readout: how many panels are currently healthy.
 function updateSystems() {
   const out = document.getElementById('systems');
@@ -30,6 +35,8 @@ function updateSystems() {
   const failed = document.querySelectorAll('main > section.error').length;
   out.textContent = failed ? `${failed} of ${all} panels need attention` : 'All systems normal';
   out.classList.toggle('warm', failed > 0); // Reactor Amber: MIAP needs you
+  const health = document.getElementById('health');
+  if (health) health.innerHTML = healthSegments([...document.querySelectorAll('main > section')].map((s) => !s.classList.contains('error')));
 }
 
 export function showBody(id, html) {

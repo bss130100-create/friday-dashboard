@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { GRAPHQL_URL, SCRIPT, D1_DATABASE_ID, usageQueries, parseWorkers, parseAi, parseD1 } from '../relay/usage.js';
 import worker, { cloudflareUsage, recordError, recordRun, ownHealth, systemStatus, prune, snapshot } from '../relay/worker.js';
-import { renderSystem, renderPruned, meter, chartBlock, PRUNE_QUESTION } from '../js/system.js';
+import { renderSystem, renderPruned, meter, ring, chartBlock, PRUNE_QUESTION } from '../js/system.js';
 
 afterEach(() => delete globalThis.fetch);
 
@@ -155,7 +155,7 @@ test('wipe: only what is older than 30 days goes; the GNSS backfill does not bri
 });
 
 test('panel: meters against the free limits, failures in red, jobs and paths listed', () => {
-  assert.match(meter('X', 95, 100), /fill hot" style="width:95%[^]*95 \/ 100 · 95%/);
+  assert.match(meter('X', 95, 100), /ring hot[^]*stroke-dasharray="95 100"[^]*95 \/ 100 · 95%/);
   const html = renderSystem({
     cloudflare: { workers: parseWorkers(WORKERS), ai: { error: 'Cloudflare analytics: unknown field totalNeurons' }, d1: parseD1(D1) },
     own: {
@@ -185,4 +185,10 @@ test('chart block: plain meaning, this hour / busiest / total, and the time axis
   assert.match(html, /<div class="axis"><span>09:00<\/span><span>10:00<\/span><span>11:00<\/span><\/div>/);
   assert.doesNotMatch(chartBlock({ title: 'CPU', meaning: 'x', points, unit: ' ms', line: true }), /in 24 h/);
   assert.match(chartBlock({ title: 'X', meaning: 'x', points: [] }), /no data yet/);
+});
+
+test('ring: arc is the percentage, never empty, never past full', () => {
+  assert.match(ring(40), /stroke-dasharray="40 100"/);
+  assert.match(ring(0), /stroke-dasharray="1 100"/);
+  assert.match(ring(250, 'hot'), /class="ring hot"[^]*stroke-dasharray="100 100"/);
 });

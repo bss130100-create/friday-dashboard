@@ -41,7 +41,7 @@ export function mapPanel(el, halfKm) {
       center = here;
       layer.clearLayers();
       paint(L, layer);
-      L.circleMarker([here.lat, here.lon], { radius: 6, color: '#5AC8FA', fillColor: '#5AC8FA', fillOpacity: 1 }).bindPopup('You').addTo(layer);
+      L.circleMarker([here.lat, here.lon], { radius: 6, color: '#56D9FF', fillColor: '#56D9FF', fillOpacity: 1 }).bindPopup('You').addTo(layer);
       fitOnce();
     },
     resize() {

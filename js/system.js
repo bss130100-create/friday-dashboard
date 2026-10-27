@@ -27,12 +27,18 @@ const err = (e) => `<p class="err">ERROR: ${esc(e)}</p>`;
 const fmt = (n) => n.toLocaleString('en-GB');
 const size = (bytes) => (bytes < 1e9 ? `${(bytes / 1e6).toFixed(1)} MB` : `${(bytes / 1e9).toFixed(1)} GB`);
 
-// One usage line: label, a bar against the free limit, the numbers.
+// Circular indicator: an arc filled to p% of the ring (pathLength 100 makes the dash a percentage).
+export function ring(p, cls = '') {
+  const filled = Math.max(1, Math.min(100, p));
+  return `<svg class="ring ${cls}" viewBox="0 0 36 36" aria-hidden="true"><circle class="track" cx="18" cy="18" r="15"/>`
+    + `<circle class="arc" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="${filled} 100" transform="rotate(-90 18 18)"/></svg>`;
+}
+
+// One usage line: a ring against the free limit, the label, the numbers.
 export function meter(label, value, limit, show = fmt) {
   const p = pct(value, limit);
   const cls = p >= 90 ? 'hot' : p >= 60 ? 'warm' : '';
-  return `<div class="meter"><span class="dim small">${esc(label)}</span>
-    <div class="bar"><div class="fill ${cls}" style="width:${Math.min(100, p)}%"></div></div>
+  return `<div class="meter">${ring(p, cls)}<span class="dim small">${esc(label)}</span>
     <span class="small ${cls}">${esc(show(value))} / ${esc(show(limit))} · ${p}%</span></div>`;
 }
 

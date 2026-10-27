@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { TABS, tabFromHash } from '../js/tabs.js';
+import { healthSegments } from '../js/ui.js';
 
 test('tabFromHash: known tab, otherwise the first one', () => {
   assert.equal(tabFromHash('#commute'), 'commute');
@@ -28,4 +29,16 @@ test('index.html: tab bar has 5 tabs and the header shows the MIAP logo', () => 
   assert.match(html, /<div class="brand"><svg[^>]*>.*<\/svg><span>MIAP<\/span><\/div>/);
   assert.ok(html.includes('id="tab-title"'));
   assert.ok(!html.includes('Orbitron'), 'old HUD font is gone');
+});
+
+test('healthSegments: one segment per panel, failed ones marked', () => {
+  assert.equal(healthSegments([true, false]), '<i class="ok"></i><i class="bad"></i>');
+  assert.equal(healthSegments([]), '');
+});
+
+test('index.html: footer comes after the panels, which fill at least one screen', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  assert.ok(html.indexOf('<footer') > html.indexOf('</main>'));
+  assert.match(css, /main \{ min-height: 100vh;/);
 });
