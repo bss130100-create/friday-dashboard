@@ -64,6 +64,6 @@ export function renderAir(a) {
     </table>
     <h3>Pollen</h3>
     ${hasPollen
-      ? `<table class="small">${a.pollen.map((p) => `<tr><td>${esc(p.name[0].toUpperCase() + p.name.slice(1))}</td><td>${p.grains.toFixed(1)} grains/m³</td><td class="${pollenBand(p.grains) === 'high' ? 'hot' : ''}">${pollenBand(p.grains)}</td></tr>`).join('')}</table>`
+      ? `<table class="small">${a.pollen.map((p) => `<tr><td>${esc(p.name[0].toUpperCase() + p.name.slice(1))}</td><td>${p.grains.toFixed(1)} grains/m³</td><td class="${pollenBand(p.grains) === 'high' ? 'warm' : ''}">${pollenBand(p.grains)}</td></tr>`).join('')}</table>`
       : '<p class="dim">No pollen data here: pollen is only modelled for Europe.</p>'}`;
 }

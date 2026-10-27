@@ -124,7 +124,7 @@ const HOME = { name: 'Home St 1', lat: 50.8, lon: 4.3 };
 test('reverse geocode: nearest street address, with its town', () => {
   assert.equal(reverseUrl(GRAND_PLACE), 'https://api.transitous.org/api/v1/reverse-geocode?place=50.84660%2C4.35280');
   assert.equal(parseReverse(REVERSE), 'Grand-Place - Grote Markt 26, Bruxelles - Brussel');
-  assert.equal(parseReverse([]), 'no address nearby');
+  assert.equal(parseReverse([]), 'No address nearby');
   assert.throws(() => parseReverse({}), /Unexpected/);
 });
 
@@ -132,7 +132,7 @@ test('where am I: address, GPS fix and the way home; at home no trip is planned'
   const now = new Date('2026-10-24T15:24:00Z');
   const html = renderHere(GRAND_PLACE, 'Grand-Place 26', HOME, parsePlan(PLAN), now);
   assert.match(html, /Grand-Place 26/);
-  assert.match(html, /50\.84660, 4\.35280 · ±8 m · 6\.\d km from home/);
+  assert.match(html, /<span class="fix">50\.84660, 4\.35280 · ±8 m<\/span> · 6\.\d km from home/);
   assert.match(html, /Here → Home[\s\S]*Leave in 12 min/);
   assert.match(renderHere({ ...HOME, accuracy: 5 }, 'Home St 1', HOME, [], now), /You're home/);
 });

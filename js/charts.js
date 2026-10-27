@@ -22,7 +22,7 @@ export function lineChart(points, { height = 48, unit = '' } = {}) {
 
 // points: [{ label, value }] oldest first. Returns an SVG bar chart.
 export function barChart(points, { height = 56, unit = '' } = {}) {
-  if (points.length === 0) return '<p class="dim small">no data yet</p>';
+  if (points.length === 0) return '<p class="dim small">No data yet</p>';
   const max = Math.max(...points.map((p) => p.value), 1);
   const slot = W / points.length;
   const gap = Math.min(2, slot * 0.3);

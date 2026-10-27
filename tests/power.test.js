@@ -82,7 +82,7 @@ test('panel: rate now, next change, greenest window, chart labels', () => {
   const hours = parseRenewables(POWER, new Date(now * 1000));
   const html = renderPower({ now, hours, holidays: NO_HOLIDAYS });
   assert.match(html, /<div class="big">NIGHT<span class="unit"> rate<\/span><\/div>/);
-  assert.match(html, /cheap rate now · day rate from Mon 07:00/);
+  assert.match(html, /Cheap rate now · day rate from Mon 07:00/);
   assert.match(html, /Greenest 3 h<\/td><td><span class="nowrap">Sun 11:00–14:00<\/span> · 100% · <span class="nowrap">night rate too<\/span>/);
   assert.match(html, /<title>Sun 11:00 · night rate: 104% renewable<\/title>/);
   assert.match(html, /<div class="more"><div><h3>Renewable share by hour[\s\S]*<span class="closed">Hourly chart<\/span>/); // chart opens on tap

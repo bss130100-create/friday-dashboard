@@ -102,3 +102,18 @@ test('logo: the scan ring is never rotated with transforms (Safari drew it off t
   assert.doesNotMatch(css, /\.brand \.scan \{[^}]*transform/);
   assert.match(css, /@keyframes scan \{ from \{ stroke-dashoffset/);
 });
+
+test('design tokens: style.css only uses names defined in tokens.css, no own colours, glows at most 3px', () => {
+  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  const tokens = readFileSync(new URL('../tokens.css', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(html.indexOf('href="tokens.css"') < html.indexOf('href="style.css"'), 'tokens load first');
+  const defined = new Set([...tokens.matchAll(/(--[\w-]+):/g)].map((m) => m[1]));
+  const used = new Set([...css.matchAll(/var\((--[\w-]+)/g)].map((m) => m[1]));
+  assert.deepEqual([...used].filter((name) => !defined.has(name)), []);
+  // hex colours live in tokens.css; style.css keeps only black (mask, map shadows) and white (map labels)
+  assert.deepEqual([...new Set(css.match(/#[0-9a-fA-F]{3,6}\b/g))].filter((c) => !['#000', '#fff'].includes(c)), []);
+  for (const line of css.split('\n').filter((l) => !/@keyframes ping/.test(l))) {
+    for (const [, blur] of line.matchAll(/(?:drop-shadow\(|box-shadow: |, )0 0 (\d+)px/g)) assert.ok(Number(blur) <= 3, line);
+  }
+});

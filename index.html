@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>M.I.A.P.</title>
-  <meta name="description" content="Mihai's Intelligent Assist Platform: live HUD with time, satellites, GPS jamming, weather, air, sky, news, cyber threats, outages.">
+  <meta name="description" content="Mihai's Intelligent Assist Platform: live HUD with your day, commute, weather, air, sky, news, GPS jamming and cyber threats.">
   <meta name="theme-color" content="#05070A">
   <!-- iPhone "Add to Home Screen": app with a solid black status bar. "black-translucent" let the page run
        under the clock, where iOS 26 (Liquid Glass) blurs it; "black" starts the page below the status bar. -->
@@ -47,7 +47,7 @@
     <section data-tab="commute" id="routes" class="hero">
       <h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 10h14M8.5 20.5L10 17M15.5 20.5L14 17"/></svg>Commute · public transport</h2>
       <details id="commute-setup">
-        <summary>setup</summary>
+        <summary>Home and work addresses</summary>
         <form id="commute-form" autocomplete="off">
           <p class="dim small">Saved in MIAP's private database (behind your login). Trains, buses, trams and metro, door to door.</p>
           <label>Home address <input name="home" required></label>
@@ -92,13 +92,11 @@
     <section data-tab="world" id="topic"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z"/></svg>Topic of the week</h2><div class="body"><p class="dim">Loading topic…</p></div><div class="status"></div></section>
     <section data-tab="world" id="gpsjam" class="wide"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>GNSS interference</h2><div class="body"><p class="dim">Loading GPSJam data…</p></div><div class="status"></div></section>
     <section data-tab="world" id="attacks" class="wide"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7.5 3v5.5c0 4.5-3.2 8.3-7.5 9.5-4.3-1.2-7.5-5-7.5-9.5V6z"/></svg>Cyber attack vectors</h2><div class="body"><p class="dim">Querying Cloudflare Radar…</p></div><div class="status"></div></section>
-    <section data-tab="world" id="outages"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M9 16a4.5 4.5 0 0 1 6 0"/><circle cx="12" cy="19.5" r=".8"/></svg>Internet outages</h2><div class="body"><p class="dim">Querying IODA…</p></div><div class="status"></div></section>
-    <section data-tab="world" id="sats"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="9.5" ry="4" transform="rotate(-30 12 12)"/><circle cx="12" cy="12" r="2.5"/></svg>Orbital tracking</h2><div class="body"><p class="dim">Loading orbits…</p></div><div class="status"></div></section>
     <section data-tab="world" id="history" class="wide"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16"/><path d="M7.5 15l3.5-4 3 2.5 5-6.5"/></svg>Archive · trends</h2><div class="body"><p class="dim">Reading MIAP's memory…</p></div><div class="status"></div></section>
     <section data-tab="system" id="usage" class="hero"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/></svg>System status</h2><div class="body"><p class="dim">Asking Cloudflare…</p></div>
       <p class="prune"><button type="button" id="prune">Delete data older than 30 days</button> <span id="prune-msg" class="dim small"></span></p><div class="status"></div></section>
   </main>
-  <footer class="dim">Data: OpenHolidays (holidays) · Energy-Charts / Fraunhofer ISE, CC BY 4.0 (electricity) · TomTom (roads) · iRail (SNCB disruptions) · Workers AI (briefing) · <a href="https://transitous.org/sources/">Transitous</a> (© OpenStreetMap contributors) · CelesTrak · Open-Meteo · CAMS · Bing News · GPSJam · Cloudflare Radar · IODA (Georgia Tech) · Natural Earth.
+  <footer class="dim">Data: OpenHolidays (holidays) · Energy-Charts / Fraunhofer ISE, CC BY 4.0 (electricity) · TomTom (roads) · iRail (SNCB disruptions) · Workers AI (briefing) · <a href="https://transitous.org/sources/">Transitous</a> (© OpenStreetMap contributors) · Open-Meteo · CAMS · Bing News · GPSJam · Cloudflare Radar · Natural Earth.
     Your location goes to Open-Meteo (weather, air, sun) and Transitous (nearest address, way home), and is never stored. Commute addresses are kept in MIAP's private database and sent to Transitous for routing.
     Source &amp; contact: <a href="https://github.com/bss130100-create/friday-dashboard">github.com/bss130100-create/friday-dashboard</a>.</footer>
 </body>

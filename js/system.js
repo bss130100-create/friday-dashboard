@@ -47,10 +47,10 @@ const workersMeter = (w) => (w.error ? err(`Worker analytics: ${w.error}`) : met
 // A chart with its numbers: one plain line on what it shows, this hour / busiest hour / 24 h total,
 // and times under it (first, middle, last hour).
 export function chartBlock({ title, meaning, points, unit = '', total = null, line = false, height }) {
-  if (!points.length) return `<p class="chart-title">${esc(title)}</p><p class="dim small">no data yet</p>`;
+  if (!points.length) return `<p class="chart-title">${esc(title)}</p><p class="dim small">No data yet</p>`;
   const peak = points.reduce((a, b) => (b.value > a.value ? b : a));
   const stats = [
-    `this hour <b>${fmt(points.at(-1).value)}${unit}</b>`,
+    `This hour <b>${fmt(points.at(-1).value)}${unit}</b>`,
     `busiest <b>${fmt(peak.value)}${unit}</b> at ${esc(peak.label)}`,
     total === null ? '' : `<b>${fmt(total)}</b> in 24 h`,
   ].filter(Boolean).join(' · ');

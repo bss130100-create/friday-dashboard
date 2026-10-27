@@ -1,5 +1,7 @@
-/* MIAP "Reactor Dark": Apple is the foundation (black, graphite layers, SF type, restrained blur),
-   Iron Man is the character (reactor cyan accents, amber warnings, red critical alerts).
+/* MIAP "Reactor Dark", 50% Iron Man and 50% Apple.
+   Iron Man is the frame: HUD card labels with a tracer line, corner brackets on the hero card, cyan readouts,
+   mono for machine values, the lit segment under the active tab.
+   Apple is the content: iOS text styles, list rows with hairlines, borderless cards, 44px tap targets, calm motion.
    Every colour, size, gap, radius and duration comes from tokens.css. */
 * { box-sizing: border-box; }
 html { background: var(--bg); }
@@ -77,6 +79,8 @@ nav.tabs a:hover { color: var(--fg); }
 nav.tabs a:active svg { transform: scale(.9); }
 nav.tabs a.on { color: var(--cyan); background: var(--cyan-tint); }
 nav.tabs a.on svg { filter: drop-shadow(0 0 2px var(--glow)); }
+/* active tab: a small lit segment under the label, like a reactor indicator */
+nav.tabs a.on::after { content: ""; position: absolute; bottom: 3px; width: 14px; height: 2px; border-radius: 1px; background: var(--cyan); box-shadow: 0 0 3px var(--cyan); }
 
 /* ---------- cards ---------- */
 /* align-items: start = each card is only as tall as its content, not as tall as its row */
@@ -90,16 +94,28 @@ section.error { box-shadow: inset 0 0 0 1px rgba(255, 77, 94, .6); }
 /* switching tabs: the cards of the new tab fade in (in answer to the tap) */
 main > section:not([hidden]) { animation: card-in var(--slow) var(--ease) backwards; }
 @keyframes card-in { from { opacity: 0; } }
-/* card title: cyan icon + sentence-case name */
-h2 { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s3); font: var(--t-headline); font-size: 15px; line-height: 20px; color: var(--fg); }
-.ico { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--cyan); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* card label (HUD): cyan icon, small-caps name, then a tracer line that fades out towards the card's edge */
+h2 { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s3); font: var(--t-hud); letter-spacing: var(--hud-track); text-transform: uppercase; color: var(--hud-label); }
+h2::after { content: ""; flex: 1; min-width: var(--s4); height: 1px; margin-left: var(--s1); background: linear-gradient(90deg, var(--hud-line), rgba(86, 217, 255, 0)); }
+.ico { width: 16px; height: 16px; flex: none; fill: none; stroke: var(--cyan); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
-/* the one prominent card on a tab: full width, a faint cyan edge and light in its corner */
+/* the one prominent card on a tab: full width, a faint cyan edge and light in its corner,
+   and HUD corner brackets: a brighter edge that only shows within 28px of each corner (two masks intersected) */
 section.hero {
   grid-column: 1 / -1; padding: var(--s5); box-shadow: inset 0 0 0 1px var(--cyan-edge);
   background: radial-gradient(120% 140% at 0% 0%, rgba(86, 217, 255, .07), rgba(86, 217, 255, 0) 55%), var(--panel);
 }
+section.hero::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; border: 1.5px solid var(--cyan); opacity: .7; pointer-events: none;
+  -webkit-mask: linear-gradient(90deg, #000 28px, transparent 28px calc(100% - 28px), #000 calc(100% - 28px)),
+    linear-gradient(#000 28px, transparent 28px calc(100% - 28px), #000 calc(100% - 28px));
+  -webkit-mask-composite: source-in;
+  mask: linear-gradient(90deg, #000 28px, transparent 28px calc(100% - 28px), #000 calc(100% - 28px)),
+    linear-gradient(#000 28px, transparent 28px calc(100% - 28px), #000 calc(100% - 28px));
+  mask-composite: intersect;
+}
 section.hero.error { box-shadow: inset 0 0 0 1px rgba(255, 77, 94, .6); } /* a failing hero shows red like any card */
+section.hero.error::before { border-color: var(--hot); }
 
 /* expandable details: the open state is data-open on the card (js/ui.js), the height animates.
    The button is a full-width row under a hairline, like "Show more" in an iOS list. */
@@ -120,16 +136,18 @@ button.expand:active { transform: none; background: var(--cyan-tint); }
 /* section inside a card: sentence case, quieter than the card title */
 h3 { margin: var(--s4) 0 var(--s1); font: var(--t-footnote); font-weight: 600; color: var(--dim); }
 .body > h3:first-child, .more h3:first-child { margin-top: var(--s1); }
-.big { font: var(--t-display); letter-spacing: -.02em; color: var(--fg); }
-.unit { font: var(--t-subhead); color: var(--dim); margin-left: var(--s1); }
+/* readouts (HUD): the one big number of a card in Reactor Cyan, its unit as a small-caps label */
+.big { font: var(--t-display); letter-spacing: -.02em; color: var(--cyan); }
+.unit { font: var(--t-hud); font-size: 13px; letter-spacing: .04em; color: var(--dim); margin-left: var(--s1); }
 .err { color: var(--hot); }
 /* freshness (js/ui.js): empty while the data is current, amber once it is old, red when a refresh failed */
 .status { margin-top: var(--s2); font: var(--t-caption); color: var(--dim); opacity: .8; text-align: right; }
 section.error .status { color: var(--hot); opacity: 1; }
 section.stale .status { color: var(--warm); opacity: 1; }
 .status:empty { display: none; }
-/* telemetry in mono: the UTC clock, server paths, chart axes */
-.paths td:first-child, .axis { font-family: var(--mono); }
+/* machine values in mono (HUD telemetry): UTC, GPS fixes, usage against limits, server paths, chart axes.
+   Everything a person reads as language (addresses, trip times, sentences) stays in SF. */
+.paths td:first-child, .axis, .meter > span:last-of-type, .fix { font-family: var(--mono); }
 table { border-collapse: collapse; font: var(--t-subhead); }
 td, th { padding: var(--s1) var(--s4) var(--s1) 0; text-align: left; font-weight: normal; vertical-align: top; }
 td:first-child, th { color: var(--dim); }
@@ -142,8 +160,9 @@ table.small { font: var(--t-footnote); }
 .tag { display: inline-block; min-width: 2.4em; text-align: center; font: var(--t-caption); font-weight: 600; padding: 1px var(--s2); border-radius: 6px; background: var(--fill); color: var(--cyan); }
 .tag.cool { color: var(--cyan); }
 .tag.hot { background: var(--red-tint); color: var(--hot); }
-/* key numbers: two per row on a phone */
-.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--s3) var(--s4); margin: var(--s3) 0; }
+/* key numbers in a row; System's four go two by two on a phone */
+.kpis { display: flex; flex-wrap: wrap; gap: var(--s3) var(--s6); margin: var(--s3) 0; }
+#usage .kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--s3) var(--s4); }
 .kpis > div { display: flex; flex-direction: column; min-width: 0; }
 .kpi { font: var(--t-title2); color: var(--fg); }
 .kpi.hot { color: var(--hot); }
@@ -162,7 +181,7 @@ table.small { font: var(--t-footnote); }
 .meter:first-child { border-top: none; padding-top: 0; }
 .meter .ring { grid-row: span 2; }
 .meter > span:first-of-type { font: var(--t-subhead); color: var(--fg); }
-.meter > span:last-of-type { font: var(--t-footnote); color: var(--dim); }
+.meter > span:last-of-type { font-size: 12px; line-height: 18px; color: var(--dim); }
 .meter > span.warm:last-of-type { color: var(--warm); }
 .meter > span.hot:last-of-type { color: var(--hot); }
 .ring { width: 32px; height: 32px; }
@@ -179,7 +198,7 @@ table.small { font: var(--t-footnote); }
 .axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--dim); margin-top: 2px; }
 
 /* ---------- maps ---------- */
-.map-wrap { position: relative; user-select: none; -webkit-user-select: none; }
+.map-wrap { position: relative; display: flex; flex-direction: column; user-select: none; -webkit-user-select: none; }
 .worldmap { width: 100%; height: auto; display: block; margin: var(--s1) 0; touch-action: pan-y; }
 .worldmap.zoomed { touch-action: none; cursor: grab; }
 /* non-scaling strokes: outlines stay hairline-thin when zoomed in */
@@ -188,8 +207,9 @@ table.small { font: var(--t-footnote); }
 .worldmap .labels text { display: none; letter-spacing: normal; fill: var(--fg); font-family: var(--body); text-anchor: middle; dominant-baseline: middle;
   pointer-events: none; paint-order: stroke; stroke: rgba(0, 0, 0, .85); stroke-width: 2px; vector-effect: non-scaling-stroke; }
 .worldmap .labels text.show { display: inline; }
-.zoom-ctl { position: absolute; top: 6px; right: 6px; display: flex; gap: var(--s1); align-items: center; z-index: 1; }
-.zoom-ctl button { width: var(--tap); height: var(--tap); padding: 0; border-radius: var(--r-inner); background: rgba(14, 20, 27, .92); color: var(--cyan); font: 17px var(--body); }
+/* zoom buttons in a row under the map (order: 2), so 44px targets never cover Europe */
+.zoom-ctl { order: 2; display: flex; justify-content: flex-end; gap: var(--s2); align-items: center; margin-top: var(--s1); }
+.zoom-ctl button { width: var(--tap); height: var(--tap); padding: 0; border-radius: var(--r-inner); background: var(--fill); color: var(--cyan); font: 17px var(--body); }
 .zoom-level { font: var(--t-caption); color: var(--dim); min-width: 34px; text-align: right; }
 .worldmap circle { fill: var(--cyan); }
 .worldmap circle.hot { fill: var(--hot); }
@@ -200,21 +220,12 @@ table.small { font: var(--t-footnote); }
 .worldmap .you circle { fill: #fff; }
 .worldmap .you .ping { fill: none; stroke: #fff; stroke-width: 1px; vector-effect: non-scaling-stroke; opacity: .6; }
 
-/* ---------- satellites sky plot ---------- */
-.orbit { display: flex; gap: var(--s4); align-items: center; flex-wrap: wrap; }
-.orbit .big { font: var(--t-title2); color: var(--fg); }
-.sky { width: 170px; height: 170px; flex: none; }
-.sky .ring { fill: none; stroke: var(--line); }
-.sky circle:not(.ring) { fill: var(--cyan); filter: drop-shadow(0 0 2px var(--cyan)); }
-.sky text { fill: var(--fg); font: 9px var(--body); }
-.sky .lbl { fill: var(--dim); }
-
 /* ---------- sun & moon ---------- */
 .astro { display: flex; gap: var(--s5); flex-wrap: wrap; justify-content: space-between; align-items: center; }
 .moon-box { text-align: center; font: var(--t-footnote); }
 .moon { width: 72px; height: 72px; filter: drop-shadow(0 0 3px rgba(168, 230, 255, .35)); }
 .moon-dark { fill: rgba(86, 217, 255, .08); stroke: var(--line); }
-.moon-lit { fill: #E6FBFF; }
+.moon-lit { fill: var(--moon); }
 
 /* ---------- inputs ---------- */
 input {
@@ -233,9 +244,11 @@ button.primary:hover { color: var(--on-cyan); background: var(--cool); }
 /* ---------- topic of the week ---------- */
 .topic-title { font: var(--t-title2); color: var(--fg); }
 .fact { margin: var(--s1) 0; }
-.videos { list-style: none; padding: 0; margin: var(--s2) 0 0; font: var(--t-footnote); }
-.videos li { margin: var(--s2) 0; }
-.videos input { width: auto; min-height: 0; margin-right: 6px; accent-color: var(--cyan); }
+.videos { list-style: none; padding: 0; margin: var(--s2) 0 0; font: var(--t-subhead); }
+.videos label { display: grid; grid-template-columns: 22px 1fr; gap: 0 var(--s3); align-items: start; min-height: var(--tap); padding: var(--s2) 0; border-top: 1px solid var(--line); cursor: pointer; }
+.videos li:first-child label { border-top: none; }
+.videos input { width: 22px; height: 22px; min-height: 0; margin: 0; padding: 0; accent-color: var(--cyan); }
+.videos .dim { grid-column: 2; font: var(--t-footnote); }
 .videos a { color: var(--fg); }
 
 /* ---------- trends (history) ---------- */
@@ -266,6 +279,7 @@ button.primary:hover { color: var(--on-cyan); background: var(--cool); }
 .leave.hot { color: var(--hot); } .leave.warm { color: var(--warm); }
 .place-name { font: var(--t-headline); color: var(--fg); }
 footer { margin: var(--s5) 0 0; font: var(--t-caption); }
+footer a { text-decoration: underline; text-decoration-color: rgba(86, 217, 255, .45); text-underline-offset: 2px; } /* links in running text: not by colour alone */
 
 /* ---------- roads & rail, briefing ---------- */
 .traffic { display: grid; gap: var(--s1) var(--s5); }
@@ -278,7 +292,8 @@ footer { margin: var(--s5) 0 0; font: var(--t-caption); }
 .tmap .leaflet-control-attribution { background: rgba(0, 0, 0, .7); color: var(--dim); }
 .tmap .leaflet-control-attribution a { color: var(--cool); }
 .tmap .leaflet-popup-content { font: var(--t-footnote); }
-.tmap .leaflet-bar a { background: rgba(0, 0, 0, .85); color: var(--cyan); border-color: var(--line); }
+.tmap .leaflet-bar { border: none; border-radius: var(--r-inner); overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, .5); }
+.tmap .leaflet-bar a { width: var(--tap); height: var(--tap); line-height: var(--tap); font-size: 20px; background: rgba(16, 23, 32, .92); color: var(--cyan); border-color: var(--line); }
 .legend { margin: 0 0 6px; color: var(--dim); }
 /* weather map labels: value per grid point, readable on any colour */
 .wx-label { font: 700 12px var(--body); color: #fff; text-align: center; line-height: 20px; text-shadow: 0 0 3px #000, 0 0 2px #000; white-space: nowrap; }
@@ -295,8 +310,9 @@ footer { margin: var(--s5) 0 0; font: var(--t-caption); }
 /* AI briefing: summary first, details behind the expand row, source line last */
 #brief-me {
   position: absolute; top: 14px; right: 14px; min-height: 34px; padding: 0 var(--s4); font: var(--t-footnote); font-weight: 600;
-  background: var(--cyan-tint); color: var(--cyan);
+  background: var(--fill); color: var(--cyan); box-shadow: inset 0 0 0 1px var(--hud-line);
 }
+#briefing h2 { margin-right: 112px; } /* the tracer line stops before the Brief me button */
 #brief-me::after { content: ""; position: absolute; inset: -5px; } /* 44px tap area around the smaller pill */
 #brief-me .busy, body.thinking #brief-me .idle { display: none; }
 body.thinking #brief-me .busy { display: inline; }
@@ -337,7 +353,7 @@ p.small { margin: var(--s2) 0 0; }
 .next-trips li > span:nth-child(3) { grid-column: 1 / -1; font: var(--t-footnote); color: var(--dim); }
 .more-link { display: flex; align-items: center; min-height: var(--tap); border-top: 1px solid var(--line); font: var(--t-subhead); }
 /* chronometer */
-.time { font: var(--t-display); letter-spacing: -.02em; color: var(--fg); }
+.time { font: var(--t-display); letter-spacing: -.02em; color: var(--cyan); }
 .time .sec { font: var(--t-title3); color: var(--dim); }
 .tele { margin: var(--s1) 0 0; font: var(--t-footnote); color: var(--dim); }
 

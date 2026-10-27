@@ -9,7 +9,7 @@ plus the few helpers the page needs, and it sits behind a **Cloudflare Access lo
 ## Panels and how they work
 Panels are grouped in five tabs: **Today** (AI briefing, days off, holidays, commute, chronometer, electricity, sun & moon), **Commute** (where I am, phone alerts, commute),
 **Weather** (atmosphere, temperature, wind and rain maps, air quality & pollen) and **World** (newsfeed, topic of the week, roads & rail, GNSS, cyber attacks,
-outages, orbital tracking, archive), plus **System**. The open tab is in the address (`#commute`), so a bookmark opens it.
+archive), plus **System**. The open tab is in the address (`#commute`), so a bookmark opens it.
 Cards with more detail open in place (the button under them); the open state survives the next refresh.
 
 | Panel | Source | Refresh | What happens |
@@ -29,17 +29,15 @@ Cards with more detail open in place (the button under them); the open state sur
 | Rain radar | [RainViewer](https://www.rainviewer.com) | 10 min | The latest radar picture (at most 10 min old) over the same area. Free for personal use since 2026 only past radar, one colour scheme and detail up to zoom 7, so it looks soft when you zoom far in. |
 | Air quality · Pollen | Open-Meteo air quality (Copernicus CAMS model) | 30 min | European AQI (0-20 good … >100 extremely poor), particles, ozone, NO₂, and pollen. Pollen is only modelled for Europe. Pollen bands (<10 low, <50 moderate, else high, grains/m³) are a rough glance scale, not medical advice. |
 | Sun · Moon | Open-Meteo + local maths | 1 h (countdown every min) | Sunrise/sunset/daylight from Open-Meteo. The moon phase is computed: the moon repeats its phases every 29.53 days, so days since a known new moon give the phase. |
-| Orbital tracking | [CelesTrak](https://celestrak.org) TLEs | orbits 2 h, positions 2 s | Downloads each satellite's orbit as a *TLE* (two lines of numbers); the SGP4 model (`vendor/satellite.es.js`) predicts where the ISS and every GPS satellite is *now*. Shows the ISS height, speed and position, and how many GPS satellites are above you. Sky plot: centre = straight up, ring = horizon, top = north; hover a dot for its PRN. |
 | Newsfeed | Bing News RSS, via the Worker | 10 min | Type a place and press Enter: English articles about it from the last 24 h. Remembered in this browser. |
 | Roads & rail around you | [TomTom](https://developer.tomtom.com) traffic incidents via the Worker + SNCB disruptions via [iRail](https://api.irail.be) | 15 min | Roads: closures, accidents, jams and roadworks in a ~78 × 78 km box around you, worst first, with delay and length. TomTom's free plan is 2,500 calls a month, so the Worker caches each ~20 km cell for 30 min and only that rounded cell is sent. Rail: current disruptions and planned works whose title names a station within 30 km of you, plus how many others there are in Belgium. Map (~50 km across, centred on you, zoom and drag): red = closed roads, dashed red = live rail disruptions (drawn station to station: iRail names the stretch, not the track), orange = jams, accidents, lane closures. Tap a line for details. |
 | GNSS interference | [GPSJam](https://gpsjam.org), prepared daily by a GitHub Action | 1 h (data changes daily) | Airliners broadcast how accurate their GPS fix is. Where many aircraft report a bad fix, GPS is being jammed or spoofed. Red = >10% of aircraft affected. Hotspots are grouped into known zones (Baltic, Black Sea, Eastern Med, …). |
 | Cyber attack vectors | [Cloudflare Radar](https://radar.cloudflare.com), via the Worker | 30 min | Top country→country routes of HTTP attacks Cloudflare blocked in the last 24 h. "Origin" is where attack traffic came *from* (often hijacked machines), not necessarily where the attacker is. |
-| Internet outages | [IODA](https://ioda.inetintel.cc.gatech.edu) (Georgia Tech) | 15 min | Countries where internet reachability dropped in the last 24 h, and which signal saw it (BGP routes, active probing, Google traffic). |
 | Archive · trends | your Worker's D1 database (`/history`) | 1 h | MIAP's memory: GNSS jamming per zone (120 days, top 4 zones, change vs previous week) and attack origin countries' share per day. Hover a chart for the exact value. Setup below. |
 
 All maps show land, country borders (Natural Earth 1:110m) and country names. Names keep a readable size and more appear as you zoom in.
 
-**Zoom (all three world maps):** the + / − / ⟲ buttons, double-click, pinch on the phone, or pinch / Ctrl+scroll on a laptop. Drag to move around when zoomed. The zoom stays when the data refreshes.
+**Zoom (both world maps):** the + / − / ⟲ buttons, double-click, pinch on the phone, or pinch / Ctrl+scroll on a laptop. Drag to move around when zoomed. The zoom stays when the data refreshes.
 
 The header says **All N panels live**, names the panels that need attention when some fail (amber), or how many are still connecting; the segments under it show each panel.
 Your location (browser permission) goes to Open-Meteo, and to Transitous for *Where I am*. It is never stored.
@@ -51,7 +49,7 @@ and `runPanel()` in `js/ui.js` catches it and prints it in that panel. Details a
 
 ## CORS, and why some data goes through helpers
 Browsers only let our page read another site's answer if that site sends the header
-`Access-Control-Allow-Origin` (the **CORS** rule). CelesTrak, Open-Meteo, Transitous and IODA send it.
+`Access-Control-Allow-Origin` (the **CORS** rule). Open-Meteo, Transitous, OpenHolidays and iRail send it.
 Four sources don't, so they go through a helper:
 
 | Source | Helper | Why this helper |
@@ -126,7 +124,9 @@ If `data/gnss-backfill.json` is missing it also builds it once (120 past days, p
 ## Files
 ```
 index.html            layout, one <section> per panel
-style.css             the HUD look (arc reactor, corner brackets, glow, animations)
+tokens.css            design tokens: every colour, iOS text style, spacing step, radius and animation speed
+style.css             the look, built only from tokens.css: 50% Iron Man frame (HUD labels, corner brackets,
+                      cyan readouts), 50% Apple content (text styles, list rows, 44px tap targets)
 manifest.webmanifest  makes it installable ("Add to Home Screen")
 js/main.js            wires each panel to its loader and refresh timer
 js/http.js            fetch wrapper that throws on errors
@@ -135,8 +135,8 @@ js/worldmap.js        shared SVG world map (dots + attack arcs); land shapes in 
 js/zoom.js            zoom and drag for the maps
 js/history.js         trends panel (reads /history); js/charts.js tiny SVG charts
 js/countries-data.js  country centre points for the maps; js/labels-data.js country names
-js/<panel>.js         one file per data source: clock, satellites, weather, airquality, astro,
-                      news, gpsjam, attacks, outages, topic, commute, daysoff, power (+ geo, location helpers)
+js/<panel>.js         one file per data source: clock, weather, airquality, astro,
+                      news, gpsjam, attacks, topic, commute, daysoff, power (+ geo, location helpers)
 relay/worker.js       the Cloudflare Worker: helpers (news, attacks, power), memory, settings, roads, briefing, push endpoints + cron
 relay/alerts.js       when to push (commute windows, delays, cancellations, rail disruptions)
 relay/push.js         Web Push sender (VAPID + encryption, no library)
@@ -145,7 +145,6 @@ wrangler.jsonc        how Cloudflare deploys it (site files, database, AI, hourl
 scripts/gpsjam.py     daily GPSJam converter (+ test_gpsjam.py)
 data/gpsjam.json      output of the daily job
 data/topic.json       topic of the week (facts + videos)
-vendor/satellite.es.js  satellite.js 6.0.2 (MIT), copied as-is
 vendor/leaflet.*      Leaflet 1.9.4 (BSD-2), copied as-is: draws the maps (js/basemap.js; roads & rail in js/trafficmap.js, weather in js/weathermap.js)
 tests/                unit tests (node --test)
 ```
@@ -167,7 +166,7 @@ Open the live link in **Safari**, log in, then Share → **Add to Home Screen**.
 
 ## Credits
 Land shapes: Natural Earth (public domain). Maps: © OpenStreetMap contributors (tiles), Leaflet, RainViewer (radar). Country centres: mledoze/countries (ODbL).
-Data: OpenHolidays, Energy-Charts (Fraunhofer ISE, CC BY 4.0), Transitous (© OpenStreetMap contributors, [sources](https://transitous.org/sources/)), CelesTrak, Open-Meteo / Copernicus CAMS, Bing News, GPSJam, Cloudflare Radar, IODA (Georgia Tech).
+Data: OpenHolidays, Energy-Charts (Fraunhofer ISE, CC BY 4.0), Transitous (© OpenStreetMap contributors, [sources](https://transitous.org/sources/)), Open-Meteo / Copernicus CAMS, Bing News, GPSJam, Cloudflare Radar.
 
 ## License
-MIT, see [LICENSE](LICENSE). `vendor/satellite.es.js` keeps its own MIT license; map data is public domain (Natural Earth).
+MIT, see [LICENSE](LICENSE). `vendor/leaflet.*` keeps its own BSD-2 license; map data is public domain (Natural Earth).

@@ -46,7 +46,7 @@ export function reverseUrl(here) {
 export function parseReverse(json) {
   if (!Array.isArray(json)) throw new Error('Unexpected Transitous reverse-geocode response');
   const hit = json.find((h) => h.type === 'ADDRESS') ?? json[0];
-  return hit ? parseGeocode([hit], '').name : 'no address nearby';
+  return hit ? parseGeocode([hit], '').name : 'No address nearby';
 }
 
 // --- settings: { home: place, works: [{ label, place }, { label, place }] }, place = { name, lat, lon }
@@ -231,7 +231,7 @@ export function commuteSummary(plans, now) {
 export function renderHere(here, address, home, trips, now) {
   const km = distanceKm(here.lat, here.lon, home.lat, home.lon);
   const fix = `${here.lat.toFixed(5)}, ${here.lon.toFixed(5)} · ±${Math.round(here.accuracy)} m`;
-  const top = `<div class="place-name">${esc(address)}</div><div class="dim small">${fix} · ${km.toFixed(1)} km from home</div>`;
+  const top = `<div class="place-name">${esc(address)}</div><div class="dim small"><span class="fix">${fix}</span> · ${km.toFixed(1)} km from home</div>`;
   if (km < THERE_KM) return `${top}<p class="leave">You're home.</p>`;
   return top + renderRoute('Here → Home', trips, now);
 }

@@ -1,6 +1,8 @@
 /* MIAP design tokens: the only place for colours, type, spacing, radii, elevation and motion.
    style.css uses these names and never raw values, so the whole app changes from here.
-   Reactor Dark palette (dark only, no light mode): cyan = normal/active, amber = warning, red = critical only. */
+   Reactor Dark palette (dark only, no light mode): cyan = normal/active, amber = warning, red = critical only.
+   50% Iron Man, 50% Apple: the frame is a HUD (card labels with tracer lines, corner brackets on the hero,
+   cyan readouts, mono telemetry), the content inside is Apple (iOS text styles, list rows, 44px targets). */
 :root {
   /* ---------- colour ---------- */
   --bg: #05070A;         /* Void Black: the page */
@@ -19,6 +21,9 @@
   --amber-tint: rgba(255, 180, 84, .14);
   --red-tint: rgba(255, 77, 94, .14);
   --glow: rgba(86, 217, 255, .35);       /* every glow is at most 3px */
+  --hud-line: rgba(86, 217, 255, .32);   /* HUD tracer lines and frames */
+  --hud-label: #7FB8CC;                  /* HUD card labels: cyan-grey, 8.3:1 on graphite */
+  --moon: #E6FBFF;                       /* the lit part of the moon */
 
   /* ---------- type: Apple's iOS text styles (weight size/line-height family) ---------- */
   --head: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, system-ui, sans-serif;
@@ -34,6 +39,8 @@
   --t-footnote: 400 13px/18px var(--body);  /* secondary lines */
   --t-caption: 400 12px/16px var(--body);   /* freshness, sources */
   --t-caption2: 600 10px/12px var(--body);  /* dock labels */
+  --t-hud: 600 12px/16px var(--body);       /* HUD card labels, in small caps with --hud-track */
+  --hud-track: .12em;
 
   /* ---------- spacing: 4px steps ---------- */
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px;

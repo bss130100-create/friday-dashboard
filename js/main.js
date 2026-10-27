@@ -6,7 +6,6 @@ import { loadWeather, renderWeather } from './weather.js';
 import { loadAir, renderAir } from './airquality.js';
 import { loadAstro, renderAstro } from './astro.js';
 import { loadNews, renderNews } from './news.js';
-import { loadOutages, renderOutages } from './outages.js';
 import { loadGpsJam, renderGpsJam } from './gpsjam.js';
 import { loadAttacks, renderAttacks } from './attacks.js';
 import { makeZoomable } from './zoom.js';
@@ -24,7 +23,6 @@ import { readouts, loadBriefing } from './briefing.js';
 import { loadDaysOff, renderDaysOff, renderHolidays } from './daysoff.js';
 import { loadPower, renderPower } from './power.js';
 import { supported, UNSUPPORTED, renderAlerts, alertState, loadPushKey, enableAlerts, sendTest } from './alerts.js';
-import { ISS_TLE_URL, GPS_TLE_URL, loadTle, parseTle, satState, visibleGps, renderSatellites } from './satellites.js';
 
 const MINUTE = 60 * 1000;
 watchFreshness();
@@ -143,30 +141,10 @@ setTimeout(() => runPanel('briefing', briefMe, 60 * MINUTE), 20 * 1000);
 document.getElementById('brief-me').addEventListener('click', () => briefMe().catch((err) => showError('briefing', err)));
 
 // --- world panels (all zoomable)
-for (const id of ['outages', 'gpsjam', 'attacks']) makeZoomable(id);
-runPanel('outages', async () => showBody('outages', renderOutages(await loadOutages(new Date()))), 15 * MINUTE);
+for (const id of ['gpsjam', 'attacks']) makeZoomable(id);
 runPanel('gpsjam', async () => showBody('gpsjam', renderGpsJam(await loadGpsJam(), knownLocation)), 60 * MINUTE);
 runPanel('attacks', async () => showBody('attacks', renderAttacks(await loadAttacks())), 30 * MINUTE);
 runPanel('history', async () => showBody('history', await renderHistory()), 60 * MINUTE);
-
-// --- satellites: orbits (TLEs) are refreshed rarely, positions are recomputed every 2 s
-let orbits = null;
-runPanel('sats', async () => {
-  const [iss] = parseTle(await loadTle(ISS_TLE_URL));
-  const gps = parseTle(await loadTle(GPS_TLE_URL));
-  orbits = { iss, gps };
-}, 30 * MINUTE);
-
-setInterval(async () => {
-  if (!orbits) return; // still loading, or the load failed (error already shown)
-  try {
-    const here = await location();
-    const now = new Date();
-    showBody('sats', renderSatellites(satState(orbits.iss.satrec, now, here), visibleGps(orbits.gps, now, here), orbits.gps.length));
-  } catch (err) {
-    showError('sats', err);
-  }
-}, 2000);
 
 // --- news: place typed by the user, remembered in this browser
 const NEWS_KEY = 'newsPlace';
@@ -276,8 +254,8 @@ async function refreshCommute() {
     const config = await readConfig();
     if (!config) {
       setup.open = true;
-      showBody('routes', '<p class="dim">Open setup above: enter your home and work addresses once.</p>');
-      showBody('commute-today', '<p class="dim">Enter your home and work addresses once in <a href="#commute">Commute</a> setup.</p>');
+      showBody('routes', '<p class="dim">Enter your home and work addresses once, under Home and work addresses above.</p>');
+      showBody('commute-today', '<p class="dim">Enter your home and work addresses once on the <a href="#commute">Commute</a> tab.</p>');
       return;
     }
     // trips to work start where you are now (a fresh fix, at most a minute old)

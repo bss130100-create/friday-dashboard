@@ -55,13 +55,13 @@ const hm = (seconds) => `${Math.floor(seconds / 3600)}h ${String(Math.floor((sec
 const clock = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
 // Moon drawn as a lit disc with a shadow ellipse sliding across it.
-function moonSvg({ fraction }) {
+function moonSvg({ fraction, name }) {
   const waxing = fraction < 0.5;
   const k = Math.cos(2 * Math.PI * fraction); // 1 = new, -1 = full
   const rx = Math.abs(k) * 40;
   const litHalf = waxing ? 'M50,10 A40,40 0 0 1 50,90' : 'M50,10 A40,40 0 0 0 50,90';
   const terminator = `A${rx.toFixed(1)},40 0 0 ${(k > 0) === waxing ? 0 : 1} 50,10`;
-  return `<svg class="moon" viewBox="0 0 100 100" role="img" aria-label="moon phase">
+  return `<svg class="moon" viewBox="0 0 100 100" role="img" aria-label="Moon: ${esc(name)}">
     <circle cx="50" cy="50" r="40" class="moon-dark"/><path d="${litHalf} ${terminator}Z" class="moon-lit"/></svg>`;
 }
 

@@ -14,12 +14,12 @@ test('dates: Brussels today (also across midnight UTC), adding days, counting da
 });
 
 test('bridge days for a Monday-to-Friday week', () => {
-  assert.equal(bridge('2027-03-29').text, 'long weekend, Sat–Mon'); // Easter Monday
-  assert.deepEqual(bridge('2027-05-06'), { long: true, leave: 1, text: 'take Fri 7 May off: 4 days, Thu–Sun' }); // Ascension
-  assert.equal(bridge('2026-12-25').text, 'long weekend, Fri–Sun');
+  assert.equal(bridge('2027-03-29').text, 'Long weekend, Sat–Mon'); // Easter Monday
+  assert.deepEqual(bridge('2027-05-06'), { long: true, leave: 1, text: 'Take Fri 7 May off for 4 days, Thu–Sun' }); // Ascension
+  assert.equal(bridge('2026-12-25').text, 'Long weekend, Fri–Sun');
   assert.equal(bridge('2026-11-11').long, false); // Wednesday
   assert.match(bridge('2026-11-01').text, /replacement day/); // Sunday
-  assert.match(bridge('2027-01-12').text, /take Mon 11 Jan off/); // a Tuesday
+  assert.match(bridge('2027-01-12').text, /Take Mon 11 Jan off/); // a Tuesday
 });
 
 const DATA = { today: '2026-10-25', publicDays: parseHolidays(PUBLIC_HOLIDAYS_JSON), school: parseHolidays(SCHOOL_HOLIDAYS_JSON) };
@@ -31,7 +31,7 @@ test('days off card: countdown, what that day means, next long weekend', () => {
   assert.match(html, /Next long weekend: <strong>Christmas Day<\/strong>, Fri 25 Dec \(in 61 days\)\.<\/p>/);
   assert.match(renderDaysOff({ ...DATA, today: '2026-11-01' }), /<span class="big">Today<\/span><\/div>\s*<p class="lead"><strong>All Saints Day/);
   assert.match(renderDaysOff({ ...DATA, today: '2026-10-31' }), /<span class="big">1<\/span><span class="unit">day<\/span>/);
-  assert.match(renderDaysOff({ ...DATA, today: '2026-12-01' }), /to <strong>Christmas Day[\s\S]*long weekend, Fri–Sun/);
+  assert.match(renderDaysOff({ ...DATA, today: '2026-12-01' }), /to <strong>Christmas Day[\s\S]*Long weekend, Fri–Sun/);
   assert.doesNotMatch(renderDaysOff({ ...DATA, today: '2026-12-01' }), /Next long weekend/); // the next day off IS the long weekend
 });
 
@@ -39,9 +39,9 @@ test('holiday timeline: public and school holidays in date order, running school
   const items = holidayTimeline(DATA);
   assert.deepEqual(items.slice(0, 4).map((h) => [h.start, h.name, h.note, h.kind, h.when]), [
     ['2026-10-19', 'All Saints Holidays', 'FR schools · until Sun 1 Nov', 'school', 'now'],
-    ['2026-11-01', 'All Saints Day', 'weekend: you get a replacement day (your employer sets it)', 'day', 'in 7 days'],
+    ['2026-11-01', 'All Saints Day', 'Falls on a weekend: you get a replacement day (your employer picks it)', 'day', 'in 7 days'],
     ['2026-11-02', 'All Saints Holidays', 'NL schools · until Sun 8 Nov', 'school', 'in 8 days'],
-    ['2026-11-11', 'Armistice Day', 'midweek day off', 'day', 'in 17 days'],
+    ['2026-11-11', 'Armistice Day', 'Midweek day off', 'day', 'in 17 days'],
   ]);
   assert.ok(!items.some((h) => h.name === 'Easter'));
   assert.equal(items.find((h) => h.name === 'Easter Monday').kind, 'long');

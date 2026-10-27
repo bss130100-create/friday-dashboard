@@ -42,6 +42,6 @@ test('watched videos are saved per topic and counted', () => {
   assert.equal(readWatched('another topic').size, 0);
   const html = renderTopic(t, watched, new Date('2026-10-26T09:00:00Z'));
   assert.match(html, /Watch list · 1\/7/);
-  assert.match(html, /day 3 of 7/);
+  assert.match(html, /Day 3 of 7/);
   assert.equal((html.match(/ checked/g) ?? []).length, 1);
 });

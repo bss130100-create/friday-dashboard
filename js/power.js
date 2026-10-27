@@ -83,7 +83,7 @@ export function renderPower({ now, hours, holidays }) {
   return `
     <div class="gauge-row">
       <div class="big">${period === 'night' ? 'NIGHT' : 'DAY'}<span class="unit"> rate</span></div>
-      <div class="dim">${period === 'night' ? 'cheap rate now' : 'full rate now'}${change ? ` · ${period === 'night' ? 'day' : 'night'} rate from ${esc(day(change))} ${clock(change)}` : ''}</div>
+      <div class="dim">${period === 'night' ? 'Cheap rate now' : 'Full rate now'}${change ? ` · ${period === 'night' ? 'day' : 'night'} rate from ${esc(day(change))} ${clock(change)}` : ''}</div>
     </div>
     <table>
       <tr><td>Grid now</td><td>${Math.round(hours[0].share)}% renewable</td></tr>

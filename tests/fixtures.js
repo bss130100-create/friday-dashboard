@@ -1,17 +1,4 @@
 // Real data captured from the APIs on 2026-10-24, trimmed.
-export const ISS_TLE = `ISS (ZARYA)
-1 25544U 98067A   26297.20915682  .00007800  00000+0  14938-3 0  9991
-2 25544  51.6335  21.6229 0006884 302.9098  57.1228 15.49030149591752
-`;
-
-export const GPS_TLE = `GPS BIIR-5  (PRN 22)
-1 26407U 00040A   26297.16843065  .00000013  00000+0  00000+0 0  9994
-2 26407  54.8296 210.0447 0116091 304.6851 227.9403  2.00558693192533
-GPS BIIR-8  (PRN 16)
-1 27663U 03005A   26296.99218260  .00000012  00000+0  00000+0 0  9995
-2 27663  54.8590 209.8568 0152309  54.1381 126.7246  2.00553584173895
-`;
-
 export const WEATHER_JSON = {
   current: {
     temperature_2m: 14.1, apparent_temperature: 12.9, relative_humidity_2m: 71,
@@ -26,14 +13,6 @@ export const BING_NEWS_RSS = `<?xml version="1.0" encoding="utf-8" ?><rss versio
 <item><title>Last week's news</title><link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;url=https%3a%2f%2fold.example%2fx</link><description>z</description><pubDate>Sat, 17 Oct 2026 12:00:00 GMT</pubDate><News:Source>Old</News:Source></item>
 <item><title>evil</title><link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;url=javascript%3aalert(1)</link><description>z</description><pubDate>Sat, 24 Oct 2026 13:00:00 GMT</pubDate><News:Source>Evil</News:Source></item>
 </channel></rss>`;
-
-export const IODA_JSON = {
-  type: 'outages.summary', error: null,
-  data: [
-    { scores: { 'gtr.sarima': 863484.1, overall: 863484.1 }, event_cnt: 1, entity: { code: 'LT', name: 'Lithuania' } },
-    { scores: { 'gtr.sarima': 5150.6, 'bgp.median': 5013.2, overall: 25821093.2 }, event_cnt: 2, entity: { code: 'NF', name: 'Norfolk Island' } },
-  ],
-};
 
 export const AIR_JSON = {
   current: {
