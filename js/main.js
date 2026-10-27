@@ -6,7 +6,6 @@ import { loadWeather, renderWeather } from './weather.js';
 import { loadAir, renderAir } from './airquality.js';
 import { loadAstro, renderAstro } from './astro.js';
 import { loadNews, renderNews } from './news.js';
-import { loadQuakes, renderQuakes } from './quakes.js';
 import { loadOutages, renderOutages } from './outages.js';
 import { loadGpsJam, renderGpsJam } from './gpsjam.js';
 import { loadAttacks, renderAttacks } from './attacks.js';
@@ -142,13 +141,11 @@ setTimeout(() => runPanel('briefing', briefMe, 60 * MINUTE), 20 * 1000);
 document.getElementById('brief-me').addEventListener('click', () => briefMe().catch((err) => showError('briefing', err)));
 
 // --- world panels (all zoomable)
-for (const id of ['quakes', 'outages', 'gpsjam', 'attacks']) makeZoomable(id);
-runPanel('quakes', async () => showBody('quakes', renderQuakes(await loadQuakes(), new Date(), knownLocation)), 5 * MINUTE);
+for (const id of ['outages', 'gpsjam', 'attacks']) makeZoomable(id);
 runPanel('outages', async () => showBody('outages', renderOutages(await loadOutages(new Date()))), 15 * MINUTE);
 runPanel('gpsjam', async () => showBody('gpsjam', renderGpsJam(await loadGpsJam(), knownLocation)), 60 * MINUTE);
 runPanel('attacks', async () => showBody('attacks', renderAttacks(await loadAttacks())), 30 * MINUTE);
-// trends: your location is optional here (only for "nearest quake in a year")
-runPanel('history', async () => showBody('history', await renderHistory(await location().catch(() => null), new Date())), 60 * MINUTE);
+runPanel('history', async () => showBody('history', await renderHistory()), 60 * MINUTE);
 
 // --- satellites: orbits (TLEs) are refreshed rarely, positions are recomputed every 2 s
 let orbits = null;

@@ -95,7 +95,7 @@ function renderErrors(rows) {
   return `<table class="small">${rows.map((r) => `<tr><td>${esc(r.path)}</td><td class="hot">${r.status}&nbsp;×&nbsp;${r.count}</td><td class="dim">${esc(r.last_error ?? '')}</td></tr>`).join('')}</table>`;
 }
 
-const CRON_NAMES = { '0 * * * *': 'Hourly snapshot + quake alerts', '*/5 * * * *': 'Commute alerts (every 5 min)' };
+const CRON_NAMES = { '0 * * * *': 'Hourly snapshot', '*/5 * * * *': 'Commute alerts (every 5 min)' };
 
 function renderCrons(crons, now) {
   if (!crons.length) return '<p class="dim small">No scheduled runs recorded yet (the first one lands within the hour).</p>';

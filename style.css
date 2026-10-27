@@ -145,7 +145,6 @@ td:first-child, th { color: var(--dim); }
 .tag { display: inline-block; min-width: 2.4em; text-align: center; font: 600 12px var(--body); padding: 1px 8px; border-radius: 8px; background: var(--fill); color: var(--cyan); }
 .tag.cool { color: var(--cyan); }
 .tag.hot { background: var(--amber-fill); color: var(--hot); }
-.mag { color: var(--warm); font-weight: 600; }
 .kpis { display: flex; flex-wrap: wrap; gap: 10px 24px; margin: 8px 0; }
 .kpis > div { display: flex; flex-direction: column; min-width: 0; }
 .kpi { font: 700 28px var(--head); color: var(--fg); }

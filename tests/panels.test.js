@@ -2,13 +2,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { project, worldMap } from '../js/worldmap.js';
-import { parseQuakes, renderQuakes } from '../js/quakes.js';
 import { outagesUrl, parseOutages, renderOutages } from '../js/outages.js';
 import { parseAir, aqiBand, pollenBand, renderAir } from '../js/airquality.js';
 import { moonPhase, parseAstro, renderAstro } from '../js/astro.js';
 import { parseGpsJam, renderGpsJam } from '../js/gpsjam.js';
 import { attacksUrl, parseAttacks, renderAttacks } from '../js/attacks.js';
-import { USGS_JSON, IODA_JSON, AIR_JSON, ASTRO_JSON, RADAR_JSON } from './fixtures.js';
+import { IODA_JSON, AIR_JSON, ASTRO_JSON, RADAR_JSON } from './fixtures.js';
 
 const NOW = new Date('2026-10-24T14:00:00Z');
 const BUCHAREST = { lat: 44.43, lon: 26.1 };
@@ -22,16 +21,6 @@ test('map projection: (0,0) is the centre, north-west corner is (0,0) in SVG', (
   assert.match(worldMap({ zoomable: true }), /<text x="184\.0" y="39\.2" data-span="1\.6">Belgium<\/text>/);
   assert.match(worldMap({}), /class="borders"/);
   assert.doesNotMatch(worldMap({}), /class="labels"/);
-});
-
-test('quakes: newest first, rendered with nearest distance', () => {
-  const q = parseQuakes(USGS_JSON);
-  assert.equal(q[0].place, '10 km N of Vrancea, Romania');
-  assert.equal(q[0].lat, 45.8);
-  const html = renderQuakes(q, NOW, BUCHAREST);
-  assert.match(html, /nearest: M2\.6/);
-  assert.match(html, /M4\.7/);
-  assert.throws(() => parseQuakes({ type: 'Error' }), /not a FeatureCollection/);
 });
 
 test('outages: last 24 h window, sorted by score, signals named', () => {

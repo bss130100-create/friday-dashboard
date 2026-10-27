@@ -8,7 +8,7 @@ import { isWeekend } from './commute.js';
 
 export const SOURCES = {
   here: 'Where I am', commute: 'Commute', traffic: 'Roads & rail', weather: 'Weather', air: 'Air quality',
-  astro: 'Sun & moon', daysoff: 'Days off', holidays: 'Holidays', power: 'Electricity prices', quakes: 'Earthquakes', news: 'News',
+  astro: 'Sun & moon', daysoff: 'Days off', holidays: 'Holidays', power: 'Electricity prices', news: 'News',
   topic: 'Topic of the week',
 };
 const MAX_PER_PANEL = 500;

@@ -136,7 +136,7 @@ function fakeDoc(panels) {
 test('briefing: reads healthy, loaded panels only, and posts them', async () => {
   const doc = fakeDoc({
     weather: { text: '  12 °C   light rain  ' },
-    quakes: { text: 'ERROR', error: true },
+    air: { text: 'ERROR', error: true },
     news: { text: 'Scanning news for "Brussels"…' },
     commute: { text: 'Home → Office A leave in 12 min' },
   });

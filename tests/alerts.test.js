@@ -2,7 +2,7 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { commuteWindow, watchedRoutes, tripEvents, quakeEvents, commuteEvents } from '../relay/alerts.js';
+import { commuteWindow, watchedRoutes, tripEvents, commuteEvents } from '../relay/alerts.js';
 import worker, { pushKey, subscribe, notify, settings } from '../relay/worker.js';
 import { b64url } from '../relay/push.js';
 import { supported, keyBytes, renderAlerts, alertState, enableAlerts, sendTest } from '../js/alerts.js';
@@ -65,20 +65,6 @@ test('trip events: cancelled, 5+ min late, live SNCB disruption on its stations'
   // the key follows the timetable, so a delay growing from 7 to 9 min is not pushed again
   const later = tripEvents('Home → Office A', [trip('06:10', '06:19')], [], now);
   assert.equal(later[0].key, events[0].key);
-});
-
-test('quake events: M5+, last 2 hours, within 500 km of home', () => {
-  const now = MON('10:00').getTime();
-  const q = (id, mag, lat, lon, hoursAgo) => ({ id, properties: { mag, place: id, time: now - hoursAgo * 3600000 }, geometry: { coordinates: [lon, lat, 10] } });
-  const events = quakeEvents({ features: [
-    q('Eifel', 5.2, 50.4, 6.9, 1), // ~190 km -> alert
-    q('small', 4.9, 50.8, 4.3, 1),
-    q('old', 6.0, 50.4, 6.9, 3),
-    q('Japan', 7.0, 35, 139, 0.5),
-  ] }, CONFIG.home, now);
-  assert.equal(events.length, 1);
-  assert.equal(events[0].key, 'quake|Eifel');
-  assert.match(events[0].title, /^M5\.2 earthquake, 1\d\d km away$/);
 });
 
 test('commute check: nothing fetched outside the windows; inside, one request at a time', async () => {

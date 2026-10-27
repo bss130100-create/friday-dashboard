@@ -4,10 +4,10 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import worker, {
-  quakeRows, gnssRows, attackRows, snapshot, history, historyQuery, verifyLogin, settings,
+  gnssRows, attackRows, snapshot, history, historyQuery, verifyLogin, settings,
   roadsQuery, roadsBox, parseIncidents, roads, briefingMessages, parseBrief, briefing, radarAttacks, accessKeys as teamKeys,
 } from '../relay/worker.js';
-import { USGS_JSON, RADAR_JSON } from './fixtures.js';
+import { RADAR_JSON } from './fixtures.js';
 
 function fakeD1() {
   const db = new DatabaseSync(':memory:');
@@ -40,7 +40,6 @@ function fakeFetch({ failRadar = false } = {}) {
   const asked = [];
   globalThis.fetch = async (url, init) => {
     asked.push(url);
-    if (url.includes('usgs.gov')) return Response.json(USGS_JSON);
     if (url.includes('/radar/')) {
       assert.equal(init.headers.Authorization, 'Bearer tok');
       return failRadar ? new Response('nope', { status: 401 }) : Response.json(RADAR_JSON);
@@ -56,25 +55,18 @@ const later = [];
 const CTX = { waitUntil: (p) => later.push(p) };
 
 test('API answers -> table rows', () => {
-  const q = quakeRows({ features: [{ id: 'us1', properties: { time: 1, mag: 4.7, place: 'X' }, geometry: { coordinates: [121, 20, 35] } }] });
-  assert.deepEqual(q, [['us1', 1, 4.7, 'X', 20, 121, 35]]);
   assert.deepEqual(gnssRows(GPSJAM)[0], ['2026-10-23', 'Baltic / Kaliningrad', 40, 12]);
   assert.deepEqual(attackRows(RADAR_JSON, '2026-10-24')[0].slice(0, 2), ['2026-10-24', 'US']);
-  assert.throws(() => quakeRows({}), /USGS/);
   assert.throws(() => gnssRows({ date: 'x' }), /regions/);
   assert.throws(() => attackRows({ success: false }, 'x'), /Radar/);
 });
 
-test('snapshot fills all three tables; running it again does not duplicate', async () => {
-  fakeFetch();
+test('snapshot fills both tables; running it again does not duplicate', async () => {
+  const asked = fakeFetch();
   const env = { DB: fakeD1(), ASSETS, RADAR_TOKEN: 'tok' };
   await snapshot(env, NOW);
   await snapshot(env, NOW);
-  const q = await history(env, { kind: 'quakes', days: 30 }, NOW);
-  assert.equal(q.days.reduce((s, d) => s + d.n, 0), USGS_JSON.features.length);
-  assert.equal(q.biggest30d[0].mag, 4.7);
-  const near = await history(env, { kind: 'quakes', days: 30, near: { lat: 44.43, lon: 26.1 } }, NOW); // Bucharest
-  assert.match(near.nearest365d.place, /Vrancea/);
+  assert.ok(asked.every((u) => !u.includes('usgs')), 'no earthquakes any more');
   const g = await history(env, { kind: 'gnss', days: 90 }, NOW);
   // backfill ran (empty table) and the real snapshot replaced its day
   assert.deepEqual(g.days.filter((d) => d.zone === 'Baltic / Kaliningrad').map((d) => [d.date, d.high]), [['2026-09-01', 25], ['2026-10-23', 40]]);
@@ -87,15 +79,14 @@ test('a failing source is reported, the others are still saved', async () => {
   fakeFetch({ failRadar: true });
   const env = { DB: fakeD1(), ASSETS, RADAR_TOKEN: 'tok' };
   await assert.rejects(snapshot(env, NOW), /attacks: HTTP 401 from api\.cloudflare\.com/);
-  assert.ok((await history(env, { kind: 'quakes', days: 30 }, NOW)).days.length > 0);
+  assert.ok((await history(env, { kind: 'gnss', days: 30 }, NOW)).days.length > 0);
 });
 
 test('/history validates input and explains a missing database', async () => {
   assert.deepEqual(historyQuery('https://r.example/history?kind=gnss&days=30'), { kind: 'gnss', days: 30 });
   assert.throws(() => historyQuery('https://r.example/history?kind=cves'), /kind must be/);
   assert.throws(() => historyQuery('https://r.example/history?kind=gnss&days=9999'), /days must be/);
-  assert.deepEqual(historyQuery('https://r.example/history?kind=quakes&lat=50.8&lon=4.3').near, { lat: 50.8, lon: 4.3 });
-  assert.throws(() => historyQuery('https://r.example/history?kind=quakes&lat=99&lon=4'), /out of range/);
+  assert.throws(() => historyQuery('https://r.example/history?kind=quakes'), /kind must be gnss or attacks/);
   const res = await worker.fetch(new Request('https://r.example/history?kind=gnss'), {}, CTX);
   assert.equal(res.status, 400);
   assert.match(await res.text(), /D1 database is not bound/);

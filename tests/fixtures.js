@@ -27,14 +27,6 @@ export const BING_NEWS_RSS = `<?xml version="1.0" encoding="utf-8" ?><rss versio
 <item><title>evil</title><link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;url=javascript%3aalert(1)</link><description>z</description><pubDate>Sat, 24 Oct 2026 13:00:00 GMT</pubDate><News:Source>Evil</News:Source></item>
 </channel></rss>`;
 
-export const USGS_JSON = {
-  type: 'FeatureCollection',
-  features: [
-    { id: 'us7000abcd', properties: { mag: 4.7, place: '72 km S of Basco, Philippines', time: 1792842488678, url: 'https://earthquake.usgs.gov/a' }, geometry: { coordinates: [121.9, 19.8, 35.2] } },
-    { id: 'us7000abce', properties: { mag: 2.6, place: '10 km N of Vrancea, Romania', time: 1792850000000, url: 'https://earthquake.usgs.gov/b' }, geometry: { coordinates: [26.6, 45.8, 120] } },
-  ],
-};
-
 export const IODA_JSON = {
   type: 'outages.summary', error: null,
   data: [
