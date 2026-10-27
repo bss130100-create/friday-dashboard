@@ -96,6 +96,14 @@ test('style.css: motion only when it means something, Reduce Motion respected, d
   assert.match(css, /scroll-padding-bottom: calc\(92px \+ env\(safe-area-inset-bottom\)\)/);
 });
 
+test('style.css: maps keep Leaflet\'s layers inside them, so the dock is always drawn on top', () => {
+  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  // Leaflet's controls (zoom, OpenStreetMap credits) have z-index 1000, like the dock: without their own
+  // stacking context they tie with it and, coming later in the page, draw over it.
+  assert.match(css, /\.tmap \{ isolation: isolate;/);
+  assert.match(css, /nav\.tabs \{\n  position: fixed;[^}]*z-index: 1000;/);
+});
+
 test('index.html: footer comes after the panels, which fill at least one screen', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
