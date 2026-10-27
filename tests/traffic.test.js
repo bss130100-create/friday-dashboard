@@ -135,10 +135,10 @@ function fakeDoc(panels) {
 
 test('briefing: reads healthy, loaded panels only, and posts them', async () => {
   const doc = fakeDoc({
-    weather: { text: '  12 °C   light rain  ' },
+    atmosphere: { text: '  12 °C   light rain  ' },
     air: { text: 'ERROR', error: true },
     news: { text: 'Scanning news for "Brussels"…' },
-    commute: { text: 'Home → Office A leave in 12 min' },
+    routes: { text: 'Home → Office A leave in 12 min' },
   });
   // NOW is a Saturday: the work commute is left out
   assert.equal(isWeekend(NOW), true);

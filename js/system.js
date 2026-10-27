@@ -112,8 +112,8 @@ export function renderSystem(s, now) {
   const cf = s.cloudflare;
   // the free-limit meters first, then the Worker's 24 h detail
   const cloud = cf.error ? err(cf.error) : `${workersMeter(cf.workers)}${renderAi(cf.ai)}${renderD1(cf.d1)}${workersDetail(cf.workers)}`;
-  const own = s.own.error ? err(s.own.error) : `<h3>&gt; Errors by path · 24 h</h3>${renderErrors(s.own.errorsByPath)}
-    <h3>&gt; Scheduled jobs</h3>${renderCrons(s.own.crons, now)}`;
+  const own = s.own.error ? err(s.own.error) : `<h3>Errors by path · 24 h</h3>${renderErrors(s.own.errorsByPath)}
+    <h3>Scheduled jobs</h3>${renderCrons(s.own.crons, now)}`;
   return `${cloud}${own}<p class="dim small">Cloudflare numbers refresh every 10 min and lag a few minutes; daily limits reset at 00:00 UTC.</p>`;
 }
 

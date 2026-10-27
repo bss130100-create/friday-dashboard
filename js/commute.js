@@ -135,7 +135,7 @@ export function renderRoute(label, trips, now) {
     return `<li${t.cancelled ? ' class="dim"' : ''}><span class="t">${hhmm(t.start)}${delay} → ${hhmm(t.end)}</span>
       <span class="dim">${t.durationMin}'</span>${status}<br><span class="legs">${t.legs.map(esc).join(' › ')}</span></li>`;
   });
-  return `<h3>&gt; ${esc(label)}</h3>${head}<ul class="trips">${rows.join('')}</ul>`;
+  return `<h3>${esc(label)}</h3>${head}<ul class="trips">${rows.join('')}</ul>`;
 }
 
 // The commute panel shows the FASTEST_SHOWN quickest of the next CANDIDATES trips (cancelled and
@@ -178,14 +178,14 @@ export async function loadCommute(config, here) {
   return plans;
 }
 
+// Commute tab: the same verdict as the Today card, then every route.
 export function renderCommute(plans, now) {
-  return plans
-    .map((p) => (p.there ? `<h3>&gt; ${esc(p.label)}</h3><p class="leave">You're there.</p>` : renderRoute(p.label, fastest(p.trips, now), now)))
+  return commuteVerdict(plans, now) + plans
+    .map((p) => (p.there ? `<h3>${esc(p.label)}</h3><p class="leave">You're there.</p>` : renderRoute(p.label, fastest(p.trips, now), now)))
     .join('');
 }
 
-// Today card: says first whether anything is wrong on the trips you would take next, then the next
-// departure on the two routes that matter now: to work before noon, home after (like the phone alerts).
+// Today card: the verdict, then the next departure on the two routes that matter now.
 function brusselsHour(now) {
   return Number(new Intl.DateTimeFormat('en-GB', { timeZone: ZONE, hour: '2-digit', hourCycle: 'h23' }).format(now));
 }
@@ -196,16 +196,25 @@ function trouble(label, t) {
   return t.cancelled ? `${what} is cancelled` : `${what} runs ${t.delayMin} min late`;
 }
 
+// The routes that matter now: to work before noon, home after (like the phone alerts).
+const watchedNow = (plans, now) => (brusselsHour(now) < 12 ? plans.slice(0, 2) : plans.slice(2, 4));
+
+// One sentence: what is wrong on the trips you would take next, or that nothing is.
+export function commuteVerdict(plans, now) {
+  if (isWeekend(now)) return '<p class="verdict">Weekend: no work commute today.</p>';
+  const watched = watchedNow(plans, now);
+  const problems = watched.flatMap((p) => soon(p.trips, now).filter((t) => t.cancelled || t.delayMin >= DELAY_MIN).map((t) => trouble(p.label, t)));
+  if (problems.length) {
+    return `<p class="verdict warm">${esc(problems[0])}${problems.length > 1 ? `, and ${problems.length - 1} more problem${problems.length > 2 ? 's' : ''}` : ''}.</p>`;
+  }
+  const leaving = watched.some((p) => soon(p.trips, now).length);
+  return `<p class="verdict${leaving ? ' ok' : ''}">${leaving ? 'No delays or cancellations on your next trips.' : 'No trips in the next hour.'}</p>`;
+}
+
 export function commuteSummary(plans, now) {
   const link = '<a class="more-link" href="#commute">All routes ›</a>';
-  if (isWeekend(now)) return `<p class="verdict">Weekend: no work commute today.</p>${link}`;
-  const watched = brusselsHour(now) < 12 ? plans.slice(0, 2) : plans.slice(2, 4);
-  const problems = watched.flatMap((p) => soon(p.trips, now).filter((t) => t.cancelled || t.delayMin >= DELAY_MIN).map((t) => trouble(p.label, t)));
-  const leaving = watched.some((p) => soon(p.trips, now).length);
-  const verdict = problems.length
-    ? `<p class="verdict warm">${esc(problems[0])}${problems.length > 1 ? `, and ${problems.length - 1} more problem${problems.length > 2 ? 's' : ''}` : ''}.</p>`
-    : `<p class="verdict${leaving ? ' ok' : ''}">${leaving ? 'No delays or cancellations on your next trips.' : 'No trips in the next hour.'}</p>`;
-  const rows = watched.map((p) => {
+  if (isWeekend(now)) return commuteVerdict(plans, now) + link;
+  const rows = watchedNow(plans, now).map((p) => {
     if (p.there) return `<li><span class="route">${esc(p.label)}</span><span>You're there.</span></li>`;
     const next = fastest(p.trips, now)[0];
     if (!next) return `<li><span class="route">${esc(p.label)}</span><span class="dim">no trip found right now</span></li>`;
@@ -214,7 +223,7 @@ export function commuteSummary(plans, now) {
     return `<li><span class="route">${esc(p.label)}</span><span class="${cls}">${inMin <= 1 ? 'leave now' : `leave in ${inMin} min`}</span>
       <span class="dim">${next.durationMin} min · there ${hhmm(next.end)}</span></li>`;
   });
-  return `${verdict}<ul class="next-trips">${rows.join('')}</ul>${link}`;
+  return `${commuteVerdict(plans, now)}<ul class="next-trips">${rows.join('')}</ul>${link}`;
 }
 
 // --- "where am I": your phone's GPS fix, the nearest address and the way home from there.

@@ -1,7 +1,7 @@
 // News panel: latest English Bing News headlines about a place you type (last 24 h).
 // Bing sends no CORS header, so we go through our own Worker (relay/worker.js), which also serves this page.
 import { fetchText } from './http.js';
-import { esc, ago } from './ui.js';
+import { esc, ago, expander } from './ui.js';
 
 export function newsUrl(place) {
   const clean = place.trim();
@@ -57,10 +57,15 @@ export async function loadNews(place, now) {
   return parseRss(await fetchText(newsUrl(place)), now);
 }
 
+const SHOWN = 5;
+
+// The SHOWN newest headlines, the rest (up to max) behind "Show N more".
 export function renderNews(place, articles, now, max = 12) {
   if (articles.length === 0) return `<p class="dim">No English news about "${esc(place)}" in the last 24 h.</p>`;
-  return `<ul class="list">${articles.slice(0, max).map((a) => `
+  const list = (part) => `<ul class="list">${part.map((a) => `
     <li><span class="dim">${ago(a.published, now)} · ${esc(a.source)}</span><br>
       <a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title)}</a></li>`).join('')}
   </ul>`;
+  const rest = articles.slice(SHOWN, max);
+  return list(articles.slice(0, SHOWN)) + (rest.length ? expander(list(rest), `Show ${rest.length} more`) : '');
 }

@@ -78,7 +78,7 @@ export function renderRail({ near, elsewhere }, now) {
 // Roads and rail fail independently: one source down still shows the other.
 export function renderTraffic(roads, rail, now) {
   const part = (title, result, render) =>
-    `<h3>&gt; ${title}</h3>${result.status === 'fulfilled' ? render(result.value) : `<p class="err">ERROR: ${esc(result.reason.message)}</p>`}`;
+    `<h3>${title}</h3>${result.status === 'fulfilled' ? render(result.value) : `<p class="err">ERROR: ${esc(result.reason.message)}</p>`}`;
   return `<div class="traffic">
     <div>${part('ROADS · 40 km around you', roads, (r) => renderRoads(r.incidents))}</div>
     <div>${part('RAIL · lines near you', rail, (r) => renderRail(r, now))}</div></div>`;

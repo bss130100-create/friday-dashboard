@@ -53,9 +53,9 @@ export function renderTopic(t, watched, now) {
   return `
     <div class="topic-title">${esc(t.topic)}</div>
     <div class="dim">day ${Math.max(1, day)} of 7</div>
-    <h3>&gt; FACT OF THE DAY</h3>
+    <h3>FACT OF THE DAY</h3>
     <p class="fact">${esc(factOfDay(t, now))}</p>
-    <h3>&gt; WATCH LIST · ${done}/${t.videos.length}</h3>
+    <h3>WATCH LIST · ${done}/${t.videos.length}</h3>
     <div class="bar"><div class="fill" style="width:${pct}%"></div></div>
     <ul class="videos">${t.videos.map((v) => `
       <li><label><input type="checkbox" data-url="${esc(v.url)}"${watched.has(v.url) ? ' checked' : ''}>

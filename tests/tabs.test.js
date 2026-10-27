@@ -58,11 +58,28 @@ test('Today: one prominent briefing card, then the small cards in the agreed ord
   assert.match(html, /<button type="button" id="brief-me"><span class="idle">Brief me<\/span>/);
 });
 
+test('no card id equals a tab name (the browser would scroll past the header to that card)', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
+  for (const tab of TABS) assert.ok(!ids.includes(tab), tab);
+});
+
+test('every tab opens with exactly one prominent (hero) card', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const sections = [...html.matchAll(/<section data-tab="([a-z]+)" id="([^"]+)"( class="hero")?>/g)].map((m) => ({ tab: m[1], id: m[2], hero: Boolean(m[3]) }));
+  for (const tab of TABS) {
+    const mine = sections.filter((x) => x.tab === tab);
+    assert.equal(mine.filter((x) => x.hero).length, 1, tab);
+    assert.ok(mine[0].hero, `${tab}: hero first`);
+  }
+  assert.equal(sections.filter((x) => !/<h2><svg class="ico"/.test(html.slice(html.indexOf(`id="${x.id}"`), html.indexOf('</h2>', html.indexOf(`id="${x.id}"`))))).length, 0, 'every card label has an icon');
+});
+
 test('style.css: motion only when it means something, Reduce Motion respected, dock clear of the content', () => {
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
   const infinite = css.split('\n').filter((line) => /infinite/.test(line));
-  // the reactor moves only while MIAP thinks; the rest are the World maps' live markers
-  for (const line of infinite) assert.match(line, /body\.thinking|\.worldmap/, line);
+  // the reactor moves only while MIAP thinks; nothing else loops
+  for (const line of infinite) assert.match(line, /body\.thinking/, line);
   assert.doesNotMatch(css, /\.systems::before \{[^}]*animation/); // status dot: no constant blink
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\*, \*::before, \*::after \{ animation: none !important; transition: none !important; \}/);
   assert.match(css, /bottom: calc\(12px \+ env\(safe-area-inset-bottom\)\)/); // dock above the home indicator
