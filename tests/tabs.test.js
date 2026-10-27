@@ -93,3 +93,12 @@ test('index.html: footer comes after the panels, which fill at least one screen'
   assert.ok(html.indexOf('<footer') > html.indexOf('</main>'));
   assert.match(css, /main \{ min-height: 100vh;/);
 });
+
+test('logo: the scan ring is never rotated with transforms (Safari drew it off the reactor)', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  const logo = html.slice(html.indexOf('<div class="brand">'), html.indexOf('</svg>', html.indexOf('<div class="brand">')));
+  assert.doesNotMatch(logo, /transform=/);
+  assert.doesNotMatch(css, /\.brand \.scan \{[^}]*transform/);
+  assert.match(css, /@keyframes scan \{ from \{ stroke-dashoffset/);
+});

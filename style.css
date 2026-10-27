@@ -40,11 +40,11 @@ a:hover { color: var(--cool); }
 .app-header { display: flex; flex-direction: column; gap: 2px; margin: 0 4px 16px; }
 .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .brand svg { width: 36px; height: 36px; flex: none; filter: drop-shadow(0 0 3px var(--glow)); }
-.brand .scan { transform-box: view-box; transform-origin: 18px 18px; }
 /* the reactor only moves while MIAP is thinking (writing a briefing): a slow pulse, the outer arcs turning */
 body.thinking .brand svg, body.thinking #briefing .ico { animation: reactor 2.4s ease-in-out infinite; }
 body.thinking .brand .scan { animation: scan 8s linear infinite; }
-@keyframes scan { from { transform: rotate(-70deg); } to { transform: rotate(290deg); } }
+/* turns by sliding the dashes (one full pattern = 101.8) instead of rotating: Safari mis-places CSS-rotated SVG circles */
+@keyframes scan { from { stroke-dashoffset: 19.8; } to { stroke-dashoffset: -82; } }
 @keyframes reactor { 50% { filter: drop-shadow(0 0 1px var(--glow)); opacity: .7; } }
 .brand span { font: 700 15px var(--head); letter-spacing: .22em; }
 h1 { margin: 0; font: 700 34px/41px var(--head); letter-spacing: -.02em; }
