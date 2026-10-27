@@ -42,7 +42,7 @@ export function renderAttacks(pairs) {
     zoomable: true,
     label: 'attack map',
     arcs: mapped.map((p) => ({ from: COUNTRIES[p.from], to: COUNTRIES[p.to], cls: 'attack', width: (0.3 + (p.pct / max) * 1.4).toFixed(2) })),
-    dots: [...ends].map(([code, kind]) => ({ lat: COUNTRIES[code][0], lon: COUNTRIES[code][1], r: 1.6, cls: kind === 'src' ? 'hot' : 'cool pulse', title: COUNTRIES[code][2] })),
+    dots: [...ends].map(([code, kind]) => ({ lat: COUNTRIES[code][0], lon: COUNTRIES[code][1], r: 1.6, cls: kind === 'src' ? 'hot' : 'cool', title: COUNTRIES[code][2] })),
   });
   return `${map}
     <ul class="list compact">${pairs.slice(0, 8).map((p) => `

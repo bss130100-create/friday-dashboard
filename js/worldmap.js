@@ -21,7 +21,7 @@ function arcPath(from, to) {
 }
 
 // A dot is a circle centred at (0,0) inside a translated group, so zoom.js can resize it
-// (data-r = radius at 1x) and the pulse animation scales it around its own centre.
+// (data-r = radius at 1x).
 function dot(x, y, r, cls, title = '') {
   return `<g transform="translate(${f(x)} ${f(y)})"><circle r="${r}" data-r="${r}" class="${cls}">${title ? `<title>${esc(title)}</title>` : ''}</circle></g>`;
 }
@@ -49,8 +49,6 @@ export function worldMap({ dots = [], arcs = [], you = null, label = 'world map'
   })() : '';
   return `<div class="map-wrap">${zoomable ? ZOOM_CONTROLS : ''}<svg class="worldmap" viewBox="0 0 360 180" role="img" aria-label="${esc(label)}">
     <path d="${LAND_PATH}" class="land"/><path d="${BORDERS_PATH}" class="borders"/>${zoomable ? LABEL_SVG : ''}
-    <line x1="0" y1="90" x2="360" y2="90" class="grid"/><line x1="180" y1="0" x2="180" y2="180" class="grid"/>
     ${arcSvg.join('')}${dotSvg.join('')}${youSvg}
-    <rect x="0" y="0" width="2" height="180" class="sweep"/>
   </svg></div>`;
 }

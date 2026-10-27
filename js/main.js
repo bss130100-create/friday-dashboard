@@ -31,6 +31,7 @@ const MINUTE = 60 * 1000;
 // --- sub-menus (tabs): the open one is in the address, e.g. .../#commute
 showTab(tabFromHash(window.location.hash));
 packPanels(document.querySelector('main'));
+// No card's id may equal a tab name (tests/tabs.test.js): the browser would scroll to that card.
 window.addEventListener('hashchange', () => {
   showTab(tabFromHash(window.location.hash));
   resizeMaps(); // a map drawn while its tab was hidden must re-measure itself
@@ -61,7 +62,7 @@ setInterval(() => showBody('clock', renderClock(new Date())), 1000);
 showBody('clock', renderClock(new Date()));
 
 // --- location-based panels
-runPanel('weather', async () => showBody('weather', renderWeather(await loadWeather(await location()))), 10 * MINUTE);
+runPanel('atmosphere', async () => showBody('atmosphere', renderWeather(await loadWeather(await location()))), 10 * MINUTE);
 runPanel('air', async () => showBody('air', renderAir(await loadAir(await location()))), 30 * MINUTE);
 let astro = null;
 runPanel('astro', async () => { astro = await loadAstro(await location()); showBody('astro', renderAstro(astro, new Date())); }, 60 * MINUTE);
@@ -79,7 +80,7 @@ runPanel('daysoff', async () => {
 runPanel('power', async () => showBody('power', renderPower(await loadPower(new Date()))), 15 * MINUTE);
 
 // --- System tab: MIAP's own health (Worker /system) and the 30-day wipe
-runPanel('system', async () => showBody('system', renderSystem(await loadSystem(), new Date())), 10 * MINUTE);
+runPanel('usage', async () => showBody('usage', renderSystem(await loadSystem(), new Date())), 10 * MINUTE);
 document.getElementById('prune').addEventListener('click', async () => {
   if (!window.confirm(PRUNE_QUESTION)) return;
   const msg = document.getElementById('prune-msg');
@@ -274,14 +275,14 @@ async function refreshCommute() {
     const config = await readConfig();
     if (!config) {
       setup.open = true;
-      showBody('commute', '<p class="dim">Open setup above: enter your home and work addresses once.</p>');
+      showBody('routes', '<p class="dim">Open setup above: enter your home and work addresses once.</p>');
       showBody('commute-today', '<p class="dim">Enter your home and work addresses once in <a href="#commute">Commute</a> setup.</p>');
       return;
     }
     // trips to work start where you are now (a fresh fix, at most a minute old)
     const plans = await loadCommute(config, await getLocation({ precise: true }));
     const now = new Date();
-    showBody('commute', renderCommute(plans, now));
+    showBody('routes', renderCommute(plans, now));
     showBody('commute-today', commuteSummary(plans, now));
   } catch (err) {
     showError('commute-today', err);
@@ -302,7 +303,7 @@ commuteForm.addEventListener('submit', async (event) => {
     return;
   }
   showFound(config);
-  refreshCommute().catch((err) => showError('commute', err));
+  refreshCommute().catch((err) => showError('routes', err));
 });
 
 localStorage.removeItem('commuteRoutes'); // the old browser-only copy; the database has them now
@@ -318,4 +319,4 @@ readConfig()
     showFound(saved);
   })
   .catch((err) => { formError.textContent = err.message; });
-runPanel('commute', refreshCommute, 5 * MINUTE);
+runPanel('routes', refreshCommute, 5 * MINUTE);

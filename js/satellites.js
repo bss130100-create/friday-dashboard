@@ -100,10 +100,10 @@ function skyPlot(visible) {
 export function renderSatellites(iss, gpsVisible, gpsTotal) {
   const where = iss.elevation > 0 ? 'above your horizon now' : `${Math.round(iss.rangeKm).toLocaleString('en-US')} km from you`;
   return `
-    <h3>&gt; ISS</h3>
+    <h3>ISS</h3>
     <div><span class="big">${iss.altKm.toFixed(0)} km</span> up, ${(iss.speedKmS * 3600).toFixed(0)} km/h</div>
     <div class="dim">over ${iss.lat.toFixed(1)}°, ${iss.lon.toFixed(1)}°, ${where}</div>
-    <h3>&gt; GPS</h3>
+    <h3>GPS</h3>
     <div class="orbit">${skyPlot(gpsVisible)}
       <div><span class="big">${gpsVisible.length}</span> of ${gpsTotal} sats above you<br>
       <span class="dim">centre = overhead, ring = horizon</span></div></div>`;

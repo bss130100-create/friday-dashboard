@@ -7,12 +7,12 @@ import { esc, expander } from './ui.js';
 import { isWeekend } from './commute.js';
 
 export const SOURCES = {
-  here: 'Where I am', commute: 'Commute', traffic: 'Roads & rail', weather: 'Weather', air: 'Air quality',
+  here: 'Where I am', routes: 'Commute', traffic: 'Roads & rail', atmosphere: 'Weather', air: 'Air quality',
   astro: 'Sun & moon', daysoff: 'Days off', holidays: 'Holidays', power: 'Electricity prices', news: 'News',
   topic: 'Topic of the week',
 };
 const MAX_PER_PANEL = 500;
-const WEEKDAY_ONLY = new Set(['commute']); // routes to and from work
+const WEEKDAY_ONLY = new Set(['routes']); // routes to and from work
 
 export function readouts(doc, now) {
   const out = {};

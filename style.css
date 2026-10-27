@@ -115,6 +115,7 @@ section.hero {
   grid-column: 1 / -1; padding: 20px 20px 14px; border-color: rgba(86, 217, 255, .22);
   background: radial-gradient(120% 140% at 0% 0%, rgba(86, 217, 255, .07), rgba(86, 217, 255, 0) 55%), var(--panel);
 }
+section.hero.error { border-color: rgba(255, 77, 94, .6); } /* a failing hero shows red like any card */
 
 /* expandable details: the open state is data-open on the card (js/ui.js), the height animates */
 .more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s ease; }
@@ -127,13 +128,15 @@ section[data-open] button.expand .opened { display: inline; }
 button.expand svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .3s; }
 section[data-open] button.expand svg { transform: rotate(180deg); }
 button:active { transform: scale(.97); }
-h3 { margin: 14px 0 4px; font: 600 13px var(--body); color: var(--dim); }
+/* section inside a card: same small caps as the card label, without the icon */
+h3 { margin: 16px 0 6px; font: 600 11px/16px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+.body > h3:first-child, .more h3:first-child { margin-top: 4px; }
 .big { font: 600 40px/1.1 var(--head); letter-spacing: -.02em; color: var(--fg); }
 .unit { font-size: 15px; color: var(--dim); margin-left: 4px; }
 .err { color: var(--hot); }
 .status { margin-top: 8px; font: 11px var(--mono); color: var(--dim); text-align: right; letter-spacing: .02em; }
 /* telemetry in mono: chronometer rows, System numbers, chart axes */
-#system table, .meter .small:last-child, .axis, .tag { font-family: var(--mono); }
+#usage table, .meter .small:last-child, .axis, .tag { font-family: var(--mono); }
 table { border-collapse: collapse; font-size: 15px; }
 td, th { padding: 3px 14px 3px 0; text-align: left; font-weight: normal; vertical-align: top; }
 td:first-child, th { color: var(--dim); }
@@ -178,14 +181,12 @@ td:first-child, th { color: var(--dim); }
 .map-wrap { position: relative; user-select: none; -webkit-user-select: none; }
 .worldmap { width: 100%; height: auto; display: block; margin: 4px 0; touch-action: pan-y; }
 .worldmap.zoomed { touch-action: none; cursor: grab; }
-.worldmap.zoomed .sweep { display: none; }
 /* non-scaling strokes: outlines stay hairline-thin when zoomed in */
 .worldmap .land { fill: rgba(86, 217, 255, .10); stroke: rgba(86, 217, 255, .5); stroke-width: .7px; vector-effect: non-scaling-stroke; }
 .worldmap .borders { fill: none; stroke: rgba(86, 217, 255, .3); stroke-width: .5px; vector-effect: non-scaling-stroke; }
 .worldmap .labels text { display: none; letter-spacing: normal; fill: var(--fg); font-family: var(--mono); text-anchor: middle; dominant-baseline: middle;
   pointer-events: none; paint-order: stroke; stroke: rgba(0, 0, 0, .85); stroke-width: 2px; vector-effect: non-scaling-stroke; }
 .worldmap .labels text.show { display: inline; }
-.worldmap .grid { stroke: rgba(86, 217, 255, .12); stroke-width: .8px; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke; }
 .zoom-ctl { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; align-items: center; z-index: 1; }
 .zoom-ctl button { width: 36px; height: 36px; padding: 0; border-radius: 10px; background: rgba(14, 20, 27, .92); color: var(--cyan);
   border: 1px solid var(--line); font: 15px var(--mono); cursor: pointer; }
@@ -195,14 +196,10 @@ td:first-child, th { color: var(--dim); }
 .worldmap circle.hot { fill: var(--hot); }
 .worldmap circle.warm { fill: var(--warm); opacity: .85; }
 .worldmap circle.cool { fill: var(--cool); }
-.worldmap .pulse { animation: pulse 2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
-@keyframes pulse { 50% { opacity: .35; transform: scale(1.8); } }
-.worldmap .arc { fill: none; stroke: var(--hot); opacity: .75; stroke-dasharray: 3 2; animation: flow 1.2s linear infinite; }
-@keyframes flow { to { stroke-dashoffset: -5; } }
+/* still maps: no pulsing dots, flowing arcs or radar sweep (calm, and nothing moves without a reason) */
+.worldmap .arc { fill: none; stroke: var(--hot); opacity: .75; stroke-dasharray: 3 2; }
 .worldmap .you circle { fill: #fff; }
-.worldmap .you .ping { fill: none; stroke: #fff; stroke-width: 1px; vector-effect: non-scaling-stroke; animation: pulse 2.5s ease-out infinite; transform-box: fill-box; transform-origin: center; }
-.worldmap .sweep { fill: rgba(86, 217, 255, .12); animation: sweep 6s linear infinite; }
-@keyframes sweep { from { transform: translateX(0); } to { transform: translateX(358px); } }
+.worldmap .you .ping { fill: none; stroke: #fff; stroke-width: 1px; vector-effect: non-scaling-stroke; opacity: .6; }
 
 /* ---------- satellites sky plot ---------- */
 .orbit { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
@@ -259,7 +256,7 @@ button:hover { color: var(--cool); }
 #commute-form label { display: block; margin: 6px 0; font-size: 12px; color: var(--dim); }
 #commute-form fieldset { border: 1px solid var(--line); border-radius: 12px; margin: 8px 0; padding: 4px 10px; }
 #commute-form legend { font-size: 11px; color: var(--dim); }
-.leave { font: 700 28px var(--head); letter-spacing: -.02em; color: var(--fg); }
+.leave { font: 700 22px var(--head); letter-spacing: -.02em; color: var(--fg); }
 .trips { list-style: none; padding: 0; margin: 4px 0 0; font-size: 13px; }
 .trips li { margin: 5px 0; }
 .trips .t { font-family: var(--mono); }

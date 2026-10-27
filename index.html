@@ -43,15 +43,8 @@
     <section data-tab="time" id="clock"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M10 2.5h4"/></svg>Chronometer</h2><div class="body"></div><div class="status"></div></section>
     <section data-tab="time" id="power"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2.5L5 13.5h6.5l-1 8 8.5-11h-6.5z"/></svg>Electricity · Belgium</h2><div class="body"><p class="dim">Loading market prices…</p></div><div class="status"></div></section>
     <section data-tab="time" id="astro"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/></svg>Sun · Moon</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
-    <section data-tab="commute" id="here"><h2>Where I am · way home</h2><div class="body"><p class="dim">Awaiting GPS fix…</p></div><div class="status"></div></section>
-    <section data-tab="commute" id="alerts">
-      <h2>Phone alerts</h2>
-      <p class="dim small">Weekdays 08:00–09:00 and 15:30–17:30, checked every 5 min: a trip in the next hour cancelled, 5+ min late, or an SNCB disruption on its stations.</p>
-      <p><button type="button" id="alerts-on">Enable alerts</button> <button type="button" id="alerts-test">Send test</button></p>
-      <div class="body"><p class="dim">Checking this device…</p></div><div class="status"></div>
-    </section>
-    <section data-tab="commute" id="commute">
-      <h2>Commute · public transport</h2>
+    <section data-tab="commute" id="routes" class="hero">
+      <h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 10h14M8.5 20.5L10 17M15.5 20.5L14 17"/></svg>Commute · public transport</h2>
       <details id="commute-setup">
         <summary>setup</summary>
         <form id="commute-form" autocomplete="off">
@@ -72,29 +65,36 @@
       </details>
       <div class="body"></div><div class="status"></div>
     </section>
-    <section data-tab="weather" id="weather"><h2>Atmosphere</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
-    <section data-tab="weather" id="tempmap"><h2>Temperature map</h2><div id="tempmap-map" class="tmap"></div><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
-    <section data-tab="weather" id="windmap"><h2>Wind map</h2><div id="windmap-map" class="tmap"></div><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
-    <section data-tab="weather" id="rainmap"><h2>Rain radar</h2><div id="rainmap-map" class="tmap"></div><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
-    <section data-tab="weather" id="air"><h2>Air quality · Pollen</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
+    <section data-tab="commute" id="here"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Where I am · way home</h2><div class="body"><p class="dim">Awaiting GPS fix…</p></div><div class="status"></div></section>
+    <section data-tab="commute" id="alerts">
+      <h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>Phone alerts</h2>
+      <p class="dim small">Weekdays 08:00–09:00 and 15:30–17:30, checked every 5 min: a trip in the next hour cancelled, 5+ min late, or an SNCB disruption on its stations.</p>
+      <p><button type="button" id="alerts-on">Enable alerts</button> <button type="button" id="alerts-test">Send test</button></p>
+      <div class="body"><p class="dim">Checking this device…</p></div><div class="status"></div>
+    </section>
+    <section data-tab="weather" id="atmosphere" class="hero"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18h10a4 4 0 0 0 .4-7.98A6 6 0 0 0 6.2 11 3.5 3.5 0 0 0 7 18z"/></svg>Atmosphere</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
+    <section data-tab="weather" id="tempmap"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14.5V5a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0z"/><path d="M12 9v7"/></svg>Temperature map</h2><div id="tempmap-map" class="tmap"></div><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
+    <section data-tab="weather" id="windmap"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h11a3 3 0 1 0-3-3M3 15h15a3 3 0 1 1-3 3M3 12h8"/></svg>Wind map</h2><div id="windmap-map" class="tmap"></div><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
+    <section data-tab="weather" id="rainmap"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14h10a3.5 3.5 0 0 0 .3-7A5 5 0 0 0 7.5 8 3 3 0 0 0 7 14z"/><path d="M8 17l-1 3M12 17l-1 3M16 17l-1 3"/></svg>Rain radar</h2><div id="rainmap-map" class="tmap"></div><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
+    <section data-tab="weather" id="air"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c0-9 6-14 15-14 0 9-5 15-14 15"/><path d="M5 19l7-7"/></svg>Air quality · Pollen</h2><div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
+    <section data-tab="world" id="traffic" class="hero"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3L5 21M16 3l3 18M12 4v3M12 10.5v3M12 17v3"/></svg>Roads &amp; rail around you</h2>
+      <div id="traffic-map" class="tmap"></div>
+      <p class="legend small"><span class="key red"></span>closed road <span class="key red dashed"></span>rail disruption <span class="key orange"></span>jam · accident · lane closed</p>
+      <div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
     <section data-tab="world" id="news">
-      <h2>Newsfeed</h2>
+      <h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M7 9h10M7 12.5h10M7 16h6"/></svg>Newsfeed</h2>
       <form id="news-form" autocomplete="off">
         <label>&rsaquo; <input name="place" placeholder="city / region / country" enterkeyhint="search" aria-label="Place for news"></label>
       </form>
       <div class="body"></div><div class="status"></div>
     </section>
-    <section data-tab="world" id="topic"><h2>Topic of the week</h2><div class="body"><p class="dim">Loading topic…</p></div><div class="status"></div></section>
-    <section data-tab="world" id="traffic" class="wide"><h2>Roads &amp; rail around you</h2>
-      <div id="traffic-map" class="tmap"></div>
-      <p class="legend small"><span class="key red"></span>closed road <span class="key red dashed"></span>rail disruption <span class="key orange"></span>jam · accident · lane closed</p>
-      <div class="body"><p class="dim">Awaiting location lock…</p></div><div class="status"></div></section>
-    <section data-tab="world" id="gpsjam" class="wide"><h2>GNSS interference</h2><div class="body"><p class="dim">Loading GPSJam data…</p></div><div class="status"></div></section>
-    <section data-tab="world" id="attacks" class="wide"><h2>Cyber attack vectors</h2><div class="body"><p class="dim">Querying Cloudflare Radar…</p></div><div class="status"></div></section>
-    <section data-tab="world" id="outages"><h2>Internet outages</h2><div class="body"><p class="dim">Querying IODA…</p></div><div class="status"></div></section>
-    <section data-tab="world" id="sats"><h2>Orbital tracking</h2><div class="body"><p class="dim">Loading orbits…</p></div><div class="status"></div></section>
-    <section data-tab="world" id="history" class="wide"><h2>Archive · trends</h2><div class="body"><p class="dim">Reading MIAP's memory…</p></div><div class="status"></div></section>
-    <section data-tab="system" id="system" class="wide"><h2>System status</h2><div class="body"><p class="dim">Asking Cloudflare…</p></div>
+    <section data-tab="world" id="topic"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z"/></svg>Topic of the week</h2><div class="body"><p class="dim">Loading topic…</p></div><div class="status"></div></section>
+    <section data-tab="world" id="gpsjam" class="wide"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>GNSS interference</h2><div class="body"><p class="dim">Loading GPSJam data…</p></div><div class="status"></div></section>
+    <section data-tab="world" id="attacks" class="wide"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7.5 3v5.5c0 4.5-3.2 8.3-7.5 9.5-4.3-1.2-7.5-5-7.5-9.5V6z"/></svg>Cyber attack vectors</h2><div class="body"><p class="dim">Querying Cloudflare Radar…</p></div><div class="status"></div></section>
+    <section data-tab="world" id="outages"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M9 16a4.5 4.5 0 0 1 6 0"/><circle cx="12" cy="19.5" r=".8"/></svg>Internet outages</h2><div class="body"><p class="dim">Querying IODA…</p></div><div class="status"></div></section>
+    <section data-tab="world" id="sats"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="9.5" ry="4" transform="rotate(-30 12 12)"/><circle cx="12" cy="12" r="2.5"/></svg>Orbital tracking</h2><div class="body"><p class="dim">Loading orbits…</p></div><div class="status"></div></section>
+    <section data-tab="world" id="history" class="wide"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16"/><path d="M7.5 15l3.5-4 3 2.5 5-6.5"/></svg>Archive · trends</h2><div class="body"><p class="dim">Reading MIAP's memory…</p></div><div class="status"></div></section>
+    <section data-tab="system" id="usage" class="hero"><h2><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/></svg>System status</h2><div class="body"><p class="dim">Asking Cloudflare…</p></div>
       <p class="prune"><button type="button" id="prune">Delete data older than 30 days</button> <span id="prune-msg" class="dim small"></span></p><div class="status"></div></section>
   </main>
   <footer class="dim">Data: OpenHolidays (holidays) · Energy-Charts / Fraunhofer ISE, CC BY 4.0 (electricity) · TomTom (roads) · iRail (SNCB disruptions) · Workers AI (briefing) · <a href="https://transitous.org/sources/">Transitous</a> (© OpenStreetMap contributors) · CelesTrak · Open-Meteo · CAMS · Bing News · GPSJam · Cloudflare Radar · IODA (Georgia Tech) · Natural Earth.

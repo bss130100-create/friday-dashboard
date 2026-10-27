@@ -110,6 +110,7 @@ test('loadCommute plans all four routes, one request at a time', async () => {
   assert.equal(plans[0].trips.length, 2); // all planned trips are kept, cancelled ones too (the Today card needs them)
   const html = renderCommute(plans, new Date('2026-10-24T15:24:00Z'));
   assert.equal((html.match(/<h3>/g) ?? []).length, 4);
+  assert.match(html, /^<p class="verdict">Weekend: no work commute today\.<\/p>/); // same verdict as the Today card
 });
 
 // Trimmed real reverse-geocode answer for the Grand-Place (public place).

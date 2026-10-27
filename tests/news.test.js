@@ -47,6 +47,16 @@ test('"ago" labels', () => {
   assert.equal(ago(d, new Date('2026-10-24T15:20:00Z')), '3h ago');
 });
 
+test('renderNews: 5 newest headlines, up to 7 more behind one button', () => {
+  const a = (i) => ({ title: `T${i}`, url: `https://a.example/${i}`, source: 'S', published: NOW });
+  const html = renderNews('x', Array.from({ length: 14 }, (_, i) => a(i)), NOW);
+  const [shown, more] = html.split('<div class="more">');
+  assert.equal((shown.match(/<li>/g) ?? []).length, 5);
+  assert.equal((more.match(/<li>/g) ?? []).length, 7);
+  assert.match(more, /<span class="closed">Show 7 more<\/span>/);
+  assert.doesNotMatch(renderNews('x', [a(1)], NOW), /class="more"/);
+});
+
 test('renderNews escapes titles', () => {
   const html = renderNews('x', [{ title: '<b>hi</b>', url: 'https://a.example', source: 'S', published: new Date() }], new Date());
   assert.ok(!html.includes('<b>'));

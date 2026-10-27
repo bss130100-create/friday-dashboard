@@ -42,7 +42,20 @@ export function parseWeather(json) {
     windFrom: compassPoint(c.wind_direction_10m),
     pressureHpa: c.pressure_msl,
     sky: describeWeatherCode(c.weather_code),
+    code: c.weather_code,
   };
+}
+
+const WET = (code) => (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95;
+const SNOW = (code) => (code >= 71 && code <= 77) || code === 85 || code === 86;
+
+// What to wear, from the feels-like temperature and what is falling right now.
+export function wearAdvice(w) {
+  const base = w.feelsC < 5 ? 'Cold: coat, hat and gloves'
+    : w.feelsC < 12 ? 'Cool: take a coat'
+      : w.feelsC < 18 ? 'Mild: a light jacket is enough'
+        : 'Warm: no jacket needed';
+  return `${base}${WET(w.code) ? ', and an umbrella' : SNOW(w.code) ? ', and good shoes for snow' : ''}.`;
 }
 
 export async function loadWeather(location) {
@@ -50,13 +63,14 @@ export async function loadWeather(location) {
 }
 
 export function renderWeather(w) {
+  const sky = w.sky.charAt(0) + w.sky.slice(1).toLowerCase();
   return `
-    <div class="big">${w.tempC.toFixed(1)}<span class="unit">°C</span></div>
-    <div class="accent">${esc(w.sky)}</div>
-    <table>
-      <tr><td>FEELS</td><td>${w.feelsC.toFixed(1)}°C</td></tr>
-      <tr><td>HUMIDITY</td><td>${w.humidity}%</td></tr>
-      <tr><td>WIND</td><td>${w.windKmh.toFixed(0)} km/h from ${w.windFrom}</td></tr>
-      <tr><td>PRESSURE</td><td>${w.pressureHpa.toFixed(0)} hPa</td></tr>
-    </table>`;
+    <div class="count"><span class="big">${w.tempC.toFixed(1)}</span><span class="unit">°C</span></div>
+    <p class="lead">${esc(sky)} · feels ${w.feelsC.toFixed(1)}°C</p>
+    <p class="verdict ok">${esc(wearAdvice(w))}</p>
+    <div class="kpis">
+      <div><span class="kpi">${w.humidity}%</span><span class="dim">humidity</span></div>
+      <div><span class="kpi">${w.windKmh.toFixed(0)}<span class="unit">km/h</span></span><span class="dim">wind from ${w.windFrom}</span></div>
+      <div><span class="kpi">${w.pressureHpa.toFixed(0)}<span class="unit">hPa</span></span><span class="dim">pressure</span></div>
+    </div>`;
 }
