@@ -152,17 +152,69 @@ export function fastest(trips, now, n = FASTEST_SHOWN) {
     .sort((a, b) => a.start - b.start);
 }
 
+// Trouble on a trip = cancelled, or its first vehicle runs DELAY_MIN+ late (the phone alerts use the same rule).
+export const DELAY_MIN = 5;
+const SOON_MS = 60 * 60 * 1000;
+
+// Trips leaving in the next hour (or that left in the last 2 minutes).
+export function soon(trips, now) {
+  return trips.filter((t) => t.start - now > -2 * 60000 && t.start - now < SOON_MS);
+}
+
+// Work commute days: Monday to Friday, Brussels time.
+export function isWeekend(now) {
+  const day = new Intl.DateTimeFormat('en-GB', { timeZone: ZONE, weekday: 'short' }).format(now);
+  return day === 'Sat' || day === 'Sun';
+}
+
 // here: your current GPS fix; the trips to work start there, the trips home start at work.
-export async function loadCommute(config, here, now) {
-  const parts = [];
+// One load feeds both the Commute tab and the Today card: per route, all planned trips (or "you're there").
+export async function loadCommute(config, here) {
+  const plans = [];
   for (const r of routes(config, { label: 'Here', place: here })) {
-    if (distanceKm(r.from.lat, r.from.lon, r.to.lat, r.to.lon) < THERE_KM) {
-      parts.push(`<h3>&gt; ${esc(r.label)}</h3><p class="leave">You're there.</p>`);
-      continue;
-    }
-    parts.push(renderRoute(r.label, fastest(parsePlan(await transitous(planUrl(r.from, r.to, CANDIDATES))), now), now));
+    const there = distanceKm(r.from.lat, r.from.lon, r.to.lat, r.to.lon) < THERE_KM;
+    plans.push({ label: r.label, there, trips: there ? [] : parsePlan(await transitous(planUrl(r.from, r.to, CANDIDATES))) });
   }
-  return parts.join('');
+  return plans;
+}
+
+export function renderCommute(plans, now) {
+  return plans
+    .map((p) => (p.there ? `<h3>&gt; ${esc(p.label)}</h3><p class="leave">You're there.</p>` : renderRoute(p.label, fastest(p.trips, now), now)))
+    .join('');
+}
+
+// Today card: says first whether anything is wrong on the trips you would take next, then the next
+// departure on the two routes that matter now: to work before noon, home after (like the phone alerts).
+function brusselsHour(now) {
+  return Number(new Intl.DateTimeFormat('en-GB', { timeZone: ZONE, hour: '2-digit', hourCycle: 'h23' }).format(now));
+}
+
+// "08:10 train S2 to Office A is cancelled" / "... runs 7 min late"
+function trouble(label, t) {
+  const what = `${hhmm(t.scheduled)} ${t.legs.filter((l) => !l.startsWith('walk')).join(' › ')} to ${label.split(' → ')[1]}`;
+  return t.cancelled ? `${what} is cancelled` : `${what} runs ${t.delayMin} min late`;
+}
+
+export function commuteSummary(plans, now) {
+  const link = '<a class="more-link" href="#commute">All routes ›</a>';
+  if (isWeekend(now)) return `<p class="verdict">Weekend: no work commute today.</p>${link}`;
+  const watched = brusselsHour(now) < 12 ? plans.slice(0, 2) : plans.slice(2, 4);
+  const problems = watched.flatMap((p) => soon(p.trips, now).filter((t) => t.cancelled || t.delayMin >= DELAY_MIN).map((t) => trouble(p.label, t)));
+  const leaving = watched.some((p) => soon(p.trips, now).length);
+  const verdict = problems.length
+    ? `<p class="verdict warm">${esc(problems[0])}${problems.length > 1 ? `, and ${problems.length - 1} more problem${problems.length > 2 ? 's' : ''}` : ''}.</p>`
+    : `<p class="verdict${leaving ? ' ok' : ''}">${leaving ? 'No delays or cancellations on your next trips.' : 'No trips in the next hour.'}</p>`;
+  const rows = watched.map((p) => {
+    if (p.there) return `<li><span class="route">${esc(p.label)}</span><span>You're there.</span></li>`;
+    const next = fastest(p.trips, now)[0];
+    if (!next) return `<li><span class="route">${esc(p.label)}</span><span class="dim">no trip found right now</span></li>`;
+    const inMin = minutes(next.start - now);
+    const cls = inMin <= 5 ? 'hot' : inMin <= 15 ? 'warm' : '';
+    return `<li><span class="route">${esc(p.label)}</span><span class="${cls}">${inMin <= 1 ? 'leave now' : `leave in ${inMin} min`}</span>
+      <span class="dim">${next.durationMin} min · there ${hhmm(next.end)}</span></li>`;
+  });
+  return `${verdict}<ul class="next-trips">${rows.join('')}</ul>${link}`;
 }
 
 // --- "where am I": your phone's GPS fix, the nearest address and the way home from there.

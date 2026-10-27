@@ -1,7 +1,8 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  geocodeUrl, parseGeocode, geocode, parseConfig, saveConfig, readConfig, routes, planUrl, parsePlan, renderRoute, loadCommute, fastest,
+  geocodeUrl, parseGeocode, geocode, parseConfig, saveConfig, readConfig, routes, planUrl, parsePlan, renderRoute, loadCommute, renderCommute, fastest,
+  soon, isWeekend, commuteSummary,
   reverseUrl, parseReverse, renderHere, loadHere,
 } from '../js/commute.js';
 
@@ -103,8 +104,11 @@ test('loadCommute plans all four routes, one request at a time', async () => {
     inFlight--;
     return new Response(JSON.stringify(PLAN));
   };
-  const html = await loadCommute(CONFIG, GRAND_PLACE, new Date('2026-10-24T15:24:00Z'));
+  const plans = await loadCommute(CONFIG, GRAND_PLACE);
   assert.equal(asked.length, 4);
+  assert.deepEqual(plans.map((p) => p.label), ['Here → Office A', 'Here → Office B', 'Office A → Home', 'Office B → Home']);
+  assert.equal(plans[0].trips.length, 2); // all planned trips are kept, cancelled ones too (the Today card needs them)
+  const html = renderCommute(plans, new Date('2026-10-24T15:24:00Z'));
   assert.equal((html.match(/<h3>/g) ?? []).length, 4);
 });
 
@@ -142,9 +146,9 @@ test('Transitous requests from different panels never overlap', async () => {
     return new Response(JSON.stringify(url.includes('reverse') ? REVERSE : PLAN));
   };
   const now = new Date('2026-10-24T15:24:00Z');
-  const [commute, here] = await Promise.all([loadCommute(CONFIG, GRAND_PLACE, now), loadHere(GRAND_PLACE, HOME, now)]);
+  const [commute, here] = await Promise.all([loadCommute(CONFIG, GRAND_PLACE), loadHere(GRAND_PLACE, HOME, now)]);
   assert.equal(max, 1, 'Transitous returns 429 for parallel requests');
-  assert.equal((commute.match(/<h3>/g) ?? []).length, 4);
+  assert.equal(commute.length, 4);
   assert.match(here, /Here → Home/);
 });
 
@@ -159,8 +163,50 @@ test('commute from where you are: already at a workplace means no trip to plan t
   const asked = [];
   globalThis.fetch = async (url) => { asked.push(url); return new Response(JSON.stringify(PLAN)); };
   const atOfficeA = { ...CONFIG.works[0].place, accuracy: 5 };
-  const html = await loadCommute(CONFIG, atOfficeA, new Date('2026-10-24T15:24:00Z'));
+  const html = renderCommute(await loadCommute(CONFIG, atOfficeA), new Date('2026-10-24T15:24:00Z'));
   assert.match(html, /Here → Office A<\/h3><p class="leave">You're there\./);
   assert.equal(asked.length, 3); // Office B and the two trips home
   assert.ok(asked.every((u) => u.includes('numItineraries=6')));
+});
+
+// Today card. 2026-10-26 is a Monday (winter time, UTC+1): 15:24 UTC = 16:24 in Brussels, so the trips home matter.
+const shift = (trips, ms) => trips.map((t) => ({ ...t, start: new Date(t.start.getTime() + ms), end: new Date(t.end.getTime() + ms), scheduled: new Date(t.scheduled.getTime() + ms) }));
+const MONDAY = new Date('2026-10-26T15:24:00Z');
+const mondayTrips = (ms = 0) => shift(parsePlan(PLAN), MONDAY - new Date('2026-10-24T15:24:00Z') + ms); // 16:36 (S2, due 16:34) and 16:50 (cancelled)
+const allClear = (trips) => trips.map((t) => ({ ...t, cancelled: false, delayMin: 0 }));
+const plans = (a, b, c, d) => [
+  { label: 'Here → Office A', there: false, trips: a },
+  { label: 'Here → Office B', there: false, trips: b },
+  { label: 'Office A → Home', there: false, trips: c },
+  { label: 'Office B → Home', there: false, trips: d },
+];
+
+test('soon: trips leaving in the next hour; weekend = Saturday and Sunday in Brussels', () => {
+  const trips = parsePlan(PLAN); // 17:36 and 17:50 Brussels time
+  assert.equal(soon(trips, new Date('2026-10-24T15:24:00Z')).length, 2);
+  assert.equal(soon(trips, new Date('2026-10-24T14:40:00Z')).length, 1); // only 17:36 within the hour
+  assert.equal(isWeekend(new Date('2026-10-24T12:00:00Z')), true);
+  assert.equal(isWeekend(new Date('2026-10-25T23:30:00Z')), false); // Monday 00:30 in Brussels
+});
+
+test('Today commute card: says what is wrong first, then the next trip on the routes that matter now', () => {
+  const html = commuteSummary(plans([], [], mondayTrips(), allClear(mondayTrips())), MONDAY);
+  assert.match(html, /^<p class="verdict warm">16:50 bus 820 › tram 82 to Home is cancelled\.<\/p>/);
+  assert.match(html, /<span class="route">Office A → Home<\/span><span class="warm">leave in 12 min<\/span>\s*<span class="dim">25 min · there 17:01<\/span>/);
+  assert.doesNotMatch(html, /Here → Office/);
+  assert.match(html, /href="#commute"/);
+  const late = mondayTrips().map((t) => ({ ...t, delayMin: 7 }));
+  assert.match(commuteSummary(plans([], [], late, late), MONDAY), /16:34 train S2 to Home runs 7 min late, and 3 more problems\./);
+});
+
+test('Today commute card: all clear, nothing in the next hour, no trip, at work, weekend', () => {
+  const morning = new Date(MONDAY.getTime() - 8 * 3600000); // 08:24 in Brussels: the trips to work matter
+  const toWork = allClear(mondayTrips(-8 * 3600000));
+  assert.match(commuteSummary(plans(toWork, toWork, [], []), morning), /^<p class="verdict ok">No delays or cancellations on your next trips\.<\/p>/);
+  assert.match(commuteSummary(plans(toWork, toWork, [], []), new Date(morning.getTime() - 3 * 3600000)), /^<p class="verdict">No trips in the next hour\.<\/p>/);
+  assert.match(commuteSummary(plans(toWork, [], [], []), morning), /<span class="route">Here → Office B<\/span><span class="dim">no trip found right now<\/span>/);
+  const atWork = plans([], toWork, [], []);
+  atWork[0].there = true;
+  assert.match(commuteSummary(atWork, morning), /<span class="route">Here → Office A<\/span><span>You're there\.<\/span>/);
+  assert.match(commuteSummary(plans(toWork, toWork, [], []), new Date('2026-10-24T08:00:00Z')), /^<p class="verdict">Weekend: no work commute today\.<\/p>/);
 });

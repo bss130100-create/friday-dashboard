@@ -1,18 +1,12 @@
 // Trends panel: MIAP's memory. The Worker saves hourly snapshots into a Cloudflare D1
 // database and serves them at /history (see relay/worker.js). Three views:
-//   GNSS jamming per zone (daily high-interference cells), earthquakes per day, attack origins.
+//   GNSS jamming per zone (daily high-interference cells) and attack origins.
 import { fetchJson } from './http.js';
 import { esc } from './ui.js';
-import { distanceKm } from './geo.js';
-import { lineChart, barChart } from './charts.js';
+import { lineChart } from './charts.js';
 
-export function historyUrl(kind, days, near = null) {
-  const params = new URLSearchParams({ kind, days: String(days) });
-  if (near) {
-    params.set('lat', near.lat.toFixed(2));
-    params.set('lon', near.lon.toFixed(2));
-  }
-  return `/history?${params}`;
+export function historyUrl(kind, days) {
+  return `/history?${new URLSearchParams({ kind, days: String(days) })}`;
 }
 
 // The last 7 days vs the 7 before, as a whole percentage (null when there is no earlier week).
@@ -67,22 +61,6 @@ export function renderGnssHistory(data) {
   return `<p class="dim small">High-interference cells per day, since ${esc(first)}.</p>${top.map((g) => trendLine(g.name, g.series, '')).join('')}`;
 }
 
-export function renderQuakeHistory(data, you, now) {
-  if (data.days.length === 0) return '<p class="dim">No earthquakes stored yet: the first snapshot comes with the next hourly run.</p>';
-  const today = now.toISOString().slice(0, 10);
-  const series = dailySeries(data.days, data.days[0].date, today, (r) => r.n);
-  const total30 = series.slice(-30).reduce((s, p) => s + p.value, 0);
-  const big = data.biggest30d[0];
-  const near = data.nearest365d;
-  const nearKm = near && you ? Math.round(distanceKm(you.lat, you.lon, near.lat, near.lon)) : null;
-  return `<div class="kpis">
-      <div><span class="kpi">${total30}</span><span class="dim">M2.5+ quakes, last 30 days</span></div>
-      ${big ? `<div><span class="kpi mag">M${big.mag.toFixed(1)}</span><span class="dim">biggest in 30 days: ${esc(big.place)}</span></div>` : ''}
-      ${nearKm !== null ? `<div><span class="kpi">${nearKm} km</span><span class="dim">nearest in a year: M${near.mag.toFixed(1)} ${esc(near.place)}, ${new Date(near.time).toISOString().slice(0, 10)}</span></div>` : ''}
-    </div>
-    <p class="dim small">Quakes per day, since ${esc(series[0].label)}.</p>${barChart(series, { unit: ' quakes' })}`;
-}
-
 export function renderAttackHistory(data) {
   const top = topSeries(data.days, 'origin', (r) => Math.round(r.pct * 10) / 10, 4);
   if (top.length === 0) return '<p class="dim">No attack history yet: the first snapshot comes with the next hourly run.</p>';
@@ -91,19 +69,15 @@ export function renderAttackHistory(data) {
     ${top.map((g) => trendLine(`${names.get(g.name) ?? g.name} (${g.name})`, g.series, '%', 1)).join('')}`;
 }
 
-export async function loadHistory(kind, days, near) {
-  return fetchJson(historyUrl(kind, days, near));
+export async function loadHistory(kind, days) {
+  return fetchJson(historyUrl(kind, days));
 }
 
-export async function renderHistory(you, now) {
-  const [gnss, quakes, attacks] = [
-    await loadHistory('gnss', 120),
-    await loadHistory('quakes', 90, you),
-    await loadHistory('attacks', 90),
-  ];
+export async function renderHistory() {
+  const gnss = await loadHistory('gnss', 120);
+  const attacks = await loadHistory('attacks', 90);
   return `<div class="history">
     <div><h3>&gt; GNSS JAMMING TREND</h3>${renderGnssHistory(gnss)}</div>
-    <div><h3>&gt; EARTHQUAKE LOG</h3>${renderQuakeHistory(quakes, you, now)}</div>
     <div><h3>&gt; ATTACK ORIGINS TREND</h3>${renderAttackHistory(attacks)}</div>
   </div>`;
 }

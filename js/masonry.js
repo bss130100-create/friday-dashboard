@@ -2,7 +2,7 @@
 // waiting for the tallest panel of that row. The grid's rows are 1px tall (style.css); each panel
 // spans as many as its own height plus the gap below it, and is re-measured when its content changes.
 
-export const PANEL_GAP_PX = 14;
+export const PANEL_GAP_PX = 16;
 
 export function rowSpan(heightPx, gapPx = PANEL_GAP_PX) {
   return Math.max(1, Math.ceil(heightPx + gapPx));

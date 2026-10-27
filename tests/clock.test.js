@@ -10,10 +10,9 @@ test('ISO week: today and the year edges', () => {
   assert.deepEqual(isoWeek(2027, 1, 4), { year: 2027, week: 1 });
 });
 
-test('renderClock shows UTC, date and week only', () => {
-  const html = renderClock(new Date('2026-10-24T14:00:00Z'));
-  assert.match(html, /<td>UTC<\/td><td>14:00:00<\/td>/);
-  assert.match(html, /October 2026/);
-  assert.match(html, /Week 43 of 2026/);
-  assert.doesNotMatch(html, /GPS|UNIX|TOW/);
+test('renderClock: compact local time, then UTC, date and week on one line', () => {
+  const html = renderClock(new Date('2026-10-24T14:00:05Z'));
+  assert.match(html, /<div class="time">\d\d:\d\d<span class="sec">:05<\/span><\/div>/);
+  assert.match(html, /<span class="mono">UTC 14:00:05<\/span> · Sat 24 Oct 2026 · Week 43<\/p>/);
+  assert.doesNotMatch(html, /GPS|UNIX|TOW|<table/);
 });

@@ -1,15 +1,13 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { historyUrl, weekChange, dailySeries, topSeries, renderGnssHistory, renderQuakeHistory, renderAttackHistory, renderHistory } from '../js/history.js';
+import { historyUrl, weekChange, dailySeries, topSeries, renderGnssHistory, renderAttackHistory, renderHistory } from '../js/history.js';
 import { lineChart, barChart } from '../js/charts.js';
 
-const BUCHAREST = { lat: 44.43, lon: 26.1 };
 const days = (n, start = '2026-09-01') => Array.from({ length: n }, (_, i) => new Date(Date.parse(`${start}T00:00:00Z`) + i * 86400000).toISOString().slice(0, 10));
 afterEach(() => delete globalThis.fetch);
 
-test('history url: needs the relay, sends position only when given', () => {
+test('history url: kind and days only, never your position', () => {
   assert.equal(historyUrl('gnss', 90), '/history?kind=gnss&days=90');
-  assert.equal(historyUrl('quakes', 90, BUCHAREST), '/history?kind=quakes&days=90&lat=44.43&lon=26.10');
 });
 
 test('week-over-week change', () => {
@@ -43,32 +41,21 @@ test('charts: a line needs 2 points; every day has a hover title', () => {
 });
 
 test('views render, and say so when the memory is still empty', () => {
-  const now = new Date('2026-10-24T10:00:00Z');
   assert.match(renderGnssHistory({ days: [] }), /No GNSS history yet/);
   const gnss = { days: days(20).map((date, i) => ({ date, zone: 'Baltic / Kaliningrad', high: i < 13 ? 10 : 20, medium: 1 })) };
   assert.match(renderGnssHistory(gnss), /Baltic \/ Kaliningrad[\s\S]*\+100% vs prev\. week/);
-  const quakes = {
-    days: [{ date: '2026-10-22', n: 40, maxMag: 5.1 }, { date: '2026-10-24', n: 12, maxMag: 4.7 }],
-    biggest30d: [{ time: 1, mag: 5.1, place: 'off Japan', lat: 35, lon: 140 }],
-    nearest365d: { time: Date.parse('2026-10-24T00:00:00Z'), mag: 2.6, place: 'Vrancea, Romania', lat: 45.8, lon: 26.6 },
-  };
-  const q = renderQuakeHistory(quakes, BUCHAREST, now);
-  assert.match(q, /<span class="kpi">52<\/span>/);
-  assert.match(q, /M5\.1/);
-  assert.match(q, /15\d km<\/span><span class="dim">nearest in a year: M2\.6 Vrancea/);
-  assert.equal((q.match(/class="col"/g) ?? []).length, 3); // 22, 23 (0), 24
-  assert.doesNotMatch(renderQuakeHistory(quakes, null, now), /nearest/);
   const attacks = { days: days(3, '2026-10-22').flatMap((date) => [{ date, origin: 'CN', name: 'China', pct: 14.2 }]) };
   assert.match(renderAttackHistory(attacks), /China \(CN\)[\s\S]*14\.2%/);
 });
 
-test('renderHistory asks the Worker for all three, one after another', async () => {
+test('renderHistory asks the Worker for both, one after another', async () => {
   const asked = [];
   globalThis.fetch = async (url) => {
     asked.push(new URLSearchParams(url.split('?')[1]).get('kind'));
-    return Response.json(url.includes('quakes') ? { days: [], biggest30d: [] } : { days: [] });
+    return Response.json({ days: [] });
   };
-  const html = await renderHistory(null, new Date());
-  assert.deepEqual(asked, ['gnss', 'quakes', 'attacks']);
-  assert.match(html, /GNSS JAMMING TREND[\s\S]*EARTHQUAKE LOG[\s\S]*ATTACK ORIGINS TREND/);
+  const html = await renderHistory();
+  assert.deepEqual(asked, ['gnss', 'attacks']);
+  assert.match(html, /GNSS JAMMING TREND[\s\S]*ATTACK ORIGINS TREND/);
+  assert.doesNotMatch(html, /EARTHQUAKE/);
 });

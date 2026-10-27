@@ -1,13 +1,14 @@
 // Days-off planner: Belgian public holidays for the next 12 months, which ones make a long weekend
 // (or one with a single day of leave), and the French- and Dutch-speaking school holidays
 // (both run in Brussels; trains and roads are quieter during them).
+// Two Today cards share one load: "Days off" (countdown) and "Holidays" (timeline you can expand).
 // Source: OpenHolidays API (free, no key, open to browsers).
 import { fetchJson } from './http.js';
-import { esc } from './ui.js';
+import { esc, expander } from './ui.js';
 
 const API = 'https://openholidaysapi.org';
 const DAY_MS = 24 * 60 * 60 * 1000;
-const COMMUNITIES = { 'BE-FR': 'FR schools', 'BE-NL': 'NL schools' };
+const COMMUNITIES = { 'BE-FR': 'FR', 'BE-NL': 'NL' };
 
 // Today's date in Brussels as 'YYYY-MM-DD' (the holiday dates are plain dates, no time zone).
 export function brusselsToday(now) {
@@ -48,18 +49,6 @@ export function bridge(date) {
   }
 }
 
-// School holidays per community: the one running today, else the next one.
-export function schoolStatus(school, today) {
-  return Object.entries(COMMUNITIES).map(([code, label]) => {
-    const mine = school.filter((h) => h.groups.includes(code) && h.end >= today).sort((a, b) => a.start.localeCompare(b.start));
-    const h = mine[0];
-    if (!h) return { label, text: 'no dates published yet' };
-    if (h.start <= today) return { label, text: `${h.name} now, until ${pretty(h.end)}` };
-    const span = h.start === h.end ? pretty(h.start) : `${pretty(h.start)} – ${pretty(h.end)}`;
-    return { label, text: `${h.name}: ${span} (in ${daysBetween(today, h.start)} days)` };
-  });
-}
-
 export async function loadDaysOff(now) {
   const today = brusselsToday(now);
   const publicDays = parseHolidays(await fetchJson(holidaysUrl('PublicHolidays', today)));
@@ -71,29 +60,64 @@ export async function loadDaysOff(now) {
 // holidays (Easter Monday and Whit Monday are), so they give no day off or replacement day.
 const NOT_A_DAY_OFF = new Set(['Easter', 'Pentecost']);
 
-export function renderDaysOff({ today, publicDays, school }) {
-  const upcoming = publicDays
+// Public holidays from today on that give a day off, soonest first.
+function upcomingDaysOff(publicDays, today) {
+  return publicDays
     .filter((h) => h.start >= today && !NOT_A_DAY_OFF.has(h.name))
     .sort((a, b) => a.start.localeCompare(b.start));
+}
+
+function inDays(today, date) {
+  const n = daysBetween(today, date);
+  return n === 0 ? 'today' : n === 1 ? 'tomorrow' : `in ${n} days`;
+}
+
+// Compact countdown to the next day off, and the next long weekend.
+export function renderDaysOff({ today, publicDays }) {
+  const upcoming = upcomingDaysOff(publicDays, today);
   if (!upcoming.length) throw new Error('OpenHolidays: no public holidays in the next 12 months');
   const next = upcoming[0];
+  const n = daysBetween(today, next.start);
   const nextLong = upcoming.find((h) => bridge(h.start).long);
-  const inDays = (date) => {
-    const n = daysBetween(today, date);
-    return n === 0 ? 'today' : n === 1 ? 'tomorrow' : `in ${n} days`;
-  };
-  const rows = upcoming.map((h) => {
-    const b = bridge(h.start);
-    return `<tr><td class="nowrap">${pretty(h.start)}</td><td>${esc(h.name)}</td><td class="${b.long ? '' : 'dim'}">${esc(b.text)}</td></tr>`;
-  });
+  const count = n === 0 ? '<span class="big">Today</span>' : `<span class="big">${n}</span><span class="unit">${n === 1 ? 'day' : 'days'}</span>`;
   return `
-    <div class="gauge-row">
-      <div class="big">${daysBetween(today, next.start)}<span class="unit"> days</span></div>
-      <div class="dim">to ${esc(next.name)}, ${pretty(next.start)}</div>
-    </div>
-    ${nextLong ? `<p>Next long weekend: <strong>${esc(nextLong.name)}</strong>, ${pretty(nextLong.start)} (${inDays(nextLong.start)})${bridge(nextLong.start).leave ? `: ${esc(bridge(nextLong.start).text)}` : ''}.</p>` : ''}
-    <h3>SCHOOL HOLIDAYS</h3>
-    <table class="small">${schoolStatus(school, today).map((s) => `<tr><td class="nowrap">${esc(s.label)}</td><td>${esc(s.text)}</td></tr>`).join('')}</table>
-    <h3>PUBLIC HOLIDAYS · NEXT 12 MONTHS</h3>
-    <table class="small">${rows.join('')}</table>`;
+    <div class="count">${count}</div>
+    <p class="lead">${n === 0 ? '' : 'to '}<strong>${esc(next.name)}</strong> · ${pretty(next.start)}</p>
+    <p class="dim small">${esc(bridge(next.start).text)}</p>
+    ${nextLong && nextLong !== next ? `<p class="small">Next long weekend: <strong>${esc(nextLong.name)}</strong>, ${pretty(nextLong.start)} (${inDays(today, nextLong.start)})${bridge(nextLong.start).leave ? `: ${esc(bridge(nextLong.start).text)}` : ''}.</p>` : ''}`;
+}
+
+// One list, soonest first: the public holidays that give a day off, and the FR and NL school
+// holidays (one entry when both communities have the same dates).
+export function holidayTimeline({ today, publicDays, school }) {
+  const items = upcomingDaysOff(publicDays, today).map((h) => {
+    const b = bridge(h.start);
+    return { start: h.start, name: h.name, note: b.text, kind: b.long ? 'long' : 'day', when: inDays(today, h.start) };
+  });
+  const terms = new Map();
+  for (const h of school.filter((x) => x.end >= today)) {
+    const key = `${h.name}|${h.start}|${h.end}`;
+    const term = terms.get(key) ?? { ...h, groups: [] };
+    term.groups.push(...h.groups);
+    terms.set(key, term);
+  }
+  for (const t of terms.values()) {
+    const who = Object.entries(COMMUNITIES).filter(([code]) => t.groups.includes(code)).map(([, label]) => label);
+    if (!who.length) continue; // e.g. only the German-speaking community
+    const until = t.start === t.end ? '' : ` · until ${pretty(t.end)}`;
+    items.push({ start: t.start, name: t.name, note: `${who.join(' + ')} schools${until}`, kind: 'school', when: t.start <= today ? 'now' : inDays(today, t.start) });
+  }
+  return items.sort((a, b) => a.start.localeCompare(b.start));
+}
+
+const TIMELINE_SHOWN = 4;
+
+export function renderHolidays(data) {
+  const items = holidayTimeline(data);
+  if (!items.length) throw new Error('OpenHolidays: no holidays in the next 12 months');
+  const row = (h) => `<li class="${h.kind}${h.when === 'now' ? ' now' : ''}"><span class="when">${pretty(h.start)}</span>
+    <span class="what"><strong>${esc(h.name)}</strong><span class="note">${esc(h.note)}</span></span><span class="in">${h.when}</span></li>`;
+  const list = (part) => `<ol class="timeline">${part.map(row).join('')}</ol>`;
+  const rest = items.slice(TIMELINE_SHOWN);
+  return list(items.slice(0, TIMELINE_SHOWN)) + (rest.length ? expander(list(rest), `Show all ${items.length}`) : '');
 }

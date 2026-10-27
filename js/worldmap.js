@@ -1,4 +1,4 @@
-// Shared world map (land + country borders) used by the earthquake, jamming, outage and attack panels.
+// Shared world map (land + country borders) used by the jamming, outage and attack panels.
 // Equirectangular projection: longitude -> x, latitude -> y (viewBox 0 0 360 180).
 import { LAND_PATH } from './worldmap-data.js';
 import { BORDERS_PATH } from './borders-data.js';

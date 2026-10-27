@@ -8,23 +8,21 @@
 //                            (Google News answers Cloudflare's servers with 503 "Sorry...", so Bing it is)
 //   GET /attacks          ->  Cloudflare Radar: top attack origin -> target country pairs, last 24 h
 //                             (needs the secret RADAR_TOKEN, see README; cached 15 min, shared with the snapshot)
-//   GET /history?kind=gnss|quakes|attacks&days=90  ->  trends from MIAP's memory (D1 database)
+//   GET /history?kind=gnss|attacks&days=90  ->  trends from MIAP's memory (D1 database)
 //   GET|PUT /settings/commute  ->  your commute addresses, kept in the D1 database (never in this public repo)
 //   GET /roads?lat=&lon=  ->  traffic incidents around you (TomTom, needs the secret TOMTOM_KEY), cached 30 min
-//   POST /briefing        ->  a 2-3 sentence AI briefing of what the panels show (Workers AI, bound as AI)
+//   POST /briefing        ->  AI briefing of what the panels show: summary + updates, coming up, actions (Workers AI, bound as AI)
 //   GET /push/key, POST /push/subscribe, POST /push/test  ->  phone alerts (Web Push, see push.js + alerts.js)
 //
-// Cron: hourly = memory snapshot + earthquake alerts; every 5 min = commute alerts (inside the windows only).
+// Cron: hourly = memory snapshot; every 5 min = commute alerts (inside the windows only).
 //
 // Memory: once an hour (Cron Trigger) scheduled() saves snapshots into the D1 database bound
-// as DB: earthquakes (USGS), GNSS jamming per zone (data/gpsjam.json on the site) and the day's
-// attack routes (Radar). Tables are created automatically on the first run.
+// as DB: GNSS jamming per zone (data/gpsjam.json on the site) and the day's attack routes (Radar). Tables are created automatically on the first run.
 
 import { newVapidKeys, sendPush } from './push.js';
-import { commuteEvents, quakeEvents } from './alerts.js';
+import { commuteEvents } from './alerts.js';
 import { GRAPHQL_URL, usageQueries, parseWorkers, parseAi, parseD1 } from './usage.js';
 
-const QUAKES_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson';
 const RADAR_ATTACKS_URL =
   'https://api.cloudflare.com/client/v4/radar/attacks/layer7/top/attacks?limit=25&dateRange=1d&format=JSON';
 
@@ -44,7 +42,7 @@ export function upstreamRequest(requestUrl) {
 // ---------- memory (D1) ----------
 
 const SCHEMA = [
-  'CREATE TABLE IF NOT EXISTS quakes (id TEXT NOT NULL PRIMARY KEY, time INTEGER NOT NULL, mag REAL, place TEXT, lat REAL, lon REAL, depth REAL)',
+  'DROP TABLE IF EXISTS quakes', // earthquakes are no longer collected (Mihai, 2026-10-27)
   'CREATE TABLE IF NOT EXISTS gnss_daily (date TEXT NOT NULL, zone TEXT NOT NULL, high INTEGER NOT NULL, medium INTEGER NOT NULL, PRIMARY KEY (date, zone))',
   'CREATE TABLE IF NOT EXISTS attacks_daily (date TEXT NOT NULL, origin TEXT NOT NULL, origin_name TEXT, target TEXT NOT NULL, pct REAL NOT NULL, PRIMARY KEY (date, origin, target))',
   'CREATE TABLE IF NOT EXISTS settings (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)',
@@ -145,7 +143,6 @@ export async function prune(env, now = Date.now()) {
   const cutoff = now - KEEP_DAYS * 24 * HOUR_MS;
   const day = new Date(cutoff).toISOString().slice(0, 10);
   const jobs = {
-    quakes: db.prepare('DELETE FROM quakes WHERE time < ?').bind(cutoff),
     gnss_daily: db.prepare('DELETE FROM gnss_daily WHERE date < ?').bind(day),
     attacks_daily: db.prepare('DELETE FROM attacks_daily WHERE date < ?').bind(day),
     route_errors: db.prepare('DELETE FROM route_errors WHERE hour < ?').bind(hourOf(cutoff)),
@@ -177,20 +174,11 @@ export async function power(env, now = Date.now()) {
 
 // Rows go in as ONE JSON parameter that SQLite unpacks with json_each: one statement per job,
 // so the Worker stays far below its 10 ms CPU budget.
-const INSERT_QUAKES = `INSERT OR REPLACE INTO quakes SELECT value->>0, value->>1, value->>2, value->>3, value->>4, value->>5, value->>6 FROM json_each(?)`;
 const INSERT_GNSS = `INSERT OR REPLACE INTO gnss_daily SELECT value->>0, value->>1, value->>2, value->>3 FROM json_each(?)`;
 const BACKFILL_GNSS = `INSERT OR IGNORE INTO gnss_daily SELECT value->>0, value->>1, value->>2, value->>3 FROM json_each(?)`;
 const INSERT_ATTACKS = `INSERT INTO attacks_daily SELECT value->>0, value->>1, value->>2, value->>3, value->>4 FROM json_each(?)`;
 
 // Pure helpers (tested): API answers -> rows.
-export function quakeRows(geojson) {
-  if (!Array.isArray(geojson?.features)) throw new Error('USGS: no features');
-  return geojson.features.map((q) => {
-    const [lon, lat, depth] = q.geometry.coordinates;
-    return [q.id, q.properties.time, q.properties.mag, q.properties.place, lat, lon, depth];
-  });
-}
-
 export function gnssRows(gpsjam) {
   if (!gpsjam?.date || !Array.isArray(gpsjam.regions)) throw new Error('gpsjam.json: no date/regions');
   return gpsjam.regions.map((r) => [gpsjam.date, r.name, r.high, r.medium]);
@@ -228,7 +216,6 @@ export async function snapshot(env, now = new Date()) {
   const db = await openDb(env);
   const today = now.toISOString().slice(0, 10);
   const jobs = {
-    quakes: async () => db.prepare(INSERT_QUAKES).bind(JSON.stringify(quakeRows(await getJson(QUAKES_URL)))).run(),
     gnss: async () => {
       // the backfill goes only into an empty table (first run): after a 30-day wipe old days must not come back
       const { n } = await db.prepare('SELECT COUNT(*) AS n FROM gnss_daily').first();
@@ -253,19 +240,11 @@ export function historyQuery(requestUrl) {
   const kind = url.searchParams.get('kind');
   const days = Number(url.searchParams.get('days') ?? 90);
   if (!Number.isInteger(days) || days < 1 || days > 400) throw new RangeError('days must be 1-400');
-  if (!['gnss', 'quakes', 'attacks'].includes(kind)) throw new RangeError('kind must be gnss, quakes or attacks');
-  const query = { kind, days };
-  if (url.searchParams.has('lat')) {
-    // optional: your position, to find the nearest quake (used for this query only, never stored)
-    const lat = Number(url.searchParams.get('lat'));
-    const lon = Number(url.searchParams.get('lon'));
-    if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180)) throw new RangeError('lat/lon out of range');
-    query.near = { lat, lon };
-  }
-  return query;
+  if (!['gnss', 'attacks'].includes(kind)) throw new RangeError('kind must be gnss or attacks');
+  return { kind, days };
 }
 
-export async function history(env, { kind, days, near }, now = new Date()) {
+export async function history(env, { kind, days }, now = new Date()) {
   const db = await openDb(env); // before the first snapshot: empty tables, not "no such table"
   const since = new Date(now - days * 86400000);
   const sinceDate = since.toISOString().slice(0, 10);
@@ -273,26 +252,10 @@ export async function history(env, { kind, days, near }, now = new Date()) {
     const { results } = await db.prepare('SELECT date, zone, high, medium FROM gnss_daily WHERE date >= ? ORDER BY date').bind(sinceDate).all();
     return { days: results };
   }
-  if (kind === 'attacks') {
-    const { results } = await db.prepare(
-      'SELECT date, origin, origin_name AS name, SUM(pct) AS pct FROM attacks_daily WHERE date >= ? GROUP BY date, origin ORDER BY date',
-    ).bind(sinceDate).all();
-    return { days: results };
-  }
-  const [daily, biggest] = await db.batch([
-    db.prepare("SELECT date(time / 1000, 'unixepoch') AS date, COUNT(*) AS n, MAX(mag) AS maxMag FROM quakes WHERE time >= ? GROUP BY 1 ORDER BY 1").bind(since.getTime()),
-    db.prepare('SELECT time, mag, place, lat, lon FROM quakes WHERE time >= ? ORDER BY mag DESC LIMIT 5').bind(now - 30 * 86400000),
-  ]);
-  const out = { days: daily.results, biggest30d: biggest.results };
-  if (near) {
-    // Nearest quake of the last 365 days. Flat-map distance (longitude scaled by cos(lat))
-    // is plenty to pick the closest one; the dashboard computes the exact km.
-    const k = Math.cos((near.lat * Math.PI) / 180);
-    out.nearest365d = await db.prepare(
-      'SELECT time, mag, place, lat, lon FROM quakes WHERE time >= ?1 ORDER BY (lat - ?2) * (lat - ?2) + ((lon - ?3) * ?4) * ((lon - ?3) * ?4) LIMIT 1',
-    ).bind(now - 365 * 86400000, near.lat, near.lon, k).first();
-  }
-  return out;
+  const { results } = await db.prepare(
+    'SELECT date, origin, origin_name AS name, SUM(pct) AS pct FROM attacks_daily WHERE date >= ? GROUP BY date, origin ORDER BY date',
+  ).bind(sinceDate).all();
+  return { days: results };
 }
 
 // ---------- settings (personal data) ----------
@@ -429,21 +392,40 @@ async function tomtom(env, cell, now) {
 }
 
 // ---------- AI briefing (Workers AI) ----------
-// The page sends what its panels show right now; a small model turns it into 2-3 sentences.
-// Free plan: 10,000 "neurons" a day; one briefing costs about 75 (see BRIEF_MODEL).
+// The page sends what its panels show right now. The model answers in JSON (Workers AI "JSON mode",
+// response_format json_schema): a 1-3 sentence summary, plus three short lists the page shows when
+// you expand the briefing card.
+// Free plan: 10,000 "neurons" a day; one briefing costs about 110 (see BRIEF_MODEL).
 
-// Llama 3.3 70B: much better judgement than the 8B model. ~75 neurons a briefing, so ~100 a day fit the free 10,000.
+// Llama 3.3 70B: much better judgement than the 8B model, and it supports JSON mode.
+// ~2,000 tokens in + ~250 out = ~110 neurons a briefing, so ~90 a day fit the free 10,000.
 const BRIEF_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
-const MAX_BRIEF_CHARS = 6000;
+const MAX_BRIEF_CHARS = 7000;
+export const MAX_BRIEF_ITEMS = 3;
 const BRIEF_RULES = [
-  "You are MIAP, the personal assistant of Mihai, who lives in Brussels. From the dashboard readouts, write a briefing of at most 3 short sentences (60 words max). No greeting, no lists, no markdown.",
+  'You are MIAP, the personal assistant of Mihai, who lives in Brussels. From the dashboard readouts, write his briefing as JSON.',
+  '"summary": at most 3 short sentences (60 words max). No greeting, no markdown.',
+  `"updates": up to ${MAX_BRIEF_ITEMS} notable facts from the readouts right now (delays, weather, air, prices, news), each under 15 words.`,
+  `"upcoming": up to ${MAX_BRIEF_ITEMS} things coming up, each with its time or date from the readouts (next trip, sunset, next day off, school holidays).`,
+  `"actions": up to ${MAX_BRIEF_ITEMS} concrete things he should do, only when a readout gives the reason (what to wear or bring, when to leave). An empty list when nothing needs doing.`,
   'First think about what matters at this local day and time: weekday mornings = getting to work; weekday afternoons and evenings = getting home; weekends = weather, being out and about, the world.',
   'Never mention work or the commute to work on a Saturday or Sunday.',
-  'Lead with whatever should change what he does next: a delay, cancellation or closure on his way, rain or cold (say what to wear or bring), poor air, a quake near him.',
-  'If nothing needs action, say that in a few words, then give the single most notable news or world item.',
+  'The summary leads with whatever should change what he does next: a delay, cancellation or closure on his way, rain or cold (say what to wear or bring), poor air.',
+  'If nothing needs action, the summary says that in a few words, then gives the single most notable news or world item.',
   'Be specific: use the names, times and numbers from the readouts. Use only facts from the readouts; never invent anything. Skip readouts with nothing notable.',
   'Voice: calm, dry and confident, like JARVIS talking to Tony Stark. Speak to Mihai directly and tell him what matters, never just list data.',
 ].join(' ');
+
+const BRIEF_SCHEMA = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    updates: { type: 'array', items: { type: 'string' }, maxItems: MAX_BRIEF_ITEMS },
+    upcoming: { type: 'array', items: { type: 'string' }, maxItems: MAX_BRIEF_ITEMS },
+    actions: { type: 'array', items: { type: 'string' }, maxItems: MAX_BRIEF_ITEMS },
+  },
+  required: ['summary', 'updates', 'upcoming', 'actions'],
+};
 
 export function briefingMessages(body) {
   const panels = body?.panels;
@@ -457,12 +439,35 @@ export function briefingMessages(body) {
   return [{ role: 'system', content: BRIEF_RULES }, { role: 'user', content: readouts }];
 }
 
+// The model's answer -> { summary, updates, upcoming, actions }. Workers AI hands JSON-mode answers
+// back either already parsed or as JSON text, depending on the model, so both are read here.
+export function parseBrief(response) {
+  let brief = response;
+  if (typeof response === 'string') {
+    try {
+      brief = JSON.parse(response);
+    } catch {
+      throw new Error('Workers AI answered with text that is not JSON');
+    }
+  }
+  if (typeof brief?.summary !== 'string' || !brief.summary.trim()) throw new Error('Workers AI returned no summary');
+  const list = (key) => {
+    const items = brief[key];
+    if (!Array.isArray(items) || items.some((item) => typeof item !== 'string')) throw new Error(`Workers AI returned no "${key}" list`);
+    return items.map((item) => item.trim()).filter(Boolean).slice(0, MAX_BRIEF_ITEMS);
+  };
+  return { summary: brief.summary.trim(), updates: list('updates'), upcoming: list('upcoming'), actions: list('actions') };
+}
+
 export async function briefing(env, request) {
   if (request.method !== 'POST') throw new RangeError(`${request.method} not allowed`);
   if (!env.AI) throw new Error('Workers AI is not bound to this Worker as "AI" (see wrangler.jsonc)');
-  const out = await env.AI.run(BRIEF_MODEL, { messages: briefingMessages(await request.json()), max_tokens: 160 });
-  if (typeof out?.response !== 'string' || !out.response.trim()) throw new Error('Workers AI returned no text');
-  return { text: out.response.trim() };
+  const out = await env.AI.run(BRIEF_MODEL, {
+    messages: briefingMessages(await request.json()),
+    response_format: { type: 'json_schema', json_schema: BRIEF_SCHEMA },
+    max_tokens: 400,
+  });
+  return parseBrief(out?.response);
 }
 
 // ---------- phone alerts (Web Push) ----------
@@ -525,19 +530,7 @@ export async function pushTest(env, request) {
   return { sent: await notify(env, [{ key: `test|${at}`, title: 'MIAP alerts are on', body: `Test sent ${at.slice(11, 16)} UTC.` }]) };
 }
 
-// Cron jobs. Each part runs even if another fails; failures are re-thrown so they show in the logs.
-export async function hourly(env, now) {
-  const results = await Promise.allSettled([
-    snapshot(env, now),
-    (async () => {
-      const config = await readSetting(await openDb(env), 'commute');
-      if (config) await notify(env, quakeEvents(await getJson(QUAKES_URL), config.home, now), now.getTime());
-    })(),
-  ]);
-  const failed = results.filter((r) => r.status === 'rejected').map((r) => r.reason.message);
-  if (failed.length) throw new Error(failed.join(' | '));
-}
-
+// Cron, every 5 minutes: commute alerts (commuteEvents only asks Transitous inside the weekday windows).
 export async function everyFiveMinutes(env, now) {
   const config = await readSetting(await openDb(env), 'commute');
   if (!config) return; // no addresses saved yet
@@ -602,7 +595,7 @@ export default {
     let failure = null;
     try {
       if (event.cron === '*/5 * * * *') await everyFiveMinutes(env, now);
-      else await hourly(env, now);
+      else await snapshot(env, now);
     } catch (err) {
       failure = err;
     }

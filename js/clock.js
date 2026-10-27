@@ -1,4 +1,4 @@
-// Clock panel: local time, UTC, today's date and the ISO week number.
+// Chronometer: local time, UTC, today's date and the ISO week number.
 import { esc } from './ui.js';
 
 // ISO 8601 week (used across Europe): weeks start on Monday, and week 1 is the week with the
@@ -11,14 +11,12 @@ export function isoWeek(year, month, day) {
   return { year: d.getUTCFullYear(), week: Math.ceil(((d - yearStart) / 86400000 + 1) / 7) };
 }
 
+// Compact: local time (seconds smaller), then one line with UTC, the date and the week.
 export function renderClock(now) {
   const w = isoWeek(now.getFullYear(), now.getMonth() + 1, now.getDate());
-  const date = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const [hm, sec] = [now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }), String(now.getSeconds()).padStart(2, '0')];
+  const date = `${now.toLocaleDateString('en-GB', { weekday: 'short' })} ${now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
   return `
-    <div class="big">${esc(now.toLocaleTimeString('en-GB', { hour12: false }))}</div>
-    <table>
-      <tr><td>UTC</td><td>${now.toISOString().slice(11, 19)}</td></tr>
-      <tr><td>DATE</td><td>${esc(date)}</td></tr>
-      <tr><td>WEEK</td><td>Week ${w.week} of ${w.year}</td></tr>
-    </table>`;
+    <div class="time">${esc(hm)}<span class="sec">:${sec}</span></div>
+    <p class="tele"><span class="mono">UTC ${now.toISOString().slice(11, 19)}</span> · ${esc(date)} · Week ${w.week}</p>`;
 }

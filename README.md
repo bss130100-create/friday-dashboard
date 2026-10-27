@@ -7,20 +7,23 @@ plus the few helpers the page needs, and it sits behind a **Cloudflare Access lo
 **Live (login):** https://friday-relay.mcioroianu2.workers.dev
 
 ## Panels and how they work
-Panels are grouped in five tabs: **Time** (AI briefing, chronometer, days off, electricity, sun & moon), **Commute** (where I am, commute),
-**Weather** (atmosphere, air quality & pollen), **News** (newsfeed, topic of the week) and **Global events**
-(roads & rail, GNSS, cyber attacks, seismic, outages, orbital tracking, archive). The open tab is in the address (`#commute`), so a bookmark opens it.
+Panels are grouped in five tabs: **Today** (AI briefing, days off, holidays, commute, chronometer, electricity, sun & moon), **Commute** (where I am, phone alerts, commute),
+**Weather** (atmosphere, temperature, wind and rain maps, air quality & pollen) and **World** (newsfeed, topic of the week, roads & rail, GNSS, cyber attacks,
+outages, orbital tracking, archive), plus **System**. The open tab is in the address (`#commute`), so a bookmark opens it.
+Cards with more detail open in place (the button under them); the open state survives the next refresh.
 
 | Panel | Source | Refresh | What happens |
 |---|---|---|---|
-| AI briefing | Workers AI (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`) via the Worker | 1 h, or **Brief me** | The text the other panels show (commute, where I am, roads & rail, weather, air, sun, quakes, news, topic) goes to the Worker's `/briefing`; Llama 3.3 70B turns it into at most 3 sentences, action first, aware of the day and time (to work on weekday mornings, home in the evening, nothing about work at weekends). Panels in error are left out, and so is the work commute on Saturday and Sunday. Free plan: 10,000 neurons a day, one briefing costs about 75. |
-| Chronometer | your device clock | 1 s | Local time, UTC, today's date and the **ISO week number** (weeks start Monday; week 1 holds the year's first Thursday). |
-| Days off | [OpenHolidays API](https://www.openholidaysapi.org) (free, no key) | 6 h | Days to the next Belgian public holiday, the next long weekend, the French- and Dutch-speaking school holidays (both run in Brussels), and every public holiday of the next 12 months with what it means for a Mon–Fri week: long weekend, one day of leave for a 4-day weekend (bridge day), midweek, or a weekend day (Belgian law then gives a replacement day). Easter and Pentecost Sunday are left out: they are not among Belgium's 10 paid holidays. |
+| AI briefing | Workers AI (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`) via the Worker | 1 h, or **Brief me** | The text the other panels show (commute, where I am, roads & rail, weather, air, sun, days off, holidays, electricity, news, topic) goes to the Worker's `/briefing`; Llama 3.3 70B answers in JSON (Workers AI JSON mode): a summary of at most 3 sentences, action first, aware of the day and time (to work on weekday mornings, home in the evening, nothing about work at weekends), plus up to 3 updates, 3 things coming up and 3 recommended actions, which open under the summary. Panels in error are left out, and so is the work commute on Saturday and Sunday. The logo pulses while MIAP is writing it. Free plan: 10,000 neurons a day, one briefing costs about 110. |
+| Chronometer | your device clock | 1 s | Local time, then UTC, today's date and the **ISO week number** (weeks start Monday; week 1 holds the year's first Thursday). |
+| Days off | [OpenHolidays API](https://www.openholidaysapi.org) (free, no key) | 6 h | Days to the next Belgian public holiday, what that day means for a Mon–Fri week, and the next long weekend. Easter and Pentecost Sunday are left out: they are not among Belgium's 10 paid holidays. |
+| Holidays | OpenHolidays (same load as Days off) | 6 h | One timeline of the next 12 months: every public holiday with what it means for a Mon–Fri week (long weekend, one day of leave for a 4-day weekend, midweek, or a weekend day that gives a replacement day) and the French- and Dutch-speaking school holidays (both run in Brussels; one entry when the dates match). The first 4 show, **Show all** opens the rest. |
+| Commute (Today) | the Commute tab's load | 5 min | One sentence first: a cancelled or 5+ min late trip in the next hour on the routes that matter now (to work before noon, home after), or "No delays or cancellations". Then the next departure per route. On weekends: no work commute. |
 | Electricity · Belgium | Sibelga rate periods + [Energy-Charts](https://www.energy-charts.info) (Fraunhofer ISE, CC BY 4.0) via the Worker + OpenHolidays | 15 min (Worker caches 30 min) | Made for a fixed-price contract with a day/night (bi-horaire) meter in Brussels: whether the cheap night rate is on now and when it changes (night = 22:00–07:00 on weekdays, all day on weekends and public holidays, per Brugel), plus the forecast renewable share of Belgian demand per hour (bars; over 100% = Belgium exports the surplus) and the greenest 3-hour window. |
 | Topic of the week | `data/topic.json` in this repo | 1 h | This week's topic, a fact of the day (rotates daily from the `start` date) and a watch list. Ticks are saved in this browser only. A new topic = Claude edits `data/topic.json` and pushes. |
 | Commute · public transport | [Transitous](https://transitous.org) (free community journey planner, data from SNCB, STIB, De Lijn, TEC…) | 5 min | Four routes: Here (your current GPS position) → Work 1, Here → Work 2, Work 1 → Home, Work 2 → Home, each showing the 2 fastest of the next 6 trips. Door to door with trains, buses, trams, metro and walking, live delays and cancellations, and "leave in N min". **Addresses are typed once under *setup* and saved in MIAP's private database (D1, behind the login), so every device you log in from has them. They are never in this public repo.** The Worker also checks the Access login token itself before reading or saving them. Transitous receives them to plan the trips. |
 | Where I am · way home | your phone's GPS + Transitous | 2 min | Your precise position (GPS on a phone, Wi-Fi on a laptop) with its accuracy, the nearest street address, the distance to home, and the next trips home with "leave in N min". Needs the home address from Commute setup. |
-| Phone alerts | the Worker's cron + Transitous, iRail, USGS → Web Push | 5 min / 1 h | Pushes to your phone, once per event. Weekdays 08:00–09:00 (routes to work) and 15:30–17:30 (routes home), Brussels time: a trip leaving in the next hour is cancelled, runs 5+ min late, or a live SNCB disruption names one of its stations. Any time (hourly): an M5+ earthquake within 500 km of home in the last 2 h. See *Phone alerts* below. |
+| Phone alerts | the Worker's cron + Transitous, iRail → Web Push | 5 min | Pushes to your phone, once per event. Weekdays 08:00–09:00 (routes to work) and 15:30–17:30 (routes home), Brussels time: a trip leaving in the next hour is cancelled, runs 5+ min late, or a live SNCB disruption names one of its stations. See *Phone alerts* below. |
 | Atmosphere | [Open-Meteo](https://open-meteo.com) | 10 min | Current weather at your location. |
 | Temperature map · Wind map | [Open-Meteo](https://open-meteo.com) | 30 min | Current temperature (coloured 5 °C bands) and wind (arrow = where it blows to, number = km/h) on a 7 × 7 grid of points 20 km apart, ~120 km around you. All 49 points come in ONE request, which Open-Meteo counts as about one call of its free 10,000 a day. |
 | Rain radar | [RainViewer](https://www.rainviewer.com) | 10 min | The latest radar picture (at most 10 min old) over the same area. Free for personal use since 2026 only past radar, one colour scheme and detail up to zoom 7, so it looks soft when you zoom far in. |
@@ -31,25 +34,24 @@ Panels are grouped in five tabs: **Time** (AI briefing, chronometer, days off, e
 | Roads & rail around you | [TomTom](https://developer.tomtom.com) traffic incidents via the Worker + SNCB disruptions via [iRail](https://api.irail.be) | 15 min | Roads: closures, accidents, jams and roadworks in a ~78 × 78 km box around you, worst first, with delay and length. TomTom's free plan is 2,500 calls a month, so the Worker caches each ~20 km cell for 30 min and only that rounded cell is sent. Rail: current disruptions and planned works whose title names a station within 30 km of you, plus how many others there are in Belgium. Map (~50 km across, centred on you, zoom and drag): red = closed roads, dashed red = live rail disruptions (drawn station to station: iRail names the stretch, not the track), orange = jams, accidents, lane closures. Tap a line for details. |
 | GNSS interference | [GPSJam](https://gpsjam.org), prepared daily by a GitHub Action | 1 h (data changes daily) | Airliners broadcast how accurate their GPS fix is. Where many aircraft report a bad fix, GPS is being jammed or spoofed. Red = >10% of aircraft affected. Hotspots are grouped into known zones (Baltic, Black Sea, Eastern Med, …). |
 | Cyber attack vectors | [Cloudflare Radar](https://radar.cloudflare.com), via the Worker | 30 min | Top country→country routes of HTTP attacks Cloudflare blocked in the last 24 h. "Origin" is where attack traffic came *from* (often hijacked machines), not necessarily where the attacker is. |
-| Seismic activity | [USGS](https://earthquake.usgs.gov) | 5 min | Magnitude 2.5+ quakes of the last 24 h, the biggest, and the nearest to you. |
 | Internet outages | [IODA](https://ioda.inetintel.cc.gatech.edu) (Georgia Tech) | 15 min | Countries where internet reachability dropped in the last 24 h, and which signal saw it (BGP routes, active probing, Google traffic). |
-| Archive · trends | your Worker's D1 database (`/history`) | 1 h | MIAP's memory: GNSS jamming per zone (120 days, top 4 zones, change vs previous week), earthquakes per day + biggest in 30 days + nearest to you in a year, and attack origin countries' share per day. Hover a chart for the exact value. Setup below. |
+| Archive · trends | your Worker's D1 database (`/history`) | 1 h | MIAP's memory: GNSS jamming per zone (120 days, top 4 zones, change vs previous week) and attack origin countries' share per day. Hover a chart for the exact value. Setup below. |
 
 All maps show land, country borders (Natural Earth 1:110m) and country names. Names keep a readable size and more appear as you zoom in.
 
-**Zoom (all four maps):** the + / − / ⟲ buttons, double-click, pinch on the phone, or pinch / Ctrl+scroll on a laptop. Drag to move around when zoomed. The zoom stays when the data refreshes.
+**Zoom (all three world maps):** the + / − / ⟲ buttons, double-click, pinch on the phone, or pinch / Ctrl+scroll on a laptop. Drag to move around when zoomed. The zoom stays when the data refreshes.
 
-The header shows **ALL SYSTEMS NOMINAL**, or how many panels are online when some fail.
+The header says **All N panels live**, names the panels that need attention when some fail (amber), or how many are still connecting; the segments under it show each panel.
 Your location (browser permission) goes to Open-Meteo, and to Transitous for *Where I am*. It is never stored.
 
 ## Errors are loud on purpose
-Every panel fails on its own and shows the reason in red (e.g. `HTTP 503 from earthquake.usgs.gov`).
+Every panel fails on its own and shows the reason in red (e.g. `HTTP 503 from api.open-meteo.com`).
 Nothing falls back to fake or old data. `js/http.js` turns any non-2xx response or timeout into an error,
 and `runPanel()` in `js/ui.js` catches it and prints it in that panel. Details also go to the browser console.
 
 ## CORS, and why some data goes through helpers
 Browsers only let our page read another site's answer if that site sends the header
-`Access-Control-Allow-Origin` (the **CORS** rule). CelesTrak, Open-Meteo, Transitous, USGS and IODA send it.
+`Access-Control-Allow-Origin` (the **CORS** rule). CelesTrak, Open-Meteo, Transitous and IODA send it.
 Four sources don't, so they go through a helper:
 
 | Source | Helper | Why this helper |
@@ -82,7 +84,7 @@ The **System status** panel shows MIAP's own health: Worker requests today again
 over 24 h, Workers AI neurons against the free 10,000 a day, and the D1 database's size and rows read/written against
 its free limits (from Cloudflare's GraphQL Analytics API, asked at most every 10 min). It also lists which routes answered
 with errors and how the scheduled jobs ran; MIAP records those itself in D1 (`route_errors`, `cron_runs`, 7 days).
-The **Delete data older than 30 days** button (asks first, needs your login) removes old quakes, GNSS and attack days,
+The **Delete data older than 30 days** button (asks first, needs your login) removes old GNSS and attack days,
 error counts and cache rows; saved addresses and phone alerts stay. Archive · trends then only goes back 30 days.
 
 It needs two Worker secrets (Worker → **Settings** → **Variables and Secrets** → **Add** → type **Secret**):
@@ -100,7 +102,7 @@ Until then the roads half of *Roads & rail* says `TOMTOM_KEY secret is not set`.
 ### MIAP memory: trends
 The **Archive · trends** panel reads history the Worker saves into a free Cloudflare **D1** database
 (SQL, 5 GB and 100k writes/day free; MIAP uses about 2k writes/day). Every hour the Worker's
-`scheduled()` handler stores: every M2.5+ earthquake (USGS), GNSS interference per hot zone
+`scheduled()` handler stores: GNSS interference per hot zone
 (from `data/gpsjam.json`, read through the Worker's own assets), and the day's attack routes (Radar).
 Tables are created on the first run, and the first run also loads 120 days of GNSS history from `data/gnss-backfill.json`.
 The database binding (`DB`) and the hourly cron (`0 * * * *`) are in `wrangler.jsonc`.
@@ -134,9 +136,9 @@ js/zoom.js            zoom and drag for the maps
 js/history.js         trends panel (reads /history); js/charts.js tiny SVG charts
 js/countries-data.js  country centre points for the maps; js/labels-data.js country names
 js/<panel>.js         one file per data source: clock, satellites, weather, airquality, astro,
-                      news, gpsjam, attacks, quakes, outages, topic, commute, daysoff, power (+ geo, location helpers)
+                      news, gpsjam, attacks, outages, topic, commute, daysoff, power (+ geo, location helpers)
 relay/worker.js       the Cloudflare Worker: helpers (news, attacks, power), memory, settings, roads, briefing, push endpoints + cron
-relay/alerts.js       when to push (commute windows, delays, cancellations, rail disruptions, earthquakes)
+relay/alerts.js       when to push (commute windows, delays, cancellations, rail disruptions)
 relay/push.js         Web Push sender (VAPID + encryption, no library)
 sw.js                 service worker: shows the alerts on the phone; js/alerts.js = the Enable alerts panel
 wrangler.jsonc        how Cloudflare deploys it (site files, database, AI, hourly + 5-minute jobs); .assetsignore = files not served
@@ -165,7 +167,7 @@ Open the live link in **Safari**, log in, then Share → **Add to Home Screen**.
 
 ## Credits
 Land shapes: Natural Earth (public domain). Maps: © OpenStreetMap contributors (tiles), Leaflet, RainViewer (radar). Country centres: mledoze/countries (ODbL).
-Data: OpenHolidays, Energy-Charts (Fraunhofer ISE, CC BY 4.0), Transitous (© OpenStreetMap contributors, [sources](https://transitous.org/sources/)), CelesTrak, Open-Meteo / Copernicus CAMS, Bing News, GPSJam, Cloudflare Radar, USGS, IODA (Georgia Tech).
+Data: OpenHolidays, Energy-Charts (Fraunhofer ISE, CC BY 4.0), Transitous (© OpenStreetMap contributors, [sources](https://transitous.org/sources/)), CelesTrak, Open-Meteo / Copernicus CAMS, Bing News, GPSJam, Cloudflare Radar, IODA (Georgia Tech).
 
 ## License
 MIT, see [LICENSE](LICENSE). `vendor/satellite.es.js` keeps its own MIT license; map data is public domain (Natural Earth).

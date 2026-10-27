@@ -136,21 +136,19 @@ test('wipe: only what is older than 30 days goes; the GNSS backfill does not bri
       ? Response.json({ date: '2026-10-24', regions: [{ name: 'Baltic / Kaliningrad', high: 40, medium: 12 }], cells: [] })
       : Response.json([['2026-07-01', 'Baltic / Kaliningrad', 9, 9]])),
   } };
-  globalThis.fetch = async () => new Response('down', { status: 503 }); // USGS and Radar down: only GNSS saved
-  await assert.rejects(snapshot(env, new Date(NOW)), /quakes: HTTP 503/); // first run: backfill + today
+  await assert.rejects(snapshot(env, new Date(NOW)), /attacks: RADAR_TOKEN secret is not set/); // no Radar: only GNSS saved (first run: backfill + today)
   const db = env.DB;
-  await db.prepare('INSERT INTO quakes VALUES (?, ?, 5, ?, 0, 0, 10)').bind('old', NOW - 40 * 86400000, 'Old quake').run();
-  await db.prepare('INSERT INTO quakes VALUES (?, ?, 5, ?, 0, 0, 10)').bind('new', NOW - 86400000, 'New quake').run();
+  assert.equal(await db.prepare("SELECT name FROM sqlite_master WHERE name = 'quakes'").first(), null); // earthquakes are gone for good
   await db.prepare("INSERT INTO settings VALUES ('commute', '{}')").run();
   await recordError(env, '/roads', 500, 'old', NOW - 31 * 86400000);
   const result = await prune(env, NOW);
   assert.equal(result.before, '2026-09-25');
-  assert.deepEqual(result.deleted, { quakes: 1, gnss_daily: 1, attacks_daily: 0, route_errors: 1, cron_runs: 0, cache: 0 });
-  await assert.rejects(snapshot(env, new Date(NOW + 3600000)), /quakes: HTTP 503/); // next hour
+  assert.deepEqual(result.deleted, { gnss_daily: 1, attacks_daily: 0, route_errors: 1, cron_runs: 0, cache: 0 });
+  await assert.rejects(snapshot(env, new Date(NOW + 3600000)), /attacks: RADAR_TOKEN/); // next hour
   const { results } = await db.prepare('SELECT date FROM gnss_daily').all();
   assert.deepEqual(results, [{ date: '2026-10-24' }]);
   assert.ok(await db.prepare("SELECT 1 FROM settings WHERE key = 'commute'").first());
-  assert.equal(renderPruned(result), 'Deleted 3 rows from before 2026-09-25 (quakes 1, gnss_daily 1, route_errors 1).');
+  assert.equal(renderPruned(result), 'Deleted 2 rows from before 2026-09-25 (gnss_daily 1, route_errors 1).');
   assert.match(PRUNE_QUESTION, /only go back 30 days[^]*cannot be undone/);
 });
 
@@ -173,7 +171,7 @@ test('panel: meters against the free limits, failures in red, jobs and paths lis
   assert.match(html, /Database size \(total\)[^]*3\.5 MB \/ 5\.0 GB/);
   assert.match(html, /Database rows written today[^]*950 \/ 100,000/);
   assert.match(html, /\/roads<\/td><td class="hot">500&nbsp;×&nbsp;2/);
-  assert.match(html, /FAILED<\/span> Hourly snapshot \+ quake alerts: last 20m ago, took 950 ms · 24 runs in 24 h, avg 875 ms · <span class="hot">1 failed/);
+  assert.match(html, /FAILED<\/span> Hourly snapshot: last 20m ago, took 950 ms · 24 runs in 24 h, avg 875 ms · <span class="hot">1 failed/);
   assert.match(renderSystem({ cloudflare: { error: 'CF_API_TOKEN secret is not set' }, own: { errorsByPath: [], crons: [] } }, NOW), /ERROR: CF_API_TOKEN[^]*No error answers[^]*No scheduled runs/);
 });
 

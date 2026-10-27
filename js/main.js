@@ -1,19 +1,18 @@
 // Entry point: wires each panel to its data source and refresh interval.
-import { runPanel, showBody, showError, esc } from './ui.js';
+import { runPanel, showBody, showError, esc, toggleExpand } from './ui.js';
 import { getLocation } from './location.js';
 import { renderClock } from './clock.js';
 import { loadWeather, renderWeather } from './weather.js';
 import { loadAir, renderAir } from './airquality.js';
 import { loadAstro, renderAstro } from './astro.js';
 import { loadNews, renderNews } from './news.js';
-import { loadQuakes, renderQuakes } from './quakes.js';
 import { loadOutages, renderOutages } from './outages.js';
 import { loadGpsJam, renderGpsJam } from './gpsjam.js';
 import { loadAttacks, renderAttacks } from './attacks.js';
 import { makeZoomable } from './zoom.js';
 import { renderHistory } from './history.js';
 import { loadTopic, readWatched, toggleWatched, renderTopic } from './topic.js';
-import { geocode, readConfig, saveConfig, loadCommute, loadHere } from './commute.js';
+import { geocode, readConfig, saveConfig, loadCommute, renderCommute, commuteSummary, loadHere } from './commute.js';
 import { tabFromHash, showTab } from './tabs.js';
 import { packPanels } from './masonry.js';
 import { loadSystem, renderSystem, pruneOld, renderPruned, PRUNE_QUESTION } from './system.js';
@@ -22,7 +21,7 @@ import { drawTrafficMap, TRAFFIC_HALF_KM } from './trafficmap.js';
 import { mapPanel, resizeMaps } from './basemap.js';
 import { WEATHER_HALF_KM, loadGrid, loadRadar, paintTemperature, paintWind, paintRain, gridSummary, radarSummary } from './weathermap.js';
 import { readouts, loadBriefing } from './briefing.js';
-import { loadDaysOff, renderDaysOff } from './daysoff.js';
+import { loadDaysOff, renderDaysOff, renderHolidays } from './daysoff.js';
 import { loadPower, renderPower } from './power.js';
 import { supported, UNSUPPORTED, renderAlerts, alertState, loadPushKey, enableAlerts, sendTest } from './alerts.js';
 import { ISS_TLE_URL, GPS_TLE_URL, loadTle, parseTle, satState, visibleGps, renderSatellites } from './satellites.js';
@@ -35,6 +34,12 @@ packPanels(document.querySelector('main'));
 window.addEventListener('hashchange', () => {
   showTab(tabFromHash(window.location.hash));
   resizeMaps(); // a map drawn while its tab was hidden must re-measure itself
+});
+
+// --- expandable cards (briefing details, holidays, hourly chart): one listener for all of them
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('button.expand');
+  if (button) toggleExpand(button);
 });
 
 // Ask for location once; if it fails, the next panel refresh asks again.
@@ -62,8 +67,15 @@ let astro = null;
 runPanel('astro', async () => { astro = await loadAstro(await location()); showBody('astro', renderAstro(astro, new Date())); }, 60 * MINUTE);
 setInterval(() => astro && showBody('astro', renderAstro(astro, new Date())), MINUTE); // keep "daylight left" ticking
 
-// --- days off (OpenHolidays) and electricity prices (Energy-Charts via the Worker): no location needed
-runPanel('daysoff', async () => showBody('daysoff', renderDaysOff(await loadDaysOff(new Date()))), 6 * 60 * MINUTE);
+// --- days off + holidays timeline (one OpenHolidays load) and electricity prices (Energy-Charts via the Worker): no location needed
+runPanel('daysoff', async () => {
+  const days = await loadDaysOff(new Date()).catch((err) => {
+    showError('holidays', err); // same data, same failure
+    throw err;
+  });
+  showBody('daysoff', renderDaysOff(days));
+  showBody('holidays', renderHolidays(days));
+}, 6 * 60 * MINUTE);
 runPanel('power', async () => showBody('power', renderPower(await loadPower(new Date()))), 15 * MINUTE);
 
 // --- System tab: MIAP's own health (Worker /system) and the 30-day wipe
@@ -113,22 +125,27 @@ runPanel('rainmap', async () => {
   showBody('rainmap', radarSummary(radar, new Date()));
 }, 10 * MINUTE);
 
-// --- AI briefing: built from what the other panels show, so it waits for them to load first
-const briefMe = async () => showBody('briefing', await loadBriefing(readouts(document, new Date()), new Date()));
+// --- AI briefing: built from what the other panels show, so it waits for them to load first.
+// While MIAP is thinking, body.thinking makes the reactor pulse (style.css); one briefing at a time.
+let thinking = null;
+const briefMe = () => (thinking ??= (async () => {
+  document.body.classList.add('thinking');
+  try {
+    showBody('briefing', await loadBriefing(readouts(document, new Date()), new Date()));
+  } finally {
+    document.body.classList.remove('thinking');
+    thinking = null;
+  }
+})());
 setTimeout(() => runPanel('briefing', briefMe, 60 * MINUTE), 20 * 1000);
-document.getElementById('brief-me').addEventListener('click', () => {
-  showBody('briefing', '<p class="dim">Thinking…</p>');
-  briefMe().catch((err) => showError('briefing', err));
-});
+document.getElementById('brief-me').addEventListener('click', () => briefMe().catch((err) => showError('briefing', err)));
 
 // --- world panels (all zoomable)
-for (const id of ['quakes', 'outages', 'gpsjam', 'attacks']) makeZoomable(id);
-runPanel('quakes', async () => showBody('quakes', renderQuakes(await loadQuakes(), new Date(), knownLocation)), 5 * MINUTE);
+for (const id of ['outages', 'gpsjam', 'attacks']) makeZoomable(id);
 runPanel('outages', async () => showBody('outages', renderOutages(await loadOutages(new Date()))), 15 * MINUTE);
 runPanel('gpsjam', async () => showBody('gpsjam', renderGpsJam(await loadGpsJam(), knownLocation)), 60 * MINUTE);
 runPanel('attacks', async () => showBody('attacks', renderAttacks(await loadAttacks())), 30 * MINUTE);
-// trends: your location is optional here (only for "nearest quake in a year")
-runPanel('history', async () => showBody('history', await renderHistory(await location().catch(() => null), new Date())), 60 * MINUTE);
+runPanel('history', async () => showBody('history', await renderHistory()), 60 * MINUTE);
 
 // --- satellites: orbits (TLEs) are refreshed rarely, positions are recomputed every 2 s
 let orbits = null;
@@ -251,15 +268,25 @@ async function configFromForm() {
   return { home, works: [{ label: f.label1.value.trim(), place: place1 }, { label: f.label2.value.trim(), place: place2 }] };
 }
 
+// One load feeds the Commute tab and the Today card; a failure shows on both.
 async function refreshCommute() {
-  const config = await readConfig();
-  if (!config) {
-    setup.open = true;
-    showBody('commute', '<p class="dim">Open setup above: enter your home and work addresses once.</p>');
-    return;
+  try {
+    const config = await readConfig();
+    if (!config) {
+      setup.open = true;
+      showBody('commute', '<p class="dim">Open setup above: enter your home and work addresses once.</p>');
+      showBody('commute-today', '<p class="dim">Enter your home and work addresses once in <a href="#commute">Commute</a> setup.</p>');
+      return;
+    }
+    // trips to work start where you are now (a fresh fix, at most a minute old)
+    const plans = await loadCommute(config, await getLocation({ precise: true }));
+    const now = new Date();
+    showBody('commute', renderCommute(plans, now));
+    showBody('commute-today', commuteSummary(plans, now));
+  } catch (err) {
+    showError('commute-today', err);
+    throw err;
   }
-  // trips to work start where you are now (a fresh fix, at most a minute old)
-  showBody('commute', await loadCommute(config, await getLocation({ precise: true }), new Date()));
 }
 
 commuteForm.addEventListener('submit', async (event) => {

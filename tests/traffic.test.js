@@ -4,7 +4,8 @@ import { placesIn, stretchEnds, railShapes, parseDisturbances, parseStations, st
 import { roadColor, mapShapes } from '../js/trafficmap.js';
 import { viewBounds } from '../js/basemap.js';
 import { roadsUrl, renderRoads, renderRail, renderTraffic, loadTraffic, loadRail, moreByKind } from '../js/traffic.js';
-import { readouts, isWeekend, localNow, loadBriefing } from '../js/briefing.js';
+import { readouts, localNow, loadBriefing, renderBriefing } from '../js/briefing.js';
+import { isWeekend } from '../js/commute.js';
 
 afterEach(() => { delete globalThis.fetch; });
 
@@ -135,7 +136,7 @@ function fakeDoc(panels) {
 test('briefing: reads healthy, loaded panels only, and posts them', async () => {
   const doc = fakeDoc({
     weather: { text: '  12 °C   light rain  ' },
-    quakes: { text: 'ERROR', error: true },
+    air: { text: 'ERROR', error: true },
     news: { text: 'Scanning news for "Brussels"…' },
     commute: { text: 'Home → Office A leave in 12 min' },
   });
@@ -149,9 +150,25 @@ test('briefing: reads healthy, loaded panels only, and posts them', async () => 
   let sent;
   globalThis.fetch = async (url, init) => {
     sent = { url, method: init.method, body: JSON.parse(init.body) };
-    return Response.json({ text: 'Rain at 12 °C: take a coat.' });
+    return Response.json({ summary: 'Rain at 12 °C: take a coat.', updates: [], upcoming: [], actions: [] });
   };
-  assert.match(await loadBriefing(readouts(doc, NOW), NOW), /<p class="brief">Rain at 12 °C: take a coat\.<\/p>/);
+  const html = await loadBriefing(readouts(doc, NOW), NOW);
+  assert.match(html, /<p class="brief">Rain at 12 °C: take a coat\.<\/p>/);
+  assert.match(html, /from 1 panel · Workers AI/);
+  assert.doesNotMatch(html, /class="expand"/); // nothing to expand
   assert.deepEqual(sent, { url: '/briefing', method: 'POST', body: { now: 'Saturday 19:30', panels: { Weather: '12 °C light rain' } } });
   await assert.rejects(loadBriefing({}, NOW), /No panel data yet/);
+});
+
+test('briefing card: summary first, then updates, coming up and actions behind one expand button', () => {
+  const html = renderBriefing({
+    summary: 'S2 runs 7 min late: leave at 08:17.',
+    updates: ['Rain from 10:00, 9 °C', '<b>x</b>'],
+    upcoming: ['Sunset 17:20'],
+    actions: ['Take an umbrella'],
+  }, 9);
+  assert.match(html, /^<p class="brief">S2 runs 7 min late: leave at 08:17\.<\/p>/);
+  assert.match(html, /<div class="more"><div><h3>Updates<\/h3><ul class="brief-list"><li>Rain from 10:00, 9 °C<\/li><li>&lt;b&gt;x&lt;\/b&gt;<\/li><\/ul><h3>Coming up<\/h3>.*<h3>Recommended<\/h3><ul class="brief-list"><li>Take an umbrella<\/li><\/ul><\/div><\/div>/s);
+  assert.match(html, /<button type="button" class="expand" aria-expanded="false"><span class="closed">2 updates · 1 coming up · 1 action<\/span>/);
+  assert.match(html, /from 9 panels · Workers AI/);
 });
