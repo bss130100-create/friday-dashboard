@@ -14,6 +14,7 @@ import { loadTopic, readWatched, toggleWatched, renderTopic } from './topic.js';
 import { geocode, readConfig, saveConfig, loadCommute, renderCommute, commuteSummary, loadHere } from './commute.js';
 import { tabFromHash, showTab } from './tabs.js';
 import { packPanels } from './masonry.js';
+import { startArrange } from './arrange.js';
 import { loadSystem, renderSystem, pruneOld, renderPruned, PRUNE_QUESTION } from './system.js';
 import { loadTraffic } from './traffic.js';
 import { drawTrafficMap, TRAFFIC_HALF_KM } from './trafficmap.js';
@@ -27,9 +28,10 @@ import { supported, UNSUPPORTED, renderAlerts, alertState, loadPushKey, enableAl
 const MINUTE = 60 * 1000;
 watchFreshness();
 
-// --- sub-menus (tabs): the open one is in the address, e.g. .../#commute
+// --- sub-menus (tabs): the open one is in the address, e.g. .../#commute (System: .../#system, opened by the logo)
 showTab(tabFromHash(window.location.hash));
 packPanels(document.querySelector('main'));
+startArrange(document.querySelector('main'), resizeMaps); // Edit: your own card order on every tab; maps re-measure after Done
 // No card's id may equal a tab name (tests/tabs.test.js): the browser would scroll to that card.
 window.addEventListener('hashchange', () => {
   showTab(tabFromHash(window.location.hash));
@@ -203,7 +205,7 @@ document.getElementById('topic').addEventListener('change', (event) => {
 runPanel('here', async () => {
   const config = await readConfig();
   if (!config) {
-    showBody('here', '<p class="dim">Save your home address in Commute setup first.</p>');
+    showBody('here', '<p class="dim">Save your home address in <a href="#system">System</a> first.</p>');
     return;
   }
   showBody('here', await loadHere(await getLocation({ precise: true }), config.home, new Date()));
@@ -230,14 +232,12 @@ if (!supported(window)) {
   });
 }
 
-// --- commute: addresses typed once in the setup form, saved in MIAP's private database
-const setup = document.getElementById('commute-setup');
+// --- commute: addresses typed once in System > Commute addresses, saved in MIAP's private database
 const commuteForm = document.getElementById('commute-form');
 const formError = document.getElementById('commute-form-error');
-const found = document.getElementById('commute-found');
 
 function showFound(config) {
-  found.textContent = `Found: home = ${config.home.name}; ${config.works.map((w) => `${w.label} = ${w.place.name}`).join('; ')}`;
+  showBody('addresses', `<p class="dim small">Saved: home = ${esc(config.home.name)}; ${config.works.map((w) => `${esc(w.label)} = ${esc(w.place.name)}`).join('; ')}</p>`);
 }
 
 async function configFromForm() {
@@ -253,9 +253,9 @@ async function refreshCommute() {
   try {
     const config = await readConfig();
     if (!config) {
-      setup.open = true;
-      showBody('routes', '<p class="dim">Enter your home and work addresses once, under Home and work addresses above.</p>');
-      showBody('commute-today', '<p class="dim">Enter your home and work addresses once on the <a href="#commute">Commute</a> tab.</p>');
+      const ask = '<p class="dim">Enter your home and work addresses once in <a href="#system">System</a>.</p>';
+      showBody('routes', ask);
+      showBody('commute-today', ask);
       return;
     }
     // trips to work start where you are now (a fresh fix, at most a minute old)
@@ -272,12 +272,12 @@ async function refreshCommute() {
 commuteForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   formError.textContent = '';
-  found.textContent = 'Looking up addresses…';
+  showBody('addresses', '<p class="dim small">Looking up addresses…</p>');
   let config;
   try {
     config = await saveConfig(await configFromForm());
   } catch (err) {
-    found.textContent = '';
+    showBody('addresses', '<p class="dim small">Not saved.</p>');
     formError.textContent = err.message;
     return;
   }
@@ -288,7 +288,7 @@ commuteForm.addEventListener('submit', async (event) => {
 localStorage.removeItem('commuteRoutes'); // the old browser-only copy; the database has them now
 readConfig()
   .then((saved) => {
-    if (!saved) return;
+    if (!saved) return showBody('addresses', '<p class="dim small">Nothing saved yet: fill in the form.</p>');
     const f = commuteForm.elements;
     f.home.value = saved.home.name;
     saved.works.forEach((w, i) => {
@@ -297,5 +297,5 @@ readConfig()
     });
     showFound(saved);
   })
-  .catch((err) => { formError.textContent = err.message; });
+  .catch((err) => showError('addresses', err));
 runPanel('routes', refreshCommute, 5 * MINUTE);

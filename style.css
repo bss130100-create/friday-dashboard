@@ -357,6 +357,39 @@ p.small { margin: var(--s2) 0 0; }
 .time .sec { font: var(--t-title3); color: var(--dim); }
 .tele { margin: var(--s1) 0 0; font: var(--t-footnote); color: var(--dim); }
 
+/* ---------- System and Edit mode ---------- */
+/* the logo opens System (MIAP's health and settings); its name lights up while System is open */
+a.brand { align-self: flex-start; min-height: var(--tap); color: var(--fg); }
+a.brand:hover { color: var(--fg); }
+a.brand.on span { color: var(--cyan); }
+.title-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); }
+/* "Edit" is a plain text button, like iOS; "Done" is filled so you can see the mode is on */
+#edit-order { padding: 0 var(--s4); background: none; font: var(--t-body); font-weight: 600; }
+body.editing #edit-order { background: var(--cyan); color: var(--on-cyan); }
+
+/* Edit mode (js/arrange.js): every card folds to its label row with a grip, in one column */
+.grip, .arrange { display: none; }
+body.editing main { min-height: 0; grid-template-columns: minmax(0, 640px); }
+body.editing main > section:not([hidden]) {
+  grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s2); min-height: 56px; padding: 0 0 0 var(--s4);
+  animation: none; -webkit-user-select: none; user-select: none;
+}
+body.editing main > section > :not(h2, .grip) { display: none; }
+body.editing main > section > h2 { flex: 1; margin: 0; }
+body.editing .grip {
+  display: grid; place-items: center; flex: none; width: var(--tap); height: var(--tap); margin-right: var(--s1); padding: 0;
+  background: none; color: var(--dim); cursor: grab; touch-action: none; /* the finger drags the row, not the page */
+}
+.grip svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.grip:active { transform: none; }
+/* the row you are moving: lifted above the others with a thin lit edge (glow at most 3px) */
+section.lifted { z-index: 2; background: var(--fill); box-shadow: 0 0 0 1px var(--cyan), 0 0 3px var(--glow), 0 12px 24px rgba(0, 0, 0, .5); }
+section.lifted .grip { color: var(--cyan); cursor: grabbing; }
+body.editing .arrange { display: flex; justify-content: center; max-width: 640px; margin: var(--s4) 0 0; }
+#reset-order { background: none; font-weight: 400; }
+#order-msg { margin: var(--s3) 0 0; text-align: center; }
+#order-msg:empty { display: none; }
+
 /* Reduce Motion: no animations, no animated transitions */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

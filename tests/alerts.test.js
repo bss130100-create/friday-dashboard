@@ -120,7 +120,7 @@ test('cron: the 5-minute job does nothing until addresses are saved', async () =
   const env = { DB: fakeD1() };
   globalThis.fetch = async (url) => { throw new Error(`unexpected ${url}`); };
   await worker.scheduled({ cron: '*/5 * * * *', scheduledTime: MON('07:00').getTime() }, env);
-  assert.equal(await settings(env, new Request('https://miap.test/settings/commute')), null);
+  assert.equal(await settings(env, new Request('https://miap.test/settings/commute'), 'commute'), null);
 });
 
 // ---------- the page side (js/alerts.js) ----------
