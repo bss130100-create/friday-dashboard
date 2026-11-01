@@ -203,9 +203,20 @@ document.getElementById('topic').addEventListener('change', (event) => {
   }
 });
 
+// --- commute addresses: they only change through the form in System, so they are read once, not on
+// every refresh (that was 42 Worker requests an hour). shortcut: a change saved on another device shows after a reload.
+let configPromise = null;
+function commuteConfig() {
+  configPromise ??= readConfig().catch((err) => {
+    configPromise = null;
+    throw err;
+  });
+  return configPromise;
+}
+
 // --- where I am: precise GPS fix (phone) + the way home from here
 runPanel('here', async () => {
-  const config = await readConfig();
+  const config = await commuteConfig();
   if (!config) {
     showBody('here', '<p class="dim">Save your home address in <a href="#system">System</a> first.</p>');
     return;
@@ -253,7 +264,7 @@ async function configFromForm() {
 // One load feeds the Commute tab and the Today card; a failure shows on both.
 async function refreshCommute() {
   try {
-    const config = await readConfig();
+    const config = await commuteConfig();
     if (!config) {
       const ask = '<p class="dim">Enter your home and work addresses once in <a href="#system">System</a>.</p>';
       showBody('routes', ask);
@@ -278,6 +289,7 @@ commuteForm.addEventListener('submit', async (event) => {
   let config;
   try {
     config = await saveConfig(await configFromForm());
+    configPromise = Promise.resolve(config);
   } catch (err) {
     showBody('addresses', '<p class="dim small">Not saved.</p>');
     formError.textContent = err.message;
@@ -288,7 +300,7 @@ commuteForm.addEventListener('submit', async (event) => {
 });
 
 localStorage.removeItem('commuteRoutes'); // the old browser-only copy; the database has them now
-readConfig()
+commuteConfig()
   .then((saved) => {
     if (!saved) return showBody('addresses', '<p class="dim small">Nothing saved yet: fill in the form.</p>');
     const f = commuteForm.elements;

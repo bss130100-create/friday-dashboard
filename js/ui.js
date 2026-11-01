@@ -110,12 +110,13 @@ export function watchFreshness() {
 
 export function showBody(id, html) {
   const el = panel(id);
+  const changed = panelState(el) !== 'ok'; // the header only depends on each panel's state
   el.classList.remove('error', 'stale');
   el.querySelector('.body').innerHTML = html;
   el.dataset.updated = String(Date.now());
   el.querySelector('.status').textContent = '';
   syncExpanders(el);
-  updateSystems();
+  if (changed) updateSystems(); // not on every clock tick: that rebuilt the header once a second
 }
 
 export function showError(id, err) {
@@ -128,15 +129,22 @@ export function showError(id, err) {
 }
 
 // Run `task` now and then every `everyMs`. Errors are shown in the panel, never swallowed.
+// While the page is hidden (background tab, phone locked) refreshes wait; a missed one runs as soon as it is back.
 export function runPanel(id, task, everyMs) {
   panel(id).dataset.every = String(everyMs);
+  let missed = false;
   const tick = async () => {
     try {
       await task();
     } catch (err) {
       showError(id, err);
     }
+    setTimeout(() => (document.hidden ? (missed = true) : tick()), everyMs);
   };
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden || !missed) return;
+    missed = false;
+    tick();
+  });
   tick();
-  setInterval(tick, everyMs);
 }

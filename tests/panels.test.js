@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { project, worldMap } from '../js/worldmap.js';
 import { parseAir, aqiBand, pollenBand, renderAir } from '../js/airquality.js';
 import { moonPhase, parseAstro, renderAstro } from '../js/astro.js';
-import { freshness } from '../js/ui.js';
+import { freshness, runPanel } from '../js/ui.js';
 import { parseGpsJam, renderGpsJam } from '../js/gpsjam.js';
 import { attacksUrl, parseAttacks, renderAttacks } from '../js/attacks.js';
 import { AIR_JSON, ASTRO_JSON, RADAR_JSON } from './fixtures.js';
@@ -84,4 +84,32 @@ test('freshness: no line while current, "Last updated" once older than 2 refresh
 test('moon picture is named by its phase for screen readers', () => {
   const a = parseAstro(ASTRO_JSON);
   assert.match(renderAstro(a, new Date('2026-10-26T04:12:00Z')), /role="img" aria-label="Moon: Full moon"/i);
+});
+
+test('runPanel: no refresh while the page is hidden, the missed one runs when it is back', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const onVisible = [];
+  globalThis.document = { hidden: false, getElementById: () => ({ dataset: {} }), addEventListener: (type, fn) => onVisible.push(fn) };
+  t.after(() => delete globalThis.document);
+  const settle = () => new Promise((resolve) => setImmediate(resolve));
+  let runs = 0;
+  runPanel('x', async () => { runs++; }, 1000);
+  await settle();
+  t.mock.timers.tick(1000);
+  await settle();
+  assert.equal(runs, 2); // visible: every 1000 ms
+  document.hidden = true;
+  t.mock.timers.tick(5000);
+  await settle();
+  assert.equal(runs, 2); // hidden: waits
+  document.hidden = false;
+  onVisible.forEach((fn) => fn());
+  await settle();
+  assert.equal(runs, 3); // back on screen: refreshes at once
+  onVisible.forEach((fn) => fn());
+  await settle();
+  assert.equal(runs, 3); // and only once
+  t.mock.timers.tick(1000);
+  await settle();
+  assert.equal(runs, 4); // then on its normal rhythm again
 });

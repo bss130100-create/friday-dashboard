@@ -15,7 +15,7 @@
 //   POST /briefing        ->  AI briefing of what the panels show: summary + updates, coming up, actions (Workers AI, bound as AI)
 //   GET /push/key, POST /push/subscribe, POST /push/test  ->  phone alerts (Web Push, see push.js + alerts.js)
 //
-// Cron: hourly = memory snapshot; every 5 min = commute alerts (inside the windows only).
+// Cron: hourly = memory snapshot; every 5 min on weekdays around the alert windows = commute alerts (see wrangler.jsonc).
 //
 // Memory: once an hour (Cron Trigger) scheduled() saves snapshots into the D1 database bound
 // as DB: GNSS jamming per zone (data/gpsjam.json on the site) and the day's attack routes (Radar). Tables are created automatically on the first run.
@@ -601,8 +601,8 @@ export default {
     const started = Date.now();
     let failure = null;
     try {
-      if (event.cron === '*/5 * * * *') await everyFiveMinutes(env, now);
-      else await snapshot(env, now);
+      if (event.cron === '0 * * * *') await snapshot(env, now);
+      else await everyFiveMinutes(env, now);
     } catch (err) {
       failure = err;
     }

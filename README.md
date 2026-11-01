@@ -111,8 +111,8 @@ The database binding (`DB`) and the hourly cron (`0 * * * *`) are in `wrangler.j
 Nothing to set up on Cloudflare. The Worker makes its own push key pair (VAPID) on first use and keeps it in D1
 (`settings` table, key `vapid`); devices are in `push_subs`, sent alerts in `alerts_sent` (kept 3 days, so nothing is pushed twice).
 Messages are encrypted for the device (RFC 8291) with the built-in WebCrypto; see `relay/push.js`.
-The rules are in `relay/alerts.js`. A second cron (`*/5 * * * *`) runs the commute check; outside the windows it stops before
-any request. Cost per weekday: ~100 Transitous + ~50 iRail requests, all well inside free limits.
+The rules are in `relay/alerts.js`. A second cron (`*/5 6,7,13-16 * * mon-fri`, UTC) runs the commute check only on weekdays in the hours around the
+windows (summer and winter time); outside the exact windows it stops before any request. Cost per weekday: ~100 Transitous + ~50 iRail requests, all well inside free limits.
 
 **On iPhone (iOS 16.4+):** MIAP must be opened from its Home Screen icon (Safari tabs can't receive pushes) →
 Commute tab → **Enable alerts** → Allow → **Send test**. Turn off: Settings → Notifications → MIAP.
