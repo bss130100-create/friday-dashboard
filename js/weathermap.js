@@ -116,7 +116,7 @@ function fieldBounds(grid) {
 }
 
 // Your value sits under your dot; ▲/▼ sit just above their point, clear of the attribution at the bottom.
-const label = (L, p, html, cls = '') => L.marker([p.lat, p.lon], { icon: L.divIcon({ className: `wx-label ${cls}`, html, iconSize: [64, 20], iconAnchor: cls === 'big' ? [32, -6] : [32, 22] }), interactive: false });
+const label = (L, p, html, cls = '') => L.marker([p.lat, p.lon], { icon: L.divIcon({ className: `wx-label ${cls}`, html, iconSize: [64, 20], iconAnchor: cls === 'big' ? [32, -6] : [32, 22] }), interactive: false, keyboard: false });
 const you = (grid) => grid[(grid.length - 1) / 2]; // the middle grid point is where you are
 
 export function paintTemperature(grid) {
@@ -137,7 +137,7 @@ export function paintWind(grid) {
     for (const p of grid) {
       if (p === you(grid)) continue;
       const icon = L.divIcon({ className: 'wx-arrow', html: `<span style="transform:rotate(${Math.round(p.from + 180)}deg)">↑</span>`, iconSize: [16, 16] });
-      L.marker([p.lat, p.lon], { icon, interactive: false }).addTo(layer);
+      L.marker([p.lat, p.lon], { icon, interactive: false, keyboard: false }).addTo(layer);
     }
     label(L, you(grid), `${Math.round(you(grid).wind)} km/h`, 'big').addTo(layer);
   };

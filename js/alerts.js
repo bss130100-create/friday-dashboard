@@ -18,7 +18,7 @@ export const UNSUPPORTED = `<p class="warm">This browser can't get alerts here.<
 
 export function renderAlerts(state) {
   if (state === 'on') return '<p><span class="tag cool">ON</span> This device gets MIAP alerts. Tap Send test to check.</p>';
-  if (state === 'blocked') return '<p class="hot">Notifications are blocked for MIAP.</p><p class="dim small">iPhone: Settings › Notifications › MIAP › Allow Notifications.</p>';
+  if (state === 'blocked') return '<p class="warm">Notifications are blocked for MIAP.</p><p class="dim small">iPhone: Settings › Notifications › MIAP › Allow Notifications.</p>';
   return '<p class="dim">Alerts are off on this device. Tap Enable alerts.</p>';
 }
 

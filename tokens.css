@@ -4,6 +4,7 @@
    50% Iron Man, 50% Apple: the frame is a HUD (card labels with tracer lines, corner brackets on the hero,
    cyan readouts, mono telemetry), the content inside is Apple (iOS text styles, list rows, 44px targets). */
 :root {
+  color-scheme: dark;  /* native controls (checkboxes, scrollbars, autofill) draw dark too */
   /* ---------- colour ---------- */
   --bg: #05070A;         /* Void Black: the page */
   --panel: #101720;      /* Graphite: cards */
