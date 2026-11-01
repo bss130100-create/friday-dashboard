@@ -2,6 +2,7 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
+import { readFileSync } from 'node:fs';
 import { commuteWindow, watchedRoutes, tripEvents, commuteEvents } from '../relay/alerts.js';
 import worker, { pushKey, subscribe, notify, settings } from '../relay/worker.js';
 import { b64url } from '../relay/push.js';
@@ -31,6 +32,23 @@ const trip = (scheduledZ, startZ, extra = {}) => ({
   cancelled: false, legs: ["walk 2'", 'train S2'], stops: ['Bruxelles-Midi/Brussel-Zuid', 'Halle'], ...extra,
 });
 const disruption = (title, planned = false) => ({ title, planned, time: MON('05:30') });
+
+// The 5-minute cron only fires in some UTC hours (wrangler.jsonc): every minute of an alert window,
+// in summer and in winter time, must fall in one of them, on a day the cron runs.
+test('cron: the 5-minute schedule covers every alert window, summer and winter time', () => {
+  const cron = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8').match(/"\*\/5 ([\d,-]+) \* \* mon-fri"/);
+  assert.ok(cron, 'wrangler.jsonc: no "*/5 <hours> * * mon-fri" cron');
+  const hours = new Set(cron[1].split(',').flatMap((part) => {
+    const [a, b = a] = part.split('-').map(Number);
+    return Array.from({ length: b - a + 1 }, (_, i) => a + i);
+  }));
+  for (const week of ['2026-07-06', '2026-11-02']) { // a summer (UTC+2) and a winter (UTC+1) Monday-Sunday
+    for (let m = 0; m < 7 * 24 * 60; m += 5) {
+      const t = new Date(Date.parse(`${week}T00:00:00Z`) + m * 60000);
+      if (commuteWindow(t)) assert.ok(hours.has(t.getUTCHours()) && t.getUTCDay() >= 1 && t.getUTCDay() <= 5, `no cron run at ${t.toISOString()}`);
+    }
+  }
+});
 
 test('windows: weekdays 08:00-09:00 and 15:30-17:30 Brussels time only', () => {
   // MON is in UTC; Brussels is UTC+1 on that Monday
@@ -119,7 +137,7 @@ test('push: a failing push service is an error, and the event is retried next ti
 test('cron: the 5-minute job does nothing until addresses are saved', async () => {
   const env = { DB: fakeD1() };
   globalThis.fetch = async (url) => { throw new Error(`unexpected ${url}`); };
-  await worker.scheduled({ cron: '*/5 * * * *', scheduledTime: MON('07:00').getTime() }, env);
+  await worker.scheduled({ cron: '*/5 6,7,13-16 * * mon-fri', scheduledTime: MON('07:00').getTime() }, env);
   assert.equal(await settings(env, new Request('https://miap.test/settings/commute'), 'commute'), null);
 });
 
