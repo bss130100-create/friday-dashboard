@@ -73,8 +73,16 @@ setInterval(() => astro && showBody('astro', renderAstro(astro, new Date())), MI
 runPanel('daysoff', async () => showBody('daysoff', renderDaysOffCard(await loadDaysOff(new Date()))), 6 * 60 * MINUTE);
 runPanel('power', async () => showBody('power', renderPower(await loadPower(new Date()))), 15 * MINUTE);
 
-// --- System tab: MIAP's own health (Worker /system) and the 30-day wipe
-runPanel('usage', async () => showBody('usage', renderSystem(await loadSystem(), new Date())), 10 * MINUTE);
+// --- System tab: MIAP's own health (Worker /system) and the 30-day wipe.
+// Each load costs the Worker a login check, 3 D1 queries and up to 3 Cloudflare API calls, so after the
+// first load (the header counts every panel) it refreshes only while the System tab is open, and when it opens.
+const USAGE_EVERY = 10 * MINUTE;
+const usage = document.getElementById('usage');
+const loadUsage = async () => showBody('usage', renderSystem(await loadSystem(), new Date()));
+runPanel('usage', async () => (usage.hidden && usage.dataset.updated ? undefined : loadUsage()), USAGE_EVERY);
+window.addEventListener('hashchange', () => {
+  if (!usage.hidden && Date.now() - Number(usage.dataset.updated ?? 0) >= USAGE_EVERY) loadUsage().catch((err) => showError('usage', err));
+});
 document.getElementById('prune').addEventListener('click', async () => {
   if (!window.confirm(PRUNE_QUESTION)) return;
   const msg = document.getElementById('prune-msg');
@@ -222,7 +230,7 @@ runPanel('here', async () => {
     return;
   }
   showBody('here', await loadHere(await getLocation({ precise: true }), config.home, new Date()));
-}, 2 * MINUTE);
+}, 5 * MINUTE); // like Commute: each refresh wakes the GPS and asks Transitous twice
 
 // --- phone alerts: the key and the background notifier (sw.js) are ready before the tap,
 // because iOS only shows the permission prompt if subscribe() runs straight from the tap.
