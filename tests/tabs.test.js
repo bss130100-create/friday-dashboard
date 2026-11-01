@@ -28,7 +28,7 @@ test('index.html: four tabs in the dock, System opens from the MIAP logo', () =>
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const dock = html.slice(html.indexOf('<nav class="tabs"'), html.indexOf('</nav>'));
   assert.deepEqual([...dock.matchAll(/<a href="#(\w+)">/g)].map((m) => m[1]), ['time', 'commute', 'weather', 'intel']);
-  assert.match(html, /<a class="brand" href="#system" aria-label="System status and settings"><svg[^>]*>.*<\/svg><span>MIAP<\/span><\/a>/);
+  assert.match(html, /<a class="brand" href="#system" aria-label="MIAP: system status and settings"><svg[^>]*>.*<\/svg><span>MIAP<\/span><\/a>/);
   assert.ok(html.includes('id="tab-title"'));
   assert.match(html, /<h1 id="tab-title">Today<\/h1><button type="button" id="edit-order" aria-pressed="false">Edit<\/button>/);
   assert.match(html, /<button type="button" id="reset-order">Reset to default order<\/button>/);

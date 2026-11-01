@@ -234,6 +234,7 @@ input {
   width: calc(100% - 2ch); outline: none; caret-color: var(--cyan);
 }
 input:focus { box-shadow: 0 0 0 2px var(--cyan); }
+input::placeholder { color: var(--dim); }
 form { margin-bottom: var(--s2); }
 /* buttons: steel pill with cyan text; .primary = filled cyan for the one main action */
 button { min-height: var(--tap); padding: 0 var(--s5); border: 0; border-radius: var(--r-pill); background: var(--fill); color: var(--cyan); font: var(--t-subhead); font-weight: 600; cursor: pointer; }
