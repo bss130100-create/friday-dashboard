@@ -9,7 +9,7 @@ import { isWeekend } from './commute.js';
 export const SOURCES = {
   here: 'Where I am', routes: 'Commute', traffic: 'Roads & rail', atmosphere: 'Weather', air: 'Air quality',
   astro: 'Sun & moon', daysoff: 'Days off and holidays', power: 'Electricity prices', news: 'News',
-  topic: 'Topic of the week',
+  plants: 'Plant watering',
 };
 const MAX_PER_PANEL = 500;
 const WEEKDAY_ONLY = new Set(['routes']); // routes to and from work

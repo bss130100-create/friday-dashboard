@@ -7,7 +7,7 @@ plus the few helpers the page needs, and it sits behind a **Cloudflare Access lo
 **Live (login):** https://friday-relay.mcioroianu2.workers.dev
 
 ## Panels and how they work
-Panels are grouped in four tabs: **Today** (AI briefing, commute, days off & holidays, topic of the week, electricity, chronometer, sun & moon),
+Panels are grouped in four tabs: **Today** (AI briefing, commute, days off & holidays, plant watering, electricity, chronometer, sun & moon),
 **Commute** (commute, roads & rail, where I am), **Weather** (atmosphere, one weather map with a Temperature/Wind/Rain switch, air quality & pollen) and
 **Intel** (newsfeed, GNSS, cyber attacks, archive). **System** (MIAP's health, phone alerts, home and work addresses) has no tab button:
 tap the arc reactor logo. The open tab is in the address (`#commute`, `#system`), so a bookmark opens it.
@@ -17,12 +17,12 @@ Cards with more detail open in place (the button under them); the open state sur
 
 | Panel | Source | Refresh | What happens |
 |---|---|---|---|
-| AI briefing | Workers AI (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`) via the Worker | 1 h, or **Brief me** | The text the other panels show (commute, where I am, roads & rail, weather, air, sun, days off, holidays, electricity, news, topic) goes to the Worker's `/briefing`; Llama 3.3 70B answers in JSON (Workers AI JSON mode): a summary of at most 3 sentences, action first, aware of the day and time (to work on weekday mornings, home in the evening, nothing about work at weekends), plus up to 3 updates, 3 things coming up and 3 recommended actions, which open under the summary. Panels in error are left out, and so is the work commute on Saturday and Sunday. The logo pulses while MIAP is writing it. Free plan: 10,000 neurons a day, one briefing costs about 110. |
+| AI briefing | Workers AI (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`) via the Worker | 1 h, or **Brief me** | The text the other panels show (commute, where I am, roads & rail, weather, air, sun, days off, holidays, electricity, news, plant watering) goes to the Worker's `/briefing`; Llama 3.3 70B answers in JSON (Workers AI JSON mode): a summary of at most 3 sentences, action first, aware of the day and time (to work on weekday mornings, home in the evening, nothing about work at weekends), plus up to 3 updates, 3 things coming up and 3 recommended actions, which open under the summary. Panels in error are left out, and so is the work commute on Saturday and Sunday. The logo pulses while MIAP is writing it. Free plan: 10,000 neurons a day, one briefing costs about 110. |
 | Chronometer | your device clock | 1 s | Local time, then UTC, today's date and the **ISO week number** (weeks start Monday; week 1 holds the year's first Thursday). |
 | Days off | [OpenHolidays API](https://www.openholidaysapi.org) (free, no key) | 6 h | Days to the next Belgian public holiday, what that day means for a Mon–Fri week, and the next long weekend. Easter and Pentecost Sunday are left out: they are not among Belgium's 10 paid holidays. **Show all** opens the holidays timeline: every public holiday of the next 12 months with what it means for a Mon–Fri week (long weekend, one day of leave for a 4-day weekend, midweek, or a weekend day that gives a replacement day) and the French- and Dutch-speaking school holidays (both run in Brussels; one entry when the dates match). |
 | Commute (Today) | the Commute tab's load | 5 min | One sentence first: a cancelled or 5+ min late trip in the next hour on the routes that matter now (to work before noon, home after), or "No delays or cancellations". Then the next departure per route. On weekends: no work commute. |
 | Electricity · Belgium | Sibelga rate periods + [Energy-Charts](https://www.energy-charts.info) (Fraunhofer ISE, CC BY 4.0) via the Worker + OpenHolidays | 15 min (Worker caches 30 min) | Made for a fixed-price contract with a day/night (bi-horaire) meter in Brussels: whether the cheap night rate is on now and when it changes (night = 22:00–07:00 on weekdays, all day on weekends and public holidays, per Brugel), plus the forecast renewable share of Belgian demand per hour (bars; over 100% = Belgium exports the surplus) and the greenest 3-hour window. |
-| Topic of the week | `data/topic.json` in this repo | 1 h | This week's topic, a fact of the day (rotates daily from the `start` date) and a watch list. Ticks are saved in this browser only. A new topic = Claude edits `data/topic.json` and pushes. |
+| Plant watering | `PLANTS` in `js/plants.js` (fixed schedule) | 1 h | What to water today and next: Tuesday and Saturday rhythm for indoor winter care, with each plant's how-to. A new plant = edit `PLANTS` and push. |
 | Commute · public transport | [Transitous](https://transitous.org) (free community journey planner, data from SNCB, STIB, De Lijn, TEC…) | 5 min | Four routes: Here (your current GPS position) → Work 1, Here → Work 2, Work 1 → Home, Work 2 → Home, each showing the 2 fastest of the next 6 trips. Door to door with trains, buses, trams, metro and walking, live delays and cancellations, and "leave in N min". **Addresses are typed once under *setup* and saved in MIAP's private database (D1, behind the login), so every device you log in from has them. They are never in this public repo.** The Worker also checks the Access login token itself before reading or saving them. Transitous receives them to plan the trips. |
 | Where I am · way home | your phone's GPS + Transitous | 2 min | Your precise position (GPS on a phone, Wi-Fi on a laptop) with its accuracy, the nearest street address, the distance to home, and the next trips home with "leave in N min". Needs the home address saved in System. |
 | Phone alerts | the Worker's cron + Transitous, iRail → Web Push | 5 min | Pushes to your phone, once per event. Weekdays 08:00–09:00 (routes to work) and 15:30–17:30 (routes home), Brussels time: a trip leaving in the next hour is cancelled, runs 5+ min late, or a live SNCB disruption names one of its stations. See *Phone alerts* below. |
@@ -138,7 +138,7 @@ js/zoom.js            zoom and drag for the maps
 js/history.js         trends panel (reads /history); js/charts.js tiny SVG charts
 js/countries-data.js  country centre points for the maps; js/labels-data.js country names
 js/<panel>.js         one file per data source: clock, weather, airquality, astro,
-                      news, gpsjam, attacks, topic, commute, daysoff, power (+ geo, location helpers)
+                      news, gpsjam, attacks, plants, commute, daysoff, power (+ geo, location helpers)
 relay/worker.js       the Cloudflare Worker: helpers (news, attacks, power), memory, settings, roads, briefing, push endpoints + cron
 relay/alerts.js       when to push (commute windows, delays, cancellations, rail disruptions)
 relay/push.js         Web Push sender (VAPID + encryption, no library)
@@ -146,7 +146,6 @@ sw.js                 service worker: shows the alerts on the phone; js/alerts.j
 wrangler.jsonc        how Cloudflare deploys it (site files, database, AI, hourly + 5-minute jobs); .assetsignore = files not served
 scripts/gpsjam.py     daily GPSJam converter (+ test_gpsjam.py)
 data/gpsjam.json      output of the daily job
-data/topic.json       topic of the week (facts + videos)
 vendor/leaflet.*      Leaflet 1.9.4 (BSD-2), copied as-is: draws the maps (js/basemap.js; roads & rail in js/trafficmap.js, weather in js/weathermap.js)
 tests/                unit tests (node --test)
 ```

@@ -10,7 +10,7 @@ import { loadGpsJam, renderGpsJam } from './gpsjam.js';
 import { loadAttacks, renderAttacks } from './attacks.js';
 import { makeZoomable } from './zoom.js';
 import { renderHistory } from './history.js';
-import { loadTopic, readWatched, toggleWatched, renderTopic } from './topic.js';
+import { renderPlants } from './plants.js';
 import { geocode, readConfig, saveConfig, loadCommute, renderCommute, commuteSummary, loadHere } from './commute.js';
 import { tabFromHash, showTab } from './tabs.js';
 import { packPanels } from './masonry.js';
@@ -21,7 +21,7 @@ import { drawTrafficMap, TRAFFIC_HALF_KM } from './trafficmap.js';
 import { mapPanel, resizeMaps } from './basemap.js';
 import { WEATHER_HALF_KM, loadGrid, loadRadar, paintTemperature, paintWind, paintRain, gridSummary, radarSummary } from './weathermap.js';
 import { readouts, loadBriefing } from './briefing.js';
-import { loadDaysOff, renderDaysOffCard } from './daysoff.js';
+import { loadDaysOff, renderDaysOffCard, brusselsToday } from './daysoff.js';
 import { loadPower, renderPower } from './power.js';
 import { supported, UNSUPPORTED, renderAlerts, alertState, loadPushKey, enableAlerts, sendTest } from './alerts.js';
 
@@ -196,20 +196,8 @@ form.addEventListener('submit', (event) => {
 
 runPanel('news', refreshNews, 10 * MINUTE);
 
-// --- topic of the week: data/topic.json + "watched" ticks saved in this browser
-let topic = null;
-const drawTopic = () => showBody('topic', renderTopic(topic, readWatched(topic.topic), new Date()));
-runPanel('topic', async () => { topic = await loadTopic(); drawTopic(); }, 60 * MINUTE);
-document.getElementById('topic').addEventListener('change', (event) => {
-  const url = event.target.dataset.url;
-  if (!url) return;
-  try {
-    toggleWatched(topic.topic, url);
-    drawTopic();
-  } catch (err) {
-    showError('topic', err);
-  }
-});
+// --- plant watering memo: a fixed weekly rhythm (js/plants.js); hourly, so it turns over after midnight
+runPanel('plants', async () => showBody('plants', renderPlants(brusselsToday(new Date()))), 60 * MINUTE);
 
 // --- commute addresses: they only change through the form in System, so they are read once, not on
 // every refresh (that was 42 Worker requests an hour). shortcut: a change saved on another device shows after a reload.
