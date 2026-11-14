@@ -242,15 +242,14 @@ button:hover { color: var(--cool); }
 button.primary { background: var(--cyan); color: var(--on-cyan); }
 button.primary:hover { color: var(--on-cyan); background: var(--cool); }
 
-/* ---------- topic of the week ---------- */
-.topic-title { font: var(--t-title2); color: var(--fg); }
-.fact { margin: var(--s1) 0; }
-.videos { list-style: none; padding: 0; margin: var(--s2) 0 0; font: var(--t-subhead); }
-.videos label { display: grid; grid-template-columns: 22px 1fr; gap: 0 var(--s3); align-items: start; min-height: var(--tap); padding: var(--s2) 0; border-top: 1px solid var(--line); cursor: pointer; }
-.videos li:first-child label { border-top: none; }
-.videos input { width: 22px; height: 22px; min-height: 0; margin: 0; padding: 0; accent-color: var(--cyan); }
-.videos .dim { grid-column: 2; font: var(--t-footnote); }
-.videos a { color: var(--fg); }
+/* ---------- plant watering ---------- */
+.plants { list-style: none; padding: 0; margin: var(--s2) 0 0; font: var(--t-subhead); }
+.plants li { display: grid; grid-template-columns: 1fr auto; gap: var(--s3); padding: var(--s2) 0; border-top: 1px solid var(--line); }
+.plants em { font: var(--t-footnote); font-style: italic; color: var(--dim); }
+.plants .note { display: block; font: var(--t-footnote); color: var(--dim); }
+.plants .note.warn { color: var(--warm); }
+.plants .days { max-width: 7.5em; font: var(--t-footnote); color: var(--dim); text-align: right; }
+.plants li.due strong, .plants li.due .days { color: var(--cyan); }
 
 /* ---------- trends (history) ---------- */
 .history { display: grid; gap: var(--s1) var(--s6); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }

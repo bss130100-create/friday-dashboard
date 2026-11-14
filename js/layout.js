@@ -1,5 +1,5 @@
 // Panel order: your own order of the cards on each tab, kept in MIAP's private database so the
-// iPhone and the laptop show the same layout. Saved shape: { time: ['briefing', 'topic', ...], ... },
+// iPhone and the laptop show the same layout. Saved shape: { time: ['briefing', 'plants', ...], ... },
 // one list of card ids per tab you have rearranged; a tab you never touched keeps index.html's order.
 import { fetchJson, sendJson } from './http.js';
 
